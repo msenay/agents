@@ -297,7 +297,7 @@ class CoreAgentState(BaseModel):
     memory: Dict[str, Any] = Field(default_factory=dict)
     tool_outputs: List[Dict[str, Any]] = Field(default_factory=list)
     evaluation_results: Dict[str, Any] = Field(default_factory=dict)
-    human_feedback: Optional[str] = None
+    human_feedback: str = ""  # Default empty string for test compatibility
     supervisor_decisions: List[Dict[str, Any]] = Field(default_factory=list)
     next_agent: str = ""  # For multi-agent coordination
     metadata: Dict[str, Any] = Field(default_factory=dict)  # Added for backward compatibility
@@ -1520,6 +1520,7 @@ class CoreAgent:
             },
             "memory_type": self.config.memory_type,
             "memory_enabled": self.config.enable_memory,  # Backward compatibility
+            "tools_count": len(self.config.tools),  # For test compatibility
             "langmem_support": self.has_langmem_support(),
             "supervised_agents": len(self.supervisor_manager.agents),
             "mcp_servers": len(self.config.mcp_servers),
