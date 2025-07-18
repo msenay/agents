@@ -12,10 +12,11 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 4. **`examples/multi_agent.py`** - Multi-agent pattern örnekleri (supervisor, swarm, handoff)
 5. **`examples/mcp_example.py`** - MCP (Model Context Protocol) entegrasyonu örnekleri
 6. **`examples/langmem_example.py`** - LangMem hafıza yönetimi örnekleri
-7. **`requirements.txt`** - Gerekli bağımlılıklar
-8. **`README.md`** - Kapsamlı İngilizce dokümantasyon
-9. **`SUMMARY.md`** - Türkçe özet dokümantasyon
-10. **`test_framework.py`** - Test scripti
+7. **`examples/agentevals_example.py`** - AgentEvals performans değerlendirme örnekleri
+8. **`requirements.txt`** - Gerekli bağımlılıklar
+9. **`README.md`** - Kapsamlı İngilizce dokümantasyon
+10. **`SUMMARY.md`** - Türkçe özet dokümantasyon
+11. **`test_framework.py`** - Test scripti
 
 ### İçerdiği Özellikler (Dökümanda Belirtilen)
 
@@ -27,7 +28,7 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 ✅ **6. langgraph-swarm** - Swarm multi-agent sistem araçları
 ✅ **7. langchain-mcp-adapters** - MCP server entegrasyonu (tam destekli + test edildi)
 ✅ **8. langmem** - Agent hafıza yönetimi (tam destekli + test edildi)
-✅ **9. agentevals** - Agent performans değerlendirme
+✅ **9. agentevals** - Agent performans değerlendirme (tam destekli + test edildi)
 
 ### 🆕 Multi-Agent Mimarileri
 
@@ -264,7 +265,41 @@ mcp_agent.add_mcp_server("db", {
 })
 ```
 
-### 8. Streaming ve Human-in-the-Loop
+### 8. Agent Performans Değerlendirme (AgentEvals)
+
+```python
+# AgentEvals ile değerlendirme yapın
+from core_agent import create_evaluated_agent
+
+# Değerlendirme metrikleri ile agent yaratın
+eval_agent = create_evaluated_agent(
+    model,
+    evaluation_metrics=["accuracy", "relevance", "helpfulness", "efficiency"]
+)
+
+# Temel değerlendirme
+result = eval_agent.evaluate_last_response()
+
+# Trajectory değerlendirme (araç kullanım sırası)
+outputs = [{"role": "assistant", "tool_calls": [...]}]
+reference = [{"role": "assistant", "tool_calls": [...]}]
+trajectory_result = eval_agent.evaluate_trajectory(outputs, reference)
+
+# LLM-as-a-judge değerlendirme
+llm_judge_result = eval_agent.evaluate_with_llm_judge(outputs, reference)
+
+# Değerlendirme dataset'i oluşturun
+conversations = [{
+    "input_messages": [{"role": "user", "content": "Soru"}],
+    "expected_output_messages": [{"role": "assistant", "content": "Beklenen cevap"}]
+}]
+dataset = eval_agent.create_evaluation_dataset(conversations)
+
+# Değerlendirici durumu kontrol edin
+status = eval_agent.get_evaluator_status()
+```
+
+### 9. Streaming ve Human-in-the-Loop
 
 ```python
 # Streaming kullanın

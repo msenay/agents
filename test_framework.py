@@ -329,6 +329,74 @@ def test_langmem_functionality():
         return False
 
 
+def test_agentevals_functionality():
+    """Test AgentEvals evaluation functionality"""
+    print("Testing AgentEvals functionality...")
+    
+    try:
+        from core_agent import create_evaluated_agent, AGENTEVALS_AVAILABLE
+        
+        # Test evaluated agent creation
+        config = AgentConfig(
+            name="EvaluatedTestAgent",
+            model=TestChatModel(),
+            enable_evaluation=True,
+            evaluation_metrics=["accuracy", "relevance", "helpfulness"]
+        )
+        
+        agent = CoreAgent(config)
+        
+        # Check evaluation configuration
+        assert agent.config.enable_evaluation == True
+        assert len(agent.config.evaluation_metrics) == 3
+        assert "accuracy" in agent.config.evaluation_metrics
+        
+        # Test evaluator status
+        evaluator_status = agent.get_evaluator_status()
+        assert "agentevals_available" in evaluator_status
+        assert evaluator_status["agentevals_available"] == AGENTEVALS_AVAILABLE
+        
+        # Test factory function
+        eval_agent = create_evaluated_agent(TestChatModel())
+        assert eval_agent.config.name == "EvaluatedAgent"
+        assert eval_agent.config.enable_evaluation == True
+        
+        # Test evaluation methods (these will return errors if agentevals not installed)
+        sample_outputs = [{"role": "assistant", "content": "Test response"}]
+        sample_reference = [{"role": "assistant", "content": "Expected response"}]
+        
+        trajectory_result = agent.evaluate_trajectory(sample_outputs, sample_reference)
+        assert isinstance(trajectory_result, dict)
+        
+        llm_judge_result = agent.evaluate_with_llm_judge(sample_outputs, sample_reference)
+        assert isinstance(llm_judge_result, dict)
+        
+        # Test dataset creation
+        conversations = [{
+            "input_messages": [{"role": "user", "content": "Hello"}],
+            "expected_output_messages": [{"role": "assistant", "content": "Hi there!"}]
+        }]
+        dataset = agent.create_evaluation_dataset(conversations)
+        assert len(dataset) == 1
+        assert "input" in dataset[0]
+        assert "output" in dataset[0]
+        
+        # Check status includes evaluators
+        status = agent.get_status()
+        assert "evaluators" in status
+        assert "agentevals_available" in status["evaluators"]
+        
+        print(f"✓ AgentEvals functionality test completed")
+        print(f"  AgentEvals Available: {'Yes' if AGENTEVALS_AVAILABLE else 'No (install agentevals)'}")
+        print(f"  Evaluators tested: basic, trajectory, llm_judge")
+        return True
+        
+    except Exception as e:
+        print(f"✗ AgentEvals functionality failed: {e}")
+        traceback.print_exc()
+        return False
+
+
 def test_package_availability():
     """Test which optional packages are available"""
     print("Testing package availability...")
@@ -336,7 +404,8 @@ def test_package_availability():
     # Import statements from core_agent to check availability
     from core_agent import (
         RedisSaver, create_supervisor, create_swarm, 
-        MCP_AVAILABLE, LANGMEM_AVAILABLE, ShortTermMemory, LongTermMemory, AgentEvaluator
+        MCP_AVAILABLE, LANGMEM_AVAILABLE, AGENTEVALS_AVAILABLE, 
+        ShortTermMemory, LongTermMemory, AgentEvaluator
     )
     
     packages = {
@@ -345,6 +414,7 @@ def test_package_availability():
         "create_swarm": create_swarm,
         "MCP_AVAILABLE": MCP_AVAILABLE,
         "LANGMEM_AVAILABLE": LANGMEM_AVAILABLE,
+        "AGENTEVALS_AVAILABLE": AGENTEVALS_AVAILABLE,
         "ShortTermMemory": ShortTermMemory,
         "LongTermMemory": LongTermMemory,
         "AgentEvaluator": AgentEvaluator
@@ -372,7 +442,8 @@ def run_all_tests():
         test_agent_status,
         test_config_save_load,
         test_mcp_functionality,
-        test_langmem_functionality
+        test_langmem_functionality,
+        test_agentevals_functionality
     ]
     
     results = []

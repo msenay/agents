@@ -64,8 +64,18 @@ except ImportError:
 
 try:
     from agentevals import AgentEvaluator
+    from agentevals.trajectory.match import create_trajectory_match_evaluator
+    from agentevals.trajectory.llm import (
+        create_trajectory_llm_as_judge,
+        TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE
+    )
+    AGENTEVALS_AVAILABLE = True
 except ImportError:
     AgentEvaluator = None
+    create_trajectory_match_evaluator = None
+    create_trajectory_llm_as_judge = None
+    TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
+    AGENTEVALS_AVAILABLE = False
 
 # LangChain imports
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
@@ -491,25 +501,94 @@ class MCPManager:
 
 
 class EvaluationManager:
-    """Manages agent performance evaluation"""
+    """Manages agent performance evaluation using AgentEvals"""
     
     def __init__(self, config: AgentConfig):
         self.config = config
         self.evaluator = None
+        self.trajectory_evaluator = None
+        self.llm_judge_evaluator = None
         
-        if config.enable_evaluation and AgentEvaluator:
-            self.evaluator = AgentEvaluator(metrics=config.evaluation_metrics)
+        if config.enable_evaluation and AGENTEVALS_AVAILABLE:
+            self._initialize_evaluators()
+            
+    def _initialize_evaluators(self):
+        """Initialize AgentEvals evaluators"""
+        try:
+            # Basic AgentEvaluator if available
+            if AgentEvaluator:
+                self.evaluator = AgentEvaluator(metrics=self.config.evaluation_metrics)
+                logger.info("Basic AgentEvaluator initialized")
+                
+            # Trajectory match evaluator
+            if create_trajectory_match_evaluator:
+                self.trajectory_evaluator = create_trajectory_match_evaluator(
+                    trajectory_match_mode="superset"
+                )
+                logger.info("Trajectory match evaluator initialized")
+                
+            # LLM-as-a-judge evaluator
+            if create_trajectory_llm_as_judge and self.config.model:
+                self.llm_judge_evaluator = create_trajectory_llm_as_judge(
+                    prompt=TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE,
+                    model=self.config.model
+                )
+                logger.info("LLM-as-a-judge evaluator initialized")
+                
+        except Exception as e:
+            logger.warning(f"Failed to initialize evaluators: {e}")
             
     def evaluate_response(self, input_text: str, output_text: str) -> Dict[str, float]:
-        """Evaluate agent response quality"""
+        """Evaluate agent response quality using basic evaluator"""
         if not self.evaluator:
             return {}
             
         try:
             return self.evaluator.evaluate(input_text, output_text)
         except Exception as e:
-            logger.warning(f"Evaluation failed: {e}")
+            logger.warning(f"Basic evaluation failed: {e}")
             return {}
+            
+    def evaluate_trajectory(self, outputs: List[Dict], reference_outputs: List[Dict]) -> Dict[str, Any]:
+        """Evaluate agent trajectory against reference"""
+        if not self.trajectory_evaluator:
+            return {"error": "Trajectory evaluator not available"}
+            
+        try:
+            result = self.trajectory_evaluator(
+                outputs=outputs,
+                reference_outputs=reference_outputs
+            )
+            logger.info("Trajectory evaluation completed")
+            return result
+        except Exception as e:
+            logger.warning(f"Trajectory evaluation failed: {e}")
+            return {"error": str(e)}
+            
+    def evaluate_with_llm_judge(self, outputs: List[Dict], reference_outputs: List[Dict]) -> Dict[str, Any]:
+        """Evaluate using LLM-as-a-judge"""
+        if not self.llm_judge_evaluator:
+            return {"error": "LLM judge evaluator not available"}
+            
+        try:
+            result = self.llm_judge_evaluator(
+                outputs=outputs,
+                reference_outputs=reference_outputs
+            )
+            logger.info("LLM judge evaluation completed")
+            return result
+        except Exception as e:
+            logger.warning(f"LLM judge evaluation failed: {e}")
+            return {"error": str(e)}
+            
+    def get_evaluator_status(self) -> Dict[str, bool]:
+        """Get status of available evaluators"""
+        return {
+            "agentevals_available": AGENTEVALS_AVAILABLE,
+            "basic_evaluator": self.evaluator is not None,
+            "trajectory_evaluator": self.trajectory_evaluator is not None,
+            "llm_judge_evaluator": self.llm_judge_evaluator is not None
+        }
 
 
 class CoreAgent:
@@ -808,10 +887,10 @@ class CoreAgent:
             self.config.tools.extend(mcp_tools)
             logger.info(f"Added {len(mcp_tools)} MCP tools to agent")
             
-    # Evaluation
+    # Evaluation with AgentEvals
     
     def evaluate_last_response(self) -> Dict[str, float]:
-        """Evaluate the last response"""
+        """Evaluate the last response using basic evaluator"""
         if not self.state.messages:
             return {}
             
@@ -821,6 +900,28 @@ class CoreAgent:
             ai_msg = last_messages[1].content if isinstance(last_messages[1], AIMessage) else ""
             return self.evaluation_manager.evaluate_response(human_msg, ai_msg)
         return {}
+        
+    def evaluate_trajectory(self, outputs: List[Dict], reference_outputs: List[Dict]) -> Dict[str, Any]:
+        """Evaluate agent trajectory against reference using AgentEvals"""
+        return self.evaluation_manager.evaluate_trajectory(outputs, reference_outputs)
+        
+    def evaluate_with_llm_judge(self, outputs: List[Dict], reference_outputs: List[Dict]) -> Dict[str, Any]:
+        """Evaluate using LLM-as-a-judge from AgentEvals"""
+        return self.evaluation_manager.evaluate_with_llm_judge(outputs, reference_outputs)
+        
+    def get_evaluator_status(self) -> Dict[str, bool]:
+        """Get status of available AgentEvals evaluators"""
+        return self.evaluation_manager.get_evaluator_status()
+        
+    def create_evaluation_dataset(self, conversations: List[Dict]) -> List[Dict]:
+        """Create evaluation dataset in AgentEvals format"""
+        dataset = []
+        for conv in conversations:
+            dataset.append({
+                "input": {"messages": conv.get("input_messages", [])},
+                "output": {"messages": conv.get("expected_output_messages", [])}
+            })
+        return dataset
         
     # Utility methods
     
@@ -883,6 +984,7 @@ class CoreAgent:
             "supervised_agents": len(self.supervisor_manager.agents),
             "mcp_servers": len(self.config.mcp_servers),
             "mcp_tools": len(self.mcp_manager.mcp_tools),
+            "evaluators": self.get_evaluator_status(),
         }
 
 
@@ -1035,6 +1137,27 @@ def create_langmem_agent(
     return CoreAgent(config)
 
 
+def create_evaluated_agent(
+    model: BaseChatModel,
+    tools: List[BaseTool] = None,
+    evaluation_metrics: List[str] = None,
+    prompt: str = "You are an assistant with performance evaluation capabilities."
+) -> CoreAgent:
+    """Create an agent with AgentEvals evaluation capabilities"""
+    config = AgentConfig(
+        name="EvaluatedAgent",
+        model=model,
+        system_prompt=prompt,
+        tools=tools or [],
+        enable_evaluation=True,
+        evaluation_metrics=evaluation_metrics or ["accuracy", "relevance", "helpfulness"],
+        enable_memory=True,
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
 # Example usage and template
 if __name__ == "__main__":
     # This is an example of how to use the CoreAgent
@@ -1047,5 +1170,5 @@ if __name__ == "__main__":
     print("- langgraph-swarm:", "✓" if create_swarm else "✗")
     print("- langchain-mcp-adapters:", "✓" if MCP_AVAILABLE else "✗")
     print("- langmem:", "✓" if LANGMEM_AVAILABLE else "✗")
-    print("- agentevals:", "✓" if AgentEvaluator else "✗")
+    print("- agentevals:", "✓" if AGENTEVALS_AVAILABLE else "✗")
     print("- Redis support:", "✓" if RedisSaver else "✗")
