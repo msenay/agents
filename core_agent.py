@@ -125,6 +125,11 @@ class AgentConfig:
     memory_type: str = "memory"  # "memory", "redis", "both", "langmem_short", "langmem_long", "langmem_combined"
     redis_url: Optional[str] = None
     
+    # Session-Based Memory (Advanced Redis Memory)
+    session_id: Optional[str] = None  # Session ID for shared memory between agents
+    enable_shared_memory: bool = False  # Enable session-based shared memory
+    memory_namespace: str = "default"  # Memory namespace for agent isolation within session
+    
     # LangMem Advanced Memory (only when memory_type starts with "langmem")
     langmem_max_tokens: int = 384
     langmem_max_summary_tokens: int = 128
@@ -1306,7 +1311,229 @@ def create_human_interactive_agent(
     return CoreAgent(config)
 
 
-# Example usage and template
+# ============================================================================
+# SESSION-BASED MEMORY CREATORS - For agent collaboration with shared memory
+# ============================================================================
+
+def create_session_agent(
+    model: BaseChatModel,
+    session_id: str,
+    name: str = "SessionAgent",
+    tools: List[BaseTool] = None,
+    memory_namespace: str = "default",
+    enable_shared_memory: bool = True,
+    redis_url: Optional[str] = None,
+    system_prompt: str = "You are an agent with session-based shared memory capabilities."
+) -> CoreAgent:
+    """
+    Create an agent with session-based memory for collaboration
+    Perfect for: Multi-agent workflows, code collaboration, shared context
+    
+    Args:
+        model: The LLM model to use
+        session_id: Unique session identifier for shared memory
+        name: Agent name (used for memory namespace)
+        tools: Tools available to the agent
+        memory_namespace: Memory namespace within session (for agent isolation)
+        enable_shared_memory: Enable session-based shared memory
+        redis_url: Redis connection URL
+        system_prompt: Agent's system prompt
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        enable_memory=True,
+        memory_type="redis",
+        redis_url=redis_url,
+        session_id=session_id,
+        enable_shared_memory=enable_shared_memory,
+        memory_namespace=memory_namespace,
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
+def create_collaborative_agents(
+    models: Dict[str, BaseChatModel],
+    session_id: str,
+    agent_configs: Dict[str, Dict[str, Any]],
+    redis_url: Optional[str] = None
+) -> Dict[str, CoreAgent]:
+    """
+    Create multiple collaborative agents sharing the same session memory
+    
+    Args:
+        models: Dictionary of {agent_name: model} for different agents
+        session_id: Shared session identifier
+        agent_configs: Dictionary of agent configurations
+        redis_url: Redis connection URL
+    
+    Returns:
+        Dictionary of {agent_name: CoreAgent} instances
+    
+    Example:
+        models = {
+            "coder": gpt4_model,
+            "tester": gpt35_model,
+            "reviewer": claude_model
+        }
+        
+        configs = {
+            "coder": {
+                "tools": [write_code_tool],
+                "system_prompt": "You write code and store it in session memory"
+            },
+            "tester": {
+                "tools": [test_code_tool],
+                "system_prompt": "You create tests for session code"
+            }
+        }
+        
+        agents = create_collaborative_agents(models, "session_123", configs)
+    """
+    agents = {}
+    
+    for agent_name, model in models.items():
+        config = agent_configs.get(agent_name, {})
+        
+        agent = create_session_agent(
+            model=model,
+            session_id=session_id,
+            name=agent_name,
+            tools=config.get("tools", []),
+            memory_namespace=agent_name,  # Each agent gets its own namespace
+            enable_shared_memory=True,
+            redis_url=redis_url,
+            system_prompt=config.get("system_prompt", f"You are {agent_name} with session memory access.")
+        )
+        
+        agents[agent_name] = agent
+    
+    return agents
+
+
+def create_coding_session_agents(
+    model: BaseChatModel,
+    session_id: str,
+    redis_url: Optional[str] = None
+) -> Dict[str, CoreAgent]:
+    """
+    Create a predefined set of coding collaboration agents
+    Perfect for: Code development workflows, pair programming, code review
+    """
+    
+    # Define coding tools (placeholder for now)
+    @tool
+    def store_code(code: str) -> str:
+        """Store code in session memory"""
+        return f"Code stored in session: {code[:50]}..."
+    
+    @tool  
+    def get_session_code() -> str:
+        """Retrieve code from session memory"""
+        return "Retrieved code from session memory"
+    
+    @tool
+    def store_test_results(results: str) -> str:
+        """Store test results in session memory"""
+        return f"Test results stored: {results[:50]}..."
+    
+    # Agent configurations
+    agents_config = {
+        "coder": {
+            "tools": [store_code, get_session_code],
+            "system_prompt": f"""You are a Coder Agent with session-based memory (Session: {session_id}).
+            
+🧑‍💻 CODING CAPABILITIES:
+- Write Python code and store it in session memory
+- Access previously written code from session history
+- Collaborate with other agents in the same session
+- Remember all code iterations and improvements
+
+📝 SESSION MEMORY USAGE:
+- Store all code you write in session memory for other agents
+- Reference previous code from session when asked
+- Build upon existing code in the session
+- Maintain coding context across agent interactions
+
+Session ID: {session_id}
+Remember: Other agents in this session can see and improve your code!"""
+        },
+        
+        "tester": {
+            "tools": [get_session_code, store_test_results],
+            "system_prompt": f"""You are a Unit Test Agent with session-based memory (Session: {session_id}).
+            
+🧪 TESTING CAPABILITIES:
+- Access code written by other agents in this session
+- Create comprehensive unit tests for session code
+- Store test results in session memory
+- Validate code quality and functionality
+
+📝 SESSION MEMORY USAGE:
+- Retrieve code from session shared memory
+- Create tests based on session code history
+- Store test results for other agents to see
+- Collaborate on code quality assurance
+
+Session ID: {session_id}
+Remember: You can access code written by CoderAgent and other agents in this session!"""
+        },
+        
+        "reviewer": {
+            "tools": [get_session_code, store_code],
+            "system_prompt": f"""You are a Code Reviewer Agent with session-based memory (Session: {session_id}).
+            
+🔍 REVIEW CAPABILITIES:
+- Review code written by other agents in this session
+- Suggest improvements and optimizations
+- Add improved code versions to session memory
+- Ensure code quality and best practices
+
+📝 SESSION MEMORY USAGE:
+- Access all code from session history
+- Add improvements and suggestions to session
+- Collaborate with CoderAgent and TestAgent
+- Maintain review history in session
+
+Session ID: {session_id}
+Remember: You can see and improve upon all code in this session!"""
+        },
+        
+        "executor": {
+            "tools": [get_session_code, store_test_results],
+            "system_prompt": f"""You are an Executor Agent with session-based memory (Session: {session_id}).
+            
+🚀 EXECUTION CAPABILITIES:
+- Execute code written by other agents in this session
+- Run tests created by TestAgent
+- Report execution results to session memory
+- Validate code functionality
+
+📝 SESSION MEMORY USAGE:
+- Access all code and tests from session
+- Execute and report results to session
+- Collaborate on code validation
+- Store execution history in session
+
+Session ID: {session_id}
+Remember: You execute code created by other agents in this session!"""
+        }
+    }
+    
+    # Create models dict (all agents use the same model for simplicity)
+    models = {name: model for name in agents_config.keys()}
+    
+    return create_collaborative_agents(models, session_id, agents_config, redis_url)
+
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
 if __name__ == "__main__":
     # This is an example of how to use the CoreAgent
     

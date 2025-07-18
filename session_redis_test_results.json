@@ -1,0 +1,89 @@
+{
+  "session_memory_sharing": {
+    "session_id": "5d7b079d",
+    "total_interactions": 4,
+    "agents_count": 0,
+    "session_history": [
+      {
+        "agent": "ExecutorAgent",
+        "action": "execute_code",
+        "content": "Execute the optimized code and tests from this session",
+        "timestamp": 1752844271.0993578
+      },
+      {
+        "agent": "OptimizerAgent",
+        "action": "optimize_code",
+        "content": "Optimize the Fibonacci code from this session for better performance",
+        "timestamp": 1752844270.0933633
+      },
+      {
+        "agent": "TestAgent",
+        "action": "create_tests",
+        "content": "Create unit tests for the code written in this session",
+        "timestamp": 1752844269.087358
+      },
+      {
+        "agent": "CoderAgent",
+        "action": "write_code",
+        "content": "Write a Python function to calculate Fibonacci numbers",
+        "timestamp": 1752844268.0797484
+      }
+    ],
+    "success": true
+  },
+  "multi_session_isolation": {
+    "session1_id": "9dd2acd7",
+    "session2_id": "3dcb3fd1",
+    "session1_entries": 1,
+    "session2_entries": 1,
+    "isolation_success": true
+  },
+  "session_collaboration": {
+    "session_id": "040b9182",
+    "total_steps": 5,
+    "successful_steps": 5,
+    "collaboration_score": 100.0,
+    "session_entries": 5,
+    "participating_agents": 0,
+    "workflow_success": true,
+    "workflow_results": [
+      {
+        "step": 1,
+        "agent": "coder",
+        "response_length": 319,
+        "success": true
+      },
+      {
+        "step": 2,
+        "agent": "tester",
+        "response_length": 301,
+        "success": true
+      },
+      {
+        "step": 3,
+        "agent": "optimizer",
+        "response_length": 311,
+        "success": true
+      },
+      {
+        "step": 4,
+        "agent": "executor",
+        "response_length": 302,
+        "success": true
+      },
+      {
+        "step": 5,
+        "agent": "coder",
+        "response_length": 304,
+        "success": true
+      }
+    ]
+  },
+  "redis_session_inspection": {
+    "total_keys": 4,
+    "session_keys": 4,
+    "agent_keys": 0,
+    "memory_used": "1.18M",
+    "inspection_success": true
+  }
+}
