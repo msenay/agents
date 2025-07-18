@@ -23,16 +23,64 @@ from pathlib import Path
 
 # Core LangGraph imports
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.memory import MemorySaver, InMemorySaver
 from langgraph.prebuilt import create_react_agent, ToolNode
 from langgraph.types import Command
 
-# LangGraph ecosystem imports
+# LangGraph memory and store imports
 try:
     from langgraph.checkpoint.redis import RedisSaver
+    from langgraph.store.redis import RedisStore
 except ImportError:
     RedisSaver = None
+    RedisStore = None
     
+try:
+    from langgraph.checkpoint.postgres import PostgresSaver
+    from langgraph.store.postgres import PostgresStore
+except ImportError:
+    PostgresSaver = None
+    PostgresStore = None
+
+try:
+    from langgraph.store.memory import InMemoryStore
+except ImportError:
+    InMemoryStore = None
+
+# Message management imports
+try:
+    from langchain_core.messages.utils import trim_messages, count_tokens_approximately
+    from langchain_core.messages import RemoveMessage
+    from langgraph.graph.message import REMOVE_ALL_MESSAGES
+    MESSAGE_UTILS_AVAILABLE = True
+except ImportError:
+    trim_messages = None
+    count_tokens_approximately = None
+    RemoveMessage = None
+    REMOVE_ALL_MESSAGES = None
+    MESSAGE_UTILS_AVAILABLE = False
+
+# LangMem imports for advanced memory management
+try:
+    from langmem import create_manage_memory_tool, create_search_memory_tool
+    from langmem.short_term import SummarizationNode, RunningSummary
+    LANGMEM_AVAILABLE = True
+except ImportError:
+    create_manage_memory_tool = None
+    create_search_memory_tool = None
+    SummarizationNode = None
+    RunningSummary = None
+    LANGMEM_AVAILABLE = False
+
+# Embeddings for semantic search
+try:
+    from langchain.embeddings import init_embeddings
+    EMBEDDINGS_AVAILABLE = True
+except ImportError:
+    init_embeddings = None
+    EMBEDDINGS_AVAILABLE = False
+
+# LangGraph ecosystem imports
 try:
     from langgraph_supervisor import create_supervisor
 except ImportError:
@@ -50,17 +98,6 @@ try:
 except ImportError:
     MultiServerMCPClient = None
     MCP_AVAILABLE = False
-
-try:
-    from langmem import ShortTermMemory, LongTermMemory
-    from langmem.short_term import SummarizationNode, RunningSummary
-    LANGMEM_AVAILABLE = True
-except ImportError:
-    ShortTermMemory = None
-    LongTermMemory = None
-    SummarizationNode = None
-    RunningSummary = None
-    LANGMEM_AVAILABLE = False
 
 try:
     from agentevals import AgentEvaluator
@@ -120,20 +157,53 @@ class AgentConfig:
     # OPTIONAL FEATURES - Enable only what you need!
     # ============================================================================
     
-    # Memory Management (Default: DISABLED)
-    enable_memory: bool = False
-    memory_type: str = "memory"  # "memory", "redis", "both", "langmem_short", "langmem_long", "langmem_combined"
+    # ============================================================================
+    # MEMORY MANAGEMENT - Comprehensive LangGraph Memory Support
+    # ============================================================================
+    
+    # Short-term Memory (Thread-level persistence)
+    enable_short_term_memory: bool = False
+    short_term_memory_type: str = "inmemory"  # "inmemory", "redis", "postgres"
+    
+    # Long-term Memory (Cross-session persistence) 
+    enable_long_term_memory: bool = False
+    long_term_memory_type: str = "inmemory"  # "inmemory", "redis", "postgres"
+    
+    # Database Connection Strings
     redis_url: Optional[str] = None
+    postgres_url: Optional[str] = None
     
     # Session-Based Memory (Advanced Redis Memory)
     session_id: Optional[str] = None  # Session ID for shared memory between agents
     enable_shared_memory: bool = False  # Enable session-based shared memory
     memory_namespace: str = "default"  # Memory namespace for agent isolation within session
     
-    # LangMem Advanced Memory (only when memory_type starts with "langmem")
-    langmem_max_tokens: int = 384
-    langmem_max_summary_tokens: int = 128
-    langmem_enable_summarization: bool = True
+    # Message Management
+    enable_message_trimming: bool = False
+    max_tokens: int = 4000  # Maximum tokens to keep in context
+    trim_strategy: str = "last"  # "first", "last"
+    start_on: str = "human"  # Start trimming on message type
+    end_on: List[str] = field(default_factory=lambda: ["human", "tool"])
+    
+    # Message Summarization (LangMem)
+    enable_summarization: bool = False
+    max_summary_tokens: int = 128
+    summarization_trigger_tokens: int = 2000
+    
+    # Long-term Store Configuration
+    enable_semantic_search: bool = False
+    embedding_model: str = "openai:text-embedding-3-small"
+    embedding_dims: int = 1536
+    distance_type: str = "cosine"  # "cosine", "euclidean", "dot_product"
+    
+    # Memory Tools (LangMem Integration)
+    enable_memory_tools: bool = False
+    memory_namespace_store: str = "memories"
+    
+    # TTL Configuration
+    enable_ttl: bool = False
+    default_ttl_minutes: int = 1440  # 24 hours
+    refresh_on_read: bool = True
     
     # Human-in-the-Loop (Default: DISABLED)
     enable_human_feedback: bool = False
@@ -240,103 +310,369 @@ class SubgraphManager:
 
 
 class MemoryManager:
-    """Manages both short-term and long-term memory"""
+    """
+    Comprehensive Memory Manager supporting all LangGraph memory patterns:
+    - Short-term memory (thread-level persistence) with InMemorySaver, RedisSaver, PostgresSaver
+    - Long-term memory (cross-session persistence) with InMemoryStore, RedisStore, PostgresStore
+    - Message trimming and deletion for context window management
+    - Message summarization with LangMem
+    - Semantic search with embeddings
+    - Session-based memory for agent collaboration
+    - TTL support for automatic cleanup
+    """
     
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.short_term_memory = None
-        self.long_term_memory = None
-        self.redis_saver = None
+        
+        # Short-term memory (checkpointers)
+        self.checkpointer = None
+        
+        # Long-term memory (stores)
+        self.store = None
+        
+        # Session-based memory
+        self.session_memory = None
+        
+        # Message management
+        self.message_trimmer = None
         self.summarization_node = None
+        
+        # Memory tools
+        self.memory_tools = []
         
         self._initialize_memory()
         
     def _initialize_memory(self):
-        """Initialize memory components based on configuration"""
-        if self.config.enable_memory:
-            if self.config.memory_type in ["memory", "both"]:
-                self.memory_saver = MemorySaver()
-                
-            if self.config.memory_type in ["redis", "both"] and RedisSaver:
-                if self.config.redis_url:
-                    self.redis_saver = RedisSaver.from_conn_string(self.config.redis_url)
-                    logger.info("Redis memory initialized")
-                    
-            # Initialize langmem components based on memory_type
-            if self.config.memory_type in ["langmem_short", "langmem_combined"] and LANGMEM_AVAILABLE:
-                self._initialize_langmem_short()
-                
-            if self.config.memory_type in ["langmem_long", "langmem_combined"] and LANGMEM_AVAILABLE:
-                self._initialize_langmem_long()
-                
-            # Fallback to basic langmem if available
-            if ShortTermMemory and not self.short_term_memory:
-                self.short_term_memory = ShortTermMemory()
-                
-            if LongTermMemory and not self.long_term_memory:
-                self.long_term_memory = LongTermMemory()
-                
-    def _initialize_langmem_short(self):
-        """Initialize LangMem short-term memory with summarization"""
+        """Initialize all memory components based on configuration"""
+        if self.config.enable_short_term_memory:
+            self._initialize_checkpointer()
+            
+        if self.config.enable_long_term_memory:
+            self._initialize_store()
+            
+        if self.config.enable_shared_memory and self.config.session_id:
+            self._initialize_session_memory()
+            
+        if self.config.enable_message_trimming:
+            self._initialize_message_trimmer()
+            
+        if self.config.enable_summarization:
+            self._initialize_summarization()
+            
+        if self.config.enable_memory_tools:
+            self._initialize_memory_tools()
+    
+    def _initialize_checkpointer(self):
+        """Initialize short-term memory checkpointer"""
         try:
-            if ShortTermMemory:
-                self.short_term_memory = ShortTermMemory()
-                logger.info("LangMem short-term memory initialized")
+            checkpointer_type = self.config.short_term_memory_type.lower()
+            
+            if checkpointer_type == "inmemory":
+                self.checkpointer = InMemorySaver()
+                logger.info("InMemorySaver checkpointer initialized")
                 
-            if SummarizationNode and self.config.langmem_enable_summarization:
-                from langchain_core.messages.utils import count_tokens_approximately
+            elif checkpointer_type == "redis" and RedisSaver and self.config.redis_url:
+                ttl_config = None
+                if self.config.enable_ttl:
+                    ttl_config = {
+                        "default_ttl": self.config.default_ttl_minutes,
+                        "refresh_on_read": self.config.refresh_on_read
+                    }
+                
+                self.checkpointer = RedisSaver.from_conn_string(
+                    self.config.redis_url,
+                    ttl=ttl_config
+                )
+                self.checkpointer.setup()  # Initialize Redis indices
+                logger.info("RedisSaver checkpointer initialized")
+                
+            elif checkpointer_type == "postgres" and PostgresSaver and self.config.postgres_url:
+                self.checkpointer = PostgresSaver.from_conn_string(self.config.postgres_url)
+                logger.info("PostgresSaver checkpointer initialized")
+                
+            else:
+                # Fallback to InMemorySaver
+                self.checkpointer = InMemorySaver()
+                logger.warning(f"Unsupported short-term memory type: {checkpointer_type}, using InMemorySaver")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize checkpointer: {e}")
+            self.checkpointer = InMemorySaver()
+            
+    def _initialize_store(self):
+        """Initialize long-term memory store"""
+        try:
+            store_type = self.config.long_term_memory_type.lower()
+            
+            # Prepare embedding configuration for semantic search
+            index_config = None
+            if self.config.enable_semantic_search and EMBEDDINGS_AVAILABLE:
+                try:
+                    embeddings = init_embeddings(self.config.embedding_model)
+                    index_config = {
+                        "embed": embeddings,
+                        "dims": self.config.embedding_dims,
+                        "distance_type": self.config.distance_type
+                    }
+                except Exception as e:
+                    logger.warning(f"Failed to initialize embeddings: {e}")
+            
+            # TTL configuration
+            ttl_config = None
+            if self.config.enable_ttl:
+                ttl_config = {
+                    "default_ttl": self.config.default_ttl_minutes,
+                    "refresh_on_read": self.config.refresh_on_read
+                }
+            
+            if store_type == "inmemory":
+                self.store = InMemoryStore(index=index_config) if InMemoryStore else None
+                logger.info("InMemoryStore initialized")
+                
+            elif store_type == "redis" and RedisStore and self.config.redis_url:
+                self.store = RedisStore.from_conn_string(
+                    self.config.redis_url,
+                    index=index_config,
+                    ttl=ttl_config
+                )
+                if hasattr(self.store, 'setup'):
+                    self.store.setup()  # Initialize Redis indices
+                logger.info("RedisStore initialized")
+                
+            elif store_type == "postgres" and PostgresStore and self.config.postgres_url:
+                self.store = PostgresStore.from_conn_string(
+                    self.config.postgres_url,
+                    index=index_config
+                )
+                logger.info("PostgresStore initialized")
+                
+            else:
+                # Fallback to InMemoryStore
+                self.store = InMemoryStore(index=index_config) if InMemoryStore else None
+                logger.warning(f"Unsupported long-term memory type: {store_type}, using InMemoryStore")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize store: {e}")
+            self.store = InMemoryStore() if InMemoryStore else None
+            
+    def _initialize_session_memory(self):
+        """Initialize session-based memory for agent collaboration"""
+        if self.config.redis_url:
+            try:
+                import redis
+                import json
+                
+                class SessionRedisMemory:
+                    def __init__(self, redis_url: str, config: AgentConfig):
+                        self.redis_client = redis.from_url(redis_url)
+                        self.session_prefix = "session:"
+                        self.agent_prefix = "agent:"
+                        self.config = config
+                        
+                    def get_session_key(self, session_id: str) -> str:
+                        return f"{self.session_prefix}{session_id}:shared_memory"
+                    
+                    def get_agent_key(self, agent_name: str, session_id: str) -> str:
+                        return f"{self.agent_prefix}{agent_name}:session:{session_id}"
+                    
+                    def store_session_memory(self, session_id: str, data: dict):
+                        key = self.get_session_key(session_id)
+                        self.redis_client.lpush(key, json.dumps(data))
+                        if self.config.enable_ttl:
+                            self.redis_client.expire(key, self.config.default_ttl_minutes * 60)
+                    
+                    def get_session_memory(self, session_id: str):
+                        key = self.get_session_key(session_id)
+                        items = self.redis_client.lrange(key, 0, -1)
+                        return [json.loads(item.decode()) for item in items]
+                    
+                    def store_agent_memory(self, agent_name: str, session_id: str, data: dict):
+                        key = self.get_agent_key(agent_name, session_id)
+                        self.redis_client.lpush(key, json.dumps(data))
+                        if self.config.enable_ttl:
+                            self.redis_client.expire(key, self.config.default_ttl_minutes * 60)
+                    
+                    def get_agent_memory(self, agent_name: str, session_id: str):
+                        key = self.get_agent_key(agent_name, session_id)
+                        items = self.redis_client.lrange(key, 0, -1)
+                        return [json.loads(item.decode()) for item in items]
+                
+                self.session_memory = SessionRedisMemory(self.config.redis_url, self.config)
+                logger.info("Session-based Redis memory initialized")
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize session memory: {e}")
+                
+    def _initialize_message_trimmer(self):
+        """Initialize message trimming functionality"""
+        if MESSAGE_UTILS_AVAILABLE and trim_messages and count_tokens_approximately:
+            def message_trimmer_hook(state):
+                """Hook for trimming messages before LLM call"""
+                messages = state.get("messages", [])
+                if not messages:
+                    return state
+                    
+                try:
+                    trimmed_messages = trim_messages(
+                        messages,
+                        strategy=self.config.trim_strategy,
+                        token_counter=count_tokens_approximately,
+                        max_tokens=self.config.max_tokens,
+                        start_on=self.config.start_on,
+                        end_on=tuple(self.config.end_on),
+                    )
+                    return {"llm_input_messages": trimmed_messages}
+                except Exception as e:
+                    logger.warning(f"Message trimming failed: {e}")
+                    return state
+            
+            self.message_trimmer = message_trimmer_hook
+            logger.info("Message trimmer initialized")
+        
+    def _initialize_summarization(self):
+        """Initialize LangMem summarization"""
+        if LANGMEM_AVAILABLE and SummarizationNode and count_tokens_approximately:
+            try:
                 self.summarization_node = SummarizationNode(
                     token_counter=count_tokens_approximately,
                     model=self.config.model,
-                    max_tokens=self.config.langmem_max_tokens,
-                    max_summary_tokens=self.config.langmem_max_summary_tokens,
-                    output_messages_key="llm_input_messages"
+                    max_tokens=self.config.summarization_trigger_tokens,
+                    max_summary_tokens=self.config.max_summary_tokens,
+                    output_messages_key="llm_input_messages",
                 )
-                logger.info("LangMem summarization node initialized")
+                logger.info("LangMem summarization initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize summarization: {e}")
                 
-        except Exception as e:
-            logger.warning(f"Failed to initialize LangMem short-term memory: {e}")
-            
-    def _initialize_langmem_long(self):
-        """Initialize LangMem long-term memory"""
-        try:
-            if LongTermMemory:
-                self.long_term_memory = LongTermMemory()
-                logger.info("LangMem long-term memory initialized")
-        except Exception as e:
-            logger.warning(f"Failed to initialize LangMem long-term memory: {e}")
+    def _initialize_memory_tools(self):
+        """Initialize LangMem memory tools for agent use"""
+        if LANGMEM_AVAILABLE and self.store:
+            try:
+                if create_manage_memory_tool:
+                    manage_tool = create_manage_memory_tool(
+                        namespace=(self.config.memory_namespace_store,)
+                    )
+                    self.memory_tools.append(manage_tool)
+                    
+                if create_search_memory_tool:
+                    search_tool = create_search_memory_tool(
+                        namespace=(self.config.memory_namespace_store,)
+                    )
+                    self.memory_tools.append(search_tool)
+                    
+                logger.info(f"Initialized {len(self.memory_tools)} memory tools")
+            except Exception as e:
+                logger.warning(f"Failed to initialize memory tools: {e}")
                 
     def get_checkpointer(self):
-        """Get the appropriate checkpointer based on configuration"""
-        if self.redis_saver:
-            return self.redis_saver
-        return getattr(self, 'memory_saver', MemorySaver())
+        """Get the configured checkpointer for short-term memory"""
+        return self.checkpointer
         
-    def store_memory(self, key: str, value: Any, memory_type: str = "short"):
-        """Store information in memory"""
-        if memory_type == "short" and self.short_term_memory:
-            self.short_term_memory.store(key, value)
-        elif memory_type == "long" and self.long_term_memory:
-            self.long_term_memory.store(key, value)
-            
-    def retrieve_memory(self, key: str, memory_type: str = "short"):
-        """Retrieve information from memory"""
-        if memory_type == "short" and self.short_term_memory:
-            return self.short_term_memory.retrieve(key)
-        elif memory_type == "long" and self.long_term_memory:
-            return self.long_term_memory.retrieve(key)
+    def get_store(self):
+        """Get the configured store for long-term memory"""
+        return self.store
+        
+    def get_memory_tools(self) -> List[BaseTool]:
+        """Get memory management tools for agent use"""
+        return self.memory_tools
+        
+    def get_pre_model_hook(self):
+        """Get the appropriate pre-model hook (trimming or summarization)"""
+        if self.summarization_node:
+            return self.summarization_node
+        elif self.message_trimmer:
+            return self.message_trimmer
         return None
         
-    def get_summarization_hook(self):
-        """Get the summarization hook for pre_model_hook"""
-        return self.summarization_node
+    def delete_messages_hook(self, messages_to_remove: List[str] = None, remove_all: bool = False):
+        """Create a hook to delete specific messages or all messages"""
+        if not MESSAGE_UTILS_AVAILABLE or not RemoveMessage:
+            return None
+            
+        def delete_hook(state):
+            messages = state.get("messages", [])
+            if not messages:
+                return state
+                
+            if remove_all:
+                return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES)]}
+            elif messages_to_remove:
+                remove_msgs = []
+                for msg in messages:
+                    if hasattr(msg, 'id') and msg.id in messages_to_remove:
+                        remove_msgs.append(RemoveMessage(id=msg.id))
+                return {"messages": remove_msgs}
+            elif len(messages) > 10:  # Default: remove oldest 5 messages
+                remove_msgs = [RemoveMessage(id=m.id) for m in messages[:5] if hasattr(m, 'id')]
+                return {"messages": remove_msgs}
+                
+            return state
+            
+        return delete_hook
         
-    def has_langmem_support(self) -> bool:
-        """Check if langmem is available and configured"""
-        return (
-            LANGMEM_AVAILABLE and 
-            self.config.memory_type in ["langmem_short", "langmem_long", "langmem_combined"]
-        )
+    def store_session_memory(self, data: dict):
+        """Store data in session shared memory"""
+        if self.session_memory and self.config.session_id:
+            self.session_memory.store_session_memory(self.config.session_id, data)
+            
+    def get_session_memory(self):
+        """Get session shared memory"""
+        if self.session_memory and self.config.session_id:
+            return self.session_memory.get_session_memory(self.config.session_id)
+        return []
+        
+    def store_agent_memory(self, agent_name: str, data: dict):
+        """Store data in agent-specific memory"""
+        if self.session_memory and self.config.session_id:
+            self.session_memory.store_agent_memory(agent_name, self.config.session_id, data)
+            
+    def get_agent_memory(self, agent_name: str):
+        """Get agent-specific memory"""
+        if self.session_memory and self.config.session_id:
+            return self.session_memory.get_agent_memory(agent_name, self.config.session_id)
+        return []
+        
+    def search_memory(self, query: str, limit: int = 5):
+        """Search long-term memory with semantic similarity"""
+        if self.store and self.config.enable_semantic_search:
+            try:
+                namespace = (self.config.memory_namespace_store,)
+                return self.store.search(namespace, query=query, limit=limit)
+            except Exception as e:
+                logger.warning(f"Memory search failed: {e}")
+        return []
+        
+    def store_long_term_memory(self, key: str, data: dict, namespace: Optional[str] = None):
+        """Store data in long-term memory"""
+        if self.store:
+            try:
+                ns = (namespace or self.config.memory_namespace_store,)
+                self.store.put(ns, key, data)
+            except Exception as e:
+                logger.warning(f"Failed to store long-term memory: {e}")
+                
+    def get_long_term_memory(self, key: str, namespace: Optional[str] = None):
+        """Get data from long-term memory"""
+        if self.store:
+            try:
+                ns = (namespace or self.config.memory_namespace_store,)
+                item = self.store.get(ns, key)
+                return item.value if item else None
+            except Exception as e:
+                logger.warning(f"Failed to get long-term memory: {e}")
+        return None
+        
+    def has_short_term_memory(self) -> bool:
+        """Check if short-term memory is configured"""
+        return self.checkpointer is not None
+        
+    def has_long_term_memory(self) -> bool:
+        """Check if long-term memory is configured"""
+        return self.store is not None
+        
+    def has_session_memory(self) -> bool:
+        """Check if session-based memory is configured"""
+        return self.session_memory is not None and self.config.session_id is not None
 
 
 class SupervisorManager:
@@ -676,18 +1012,39 @@ class CoreAgent:
     def _build_with_prebuilt(self):
         """Build agent using LangGraph prebuilt components"""
         try:
+            # Combine configuration tools with memory tools
+            all_tools = list(self.config.tools)
+            
+            # Add memory management tools if enabled
+            if self.config.enable_memory_tools:
+                memory_tools = self.memory_manager.get_memory_tools()
+                all_tools.extend(memory_tools)
+                logger.info(f"Added {len(memory_tools)} memory tools to agent")
+            
             kwargs = {
                 'model': self.config.model,
-                'tools': self.config.tools,
+                'tools': all_tools,
             }
             
-            # Use langmem summarization hook if available and configured
+            # Set up pre-model hook for memory management
             pre_model_hook = self.config.pre_model_hook
-            if self.memory_manager.has_langmem_support() and self.memory_manager.get_summarization_hook():
-                pre_model_hook = self.memory_manager.get_summarization_hook()
-                logger.info("Using LangMem summarization hook")
+            memory_hook = self.memory_manager.get_pre_model_hook()
             
-            if pre_model_hook:
+            if memory_hook:
+                if pre_model_hook:
+                    # Chain hooks if both exist
+                    def combined_hook(state):
+                        state = pre_model_hook(state)
+                        return memory_hook(state)
+                    kwargs['pre_model_hook'] = combined_hook
+                else:
+                    kwargs['pre_model_hook'] = memory_hook
+                    
+                if self.config.enable_message_trimming:
+                    logger.info("Using message trimming hook")
+                elif self.config.enable_summarization:
+                    logger.info("Using LangMem summarization hook")
+            elif pre_model_hook:
                 kwargs['pre_model_hook'] = pre_model_hook
                 
             if self.config.post_model_hook:
@@ -696,12 +1053,16 @@ class CoreAgent:
             if self.config.response_format:
                 kwargs['response_format'] = self.config.response_format
                 
-            # Add checkpointer
-            if self.config.enable_memory:
+            # Add checkpointer for short-term memory
+            if self.config.enable_short_term_memory:
                 kwargs['checkpointer'] = self.memory_manager.get_checkpointer()
                 
+            # Add store for long-term memory
+            if self.config.enable_long_term_memory:
+                kwargs['store'] = self.memory_manager.get_store()
+                
             self.compiled_graph = create_react_agent(**kwargs)
-            logger.info("Agent built with prebuilt components")
+            logger.info("Agent built with prebuilt components and comprehensive memory support")
             
         except Exception as e:
             logger.warning(f"Failed to use prebuilt agent: {e}")
@@ -750,10 +1111,14 @@ class CoreAgent:
         
     def _process_input(self, state: CoreAgentState) -> Dict[str, Any]:
         """Process input and determine next action"""
-        # Add memory retrieval
-        relevant_memory = self.memory_manager.retrieve_memory("context")
-        if relevant_memory:
-            state.context.update(relevant_memory)
+        # Add memory retrieval from session or long-term memory
+        if self.memory_manager.has_session_memory():
+            relevant_memory = self.memory_manager.get_session_memory()
+            if relevant_memory:
+                state.context.update({"session_memory": relevant_memory})
+        elif self.memory_manager.has_long_term_memory():
+            # Could retrieve relevant context based on current input
+            pass
             
         return {"context": state.context}
         
@@ -784,8 +1149,9 @@ class CoreAgent:
             # Model inference logic would go here
             response = AIMessage(content="Generated response")
             
-        # Store in memory
-        self.memory_manager.store_memory("last_response", response.content)
+        # Store in memory if available
+        if self.memory_manager.has_long_term_memory():
+            self.memory_manager.store_long_term_memory("last_response", response.content)
         
         # Evaluate if enabled
         if self.config.enable_evaluation and state.messages:
@@ -881,13 +1247,13 @@ class CoreAgent:
         
     # Memory management
     
-    def store_memory(self, key: str, value: Any, memory_type: str = "short"):
-        """Store information in memory"""
-        self.memory_manager.store_memory(key, value, memory_type)
+    def store_memory(self, key: str, value: Any, namespace: Optional[str] = None):
+        """Store information in long-term memory"""
+        self.memory_manager.store_long_term_memory(key, value, namespace)
         
-    def retrieve_memory(self, key: str, memory_type: str = "short"):
-        """Retrieve information from memory"""
-        return self.memory_manager.retrieve_memory(key, memory_type)
+    def retrieve_memory(self, key: str, namespace: Optional[str] = None):
+        """Retrieve information from long-term memory"""
+        return self.memory_manager.get_long_term_memory(key, namespace)
         
     # LangMem specific methods
     
@@ -1235,25 +1601,264 @@ def create_memory_agent(
     model: BaseChatModel,
     name: str = "MemoryAgent",
     tools: List[BaseTool] = None,
-    memory_type: str = "langmem_combined",
+    short_term_memory: str = "inmemory",  # "inmemory", "redis", "postgres"
+    long_term_memory: str = "inmemory",   # "inmemory", "redis", "postgres" 
+    enable_semantic_search: bool = True,
+    enable_memory_tools: bool = True,
+    enable_message_trimming: bool = True,
+    enable_summarization: bool = False,
     redis_url: Optional[str] = None,
-    enable_evaluation: bool = False,
-    system_prompt: str = "You are an assistant with advanced memory capabilities for persistent conversations."
+    postgres_url: Optional[str] = None,
+    system_prompt: str = "You are an assistant with advanced memory capabilities for persistent conversations. You can store and search information across sessions."
 ) -> CoreAgent:
     """
-    Create an agent optimized for memory-intensive tasks
-    Perfect for: Long conversations, user profiling, context retention
+    Create an agent with comprehensive memory capabilities following LangGraph patterns:
+    - Short-term memory (thread-level persistence) 
+    - Long-term memory (cross-session persistence)
+    - Semantic search with embeddings
+    - Memory management tools
+    - Message trimming and summarization
+    
+    Perfect for: Long conversations, user profiling, context retention, knowledge management
     """
     config = AgentConfig(
         name=name,
         model=model,
         system_prompt=system_prompt,
         tools=tools or [],
-        enable_memory=True,
-        memory_type=memory_type,
+        
+        # Memory configuration
+        enable_short_term_memory=True,
+        short_term_memory_type=short_term_memory,
+        enable_long_term_memory=True,
+        long_term_memory_type=long_term_memory,
+        
+        # Advanced memory features
+        enable_semantic_search=enable_semantic_search,
+        enable_memory_tools=enable_memory_tools,
+        enable_message_trimming=enable_message_trimming,
+        enable_summarization=enable_summarization,
+        
+        # Database connections
         redis_url=redis_url,
-        enable_evaluation=enable_evaluation,
+        postgres_url=postgres_url,
+        
+        # Performance optimizations
+        max_tokens=4000,
+        trim_strategy="last",
+        summarization_trigger_tokens=2000,
+        max_summary_tokens=128,
+        
         enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
+def create_short_term_memory_agent(
+    model: BaseChatModel,
+    name: str = "ShortTermAgent",
+    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres"
+    enable_trimming: bool = True,
+    max_tokens: int = 4000,
+    redis_url: Optional[str] = None,
+    postgres_url: Optional[str] = None,
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are an assistant with short-term memory for multi-turn conversations."
+) -> CoreAgent:
+    """
+    Create an agent with only short-term memory (thread-level persistence)
+    Following LangGraph pattern: checkpointer for conversation history
+    
+    Perfect for: Chat sessions, conversation continuity, context tracking
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        
+        # Only short-term memory
+        enable_short_term_memory=True,
+        short_term_memory_type=memory_backend,
+        enable_long_term_memory=False,
+        
+        # Message management
+        enable_message_trimming=enable_trimming,
+        max_tokens=max_tokens,
+        trim_strategy="last",
+        
+        # Database connections
+        redis_url=redis_url,
+        postgres_url=postgres_url,
+    )
+    
+    return CoreAgent(config)
+
+
+def create_long_term_memory_agent(
+    model: BaseChatModel,
+    name: str = "LongTermAgent", 
+    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres"
+    enable_semantic_search: bool = True,
+    enable_memory_tools: bool = True,
+    embedding_model: str = "openai:text-embedding-3-small",
+    redis_url: Optional[str] = None,
+    postgres_url: Optional[str] = None,
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are an assistant with long-term memory for persistent information storage and retrieval across sessions."
+) -> CoreAgent:
+    """
+    Create an agent with only long-term memory (cross-session persistence)
+    Following LangGraph pattern: store for persistent data with semantic search
+    
+    Perfect for: Knowledge bases, user profiling, persistent data storage
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        
+        # Only long-term memory
+        enable_short_term_memory=False,
+        enable_long_term_memory=True,
+        long_term_memory_type=memory_backend,
+        
+        # Advanced features
+        enable_semantic_search=enable_semantic_search,
+        enable_memory_tools=enable_memory_tools,
+        embedding_model=embedding_model,
+        
+        # Database connections
+        redis_url=redis_url,
+        postgres_url=postgres_url,
+    )
+    
+    return CoreAgent(config)
+
+
+def create_message_management_agent(
+    model: BaseChatModel,
+    name: str = "MessageManagerAgent",
+    management_strategy: str = "trim",  # "trim", "summarize", "delete"
+    max_tokens: int = 4000,
+    trim_strategy: str = "last",  # "first", "last"
+    enable_summarization: bool = False,
+    max_summary_tokens: int = 128,
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are an assistant with advanced message management capabilities for long conversations."
+) -> CoreAgent:
+    """
+    Create an agent optimized for message management in long conversations
+    Following LangGraph patterns: trim_messages, summarization, RemoveMessage
+    
+    Perfect for: Long conversations, context window management, memory optimization
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        
+        # Short-term memory for conversation tracking
+        enable_short_term_memory=True,
+        short_term_memory_type="inmemory",
+        
+        # Message management strategies
+        enable_message_trimming=(management_strategy in ["trim", "both"]),
+        enable_summarization=(management_strategy in ["summarize", "both"] or enable_summarization),
+        
+        # Configuration
+        max_tokens=max_tokens,
+        trim_strategy=trim_strategy,
+        max_summary_tokens=max_summary_tokens,
+        summarization_trigger_tokens=max_tokens - 500,  # Trigger before hitting limit
+    )
+    
+    return CoreAgent(config)
+
+
+def create_semantic_search_agent(
+    model: BaseChatModel,
+    name: str = "SemanticSearchAgent",
+    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres"
+    embedding_model: str = "openai:text-embedding-3-small",
+    embedding_dims: int = 1536,
+    distance_type: str = "cosine",
+    enable_memory_tools: bool = True,
+    redis_url: Optional[str] = None,
+    postgres_url: Optional[str] = None,
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are an assistant with semantic search capabilities. You can store and find information using meaning-based similarity."
+) -> CoreAgent:
+    """
+    Create an agent with semantic search capabilities using embeddings
+    Following LangGraph pattern: store with vector search
+    
+    Perfect for: Knowledge retrieval, content discovery, similarity search
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        
+        # Memory with semantic search
+        enable_short_term_memory=True,
+        enable_long_term_memory=True,
+        long_term_memory_type=memory_backend,
+        
+        # Semantic search configuration
+        enable_semantic_search=True,
+        enable_memory_tools=enable_memory_tools,
+        embedding_model=embedding_model,
+        embedding_dims=embedding_dims,
+        distance_type=distance_type,
+        
+        # Database connections
+        redis_url=redis_url,
+        postgres_url=postgres_url,
+    )
+    
+    return CoreAgent(config)
+
+
+def create_ttl_memory_agent(
+    model: BaseChatModel,
+    name: str = "TTLMemoryAgent",
+    memory_backend: str = "redis",  # TTL works best with Redis
+    ttl_minutes: int = 1440,  # 24 hours default
+    refresh_on_read: bool = True,
+    redis_url: str = "redis://localhost:6379",
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are an assistant with time-limited memory that automatically expires after a set time."
+) -> CoreAgent:
+    """
+    Create an agent with TTL (Time-To-Live) memory for automatic cleanup
+    Following LangGraph pattern: TTL configuration with Redis
+    
+    Perfect for: Temporary data, privacy compliance, automatic cleanup
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        
+        # Memory with TTL
+        enable_short_term_memory=True,
+        short_term_memory_type=memory_backend,
+        enable_long_term_memory=True,
+        long_term_memory_type=memory_backend,
+        
+        # TTL configuration
+        enable_ttl=True,
+        default_ttl_minutes=ttl_minutes,
+        refresh_on_read=refresh_on_read,
+        
+        # Database connection
+        redis_url=redis_url,
     )
     
     return CoreAgent(config)
@@ -1344,12 +1949,20 @@ def create_session_agent(
         model=model,
         system_prompt=system_prompt,
         tools=tools or [],
-        enable_memory=True,
-        memory_type="redis",
-        redis_url=redis_url,
+        
+        # Use new memory configuration
+        enable_short_term_memory=True,
+        short_term_memory_type="inmemory",  # Fallback for session memory
+        enable_long_term_memory=False,      # Focus on session memory
+        
+        # Session-based memory
         session_id=session_id,
         enable_shared_memory=enable_shared_memory,
         memory_namespace=memory_namespace,
+        
+        # Database connection
+        redis_url=redis_url,
+        
         enable_streaming=True
     )
     
