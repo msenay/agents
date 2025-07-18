@@ -549,8 +549,8 @@ def create_coder_agent():
         model=llm,
         description="Specialized in generating clean, efficient, and well-documented Python code",
         tools=[analyze_requirements, generate_code_structure, validate_code_syntax],
-        enable_memory=True,  # Memory enabled for context retention
-        memory_type="memory",
+        enable_short_term_memory=True,  # Memory enabled for context retention
+        short_term_memory_type="inmemory",
         response_format=None,  # Disabled for 2023-12-01-preview
         system_prompt="""You are an expert Python developer specializing in clean, efficient code generation.
 
@@ -593,8 +593,8 @@ def create_unit_test_agent():
         model=llm,
         description="Specialized in creating comprehensive unit tests with high coverage",
         tools=[analyze_code_for_testing, generate_test_cases, validate_test_structure],
-        enable_memory=True,  # Memory enabled for context retention
-        memory_type="memory",
+        enable_short_term_memory=True,  # Memory enabled for context retention
+        short_term_memory_type="inmemory",
         response_format=None,  # Disabled for 2023-12-01-preview
         system_prompt="""You are a unit testing expert specializing in comprehensive test suite creation.
 
@@ -637,7 +637,7 @@ def create_executor_agent():
         model=llm,
         description="Specialized in executing tests and analyzing results",
         tools=[setup_test_environment, execute_python_tests, analyze_test_failures],
-        enable_memory=False,  # No memory needed for execution
+        enable_short_term_memory=False,  # No memory needed for execution
         response_format=None,  # Disabled for 2023-12-01-preview
         system_prompt="""You are a test execution specialist focused on running tests and analyzing results.
 
@@ -679,8 +679,8 @@ def create_patch_agent():
         model=llm,
         description="Specialized in fixing code and test issues based on failure analysis",
         tools=[identify_patch_target, apply_code_patch, apply_test_patch],
-        enable_memory=True,  # Memory helpful for tracking fix attempts
-        memory_type="memory",
+        enable_short_term_memory=True,  # Memory helpful for tracking fix attempts
+        short_term_memory_type="inmemory",
         response_format=None,  # Disabled for 2023-12-01-preview
         system_prompt="""You are a debugging and patching expert specializing in fixing code and test issues.
 
