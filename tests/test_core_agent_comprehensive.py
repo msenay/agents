@@ -90,8 +90,8 @@ class TestAgentConfig(unittest.TestCase):
             system_prompt="Custom prompt",
             tools=[self.mock_tool],
             description="Test description",
-            enable_short_term_memory=True,
-            short_term_short_term_memory_type="redis",
+            enable_short_term_memory=True, enable_long_term_memory=True,
+            short_term_memory_type="redis",
             redis_url="redis://localhost:6379",
             langmem_max_tokens=512,
             langmem_max_summary_tokens=256,
@@ -160,8 +160,8 @@ class TestAgentConfig(unittest.TestCase):
             AgentConfig(
                 name="TestAgent",
                 model=self.mock_model,
-                enable_short_term_memory=True,
-                memory_type="invalid_type"
+                enable_short_term_memory=True, enable_long_term_memory=True,
+                short_term_memory_type="invalid_type"
             )
     
     def test_agent_config_memory_without_enable(self):
@@ -169,7 +169,7 @@ class TestAgentConfig(unittest.TestCase):
         config = AgentConfig(
             name="TestAgent",
             model=self.mock_model,
-            short_term_short_term_memory_type="redis",  # Should be ignored
+            short_term_memory_type="redis",  # Should be ignored
             redis_url="redis://localhost"  # Should be ignored
         )
         
@@ -268,7 +268,7 @@ class TestMemoryManager(unittest.TestCase):
         self.config = AgentConfig(
             name="TestAgent",
             model=Mock(spec=BaseChatModel),
-            enable_short_term_memory=True,
+            enable_short_term_memory=True, enable_long_term_memory=True,
             short_term_memory_type="inmemory"
         )
         self.manager = MemoryManager(self.config)
@@ -278,7 +278,7 @@ class TestMemoryManager(unittest.TestCase):
         config = AgentConfig(
             name="TestAgent",
             model=Mock(spec=BaseChatModel),
-            enable_short_term_memory=False
+            enable_short_term_memory=False, enable_long_term_memory=False
         )
         manager = MemoryManager(config)
         
@@ -297,8 +297,8 @@ class TestMemoryManager(unittest.TestCase):
         config = AgentConfig(
             name="TestAgent",
             model=Mock(spec=BaseChatModel),
-            enable_short_term_memory=True,
-            short_term_short_term_memory_type="redis",
+            enable_short_term_memory=True, enable_long_term_memory=True,
+            short_term_memory_type="redis",
             redis_url="redis://localhost:6379"
         )
         
@@ -662,7 +662,7 @@ class TestFactoryFunctions(unittest.TestCase):
             model=self.mock_model,
             name="AdvancedAgent",
             tools=[self.mock_tool],
-            enable_short_term_memory=True,
+            enable_short_term_memory=True, enable_long_term_memory=True,
             enable_evaluation=True,
             enable_human_feedback=True
         )
@@ -680,7 +680,7 @@ class TestFactoryFunctions(unittest.TestCase):
         
         agent = create_memory_agent(
             model=self.mock_model,
-            short_term_short_term_memory_type="redis",
+            short_term_memory_type="redis",
             redis_url="redis://localhost:6379"
         )
         
@@ -853,8 +853,8 @@ class TestErrorHandling(unittest.TestCase):
         config = AgentConfig(
             name="TestAgent",
             model=self.mock_model,
-            enable_short_term_memory=True,
-            short_term_short_term_memory_type="redis",
+            enable_short_term_memory=True, enable_long_term_memory=True,
+            short_term_memory_type="redis",
             redis_url="invalid://url"
         )
         
@@ -906,8 +906,8 @@ class TestOptionalFeatures(unittest.TestCase):
             config = AgentConfig(
                 name="TestAgent",
                 model=self.mock_model,
-                enable_short_term_memory=True,
-                short_term_short_term_memory_type="redis"
+                enable_short_term_memory=True, enable_long_term_memory=True,
+                short_term_memory_type="redis"
             )
             manager = MemoryManager(config)
             # Should fall back to memory checkpointer
@@ -920,7 +920,7 @@ class TestOptionalFeatures(unittest.TestCase):
             config = AgentConfig(
                 name="TestAgent",
                 model=self.mock_model,
-                enable_short_term_memory=True,
+                enable_short_term_memory=True, enable_long_term_memory=True,
                 enable_summarization=True
             )
             manager = MemoryManager(config)
@@ -1091,7 +1091,7 @@ class TestPerformanceAndMemory(unittest.TestCase):
         config = AgentConfig(
             name="TestAgent",
             model=self.mock_model,
-            enable_short_term_memory=True
+            enable_short_term_memory=True, enable_long_term_memory=True
         )
         
         with patch('core_agent.create_react_agent') as mock_create_react:
