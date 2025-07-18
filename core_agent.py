@@ -307,7 +307,17 @@ class CoreAgentState(BaseModel):
     supervisor_decisions: List[Dict[str, Any]] = Field(default_factory=list)
     next_agent: str = ""  # For multi-agent coordination
     metadata: Dict[str, Any] = Field(default_factory=dict)  # Added for backward compatibility
-    tool_results: List[Dict[str, Any]] = Field(default_factory=list)  # Backward compatibility alias for tool_outputs
+    
+    # Backward compatibility properties
+    @property
+    def tool_results(self) -> List[Dict[str, Any]]:
+        """Backward compatibility alias for tool_outputs"""
+        return self.tool_outputs
+    
+    @tool_results.setter
+    def tool_results(self, value: List[Dict[str, Any]]):
+        """Backward compatibility setter for tool_outputs"""
+        self.tool_outputs = value
     
     class Config:
         arbitrary_types_allowed = True
@@ -878,9 +888,22 @@ class SupervisorManager:
         
         self.handoff_graph = StateGraph(MessagesState)
         
-        # Add all agents as nodes
+        # Add all agents as nodes (convert CoreAgent to callable if needed)
         for agent_name, agent in self.config.agents.items():
-            self.handoff_graph.add_node(agent_name, agent)
+            if hasattr(agent, 'compiled_graph') and agent.compiled_graph:
+                self.handoff_graph.add_node(agent_name, agent.compiled_graph)
+            elif hasattr(agent, 'graph') and agent.graph:
+                self.handoff_graph.add_node(agent_name, agent.graph)
+            elif callable(agent):
+                self.handoff_graph.add_node(agent_name, agent)
+            else:
+                # Create a wrapper function for non-callable agents
+                def agent_wrapper(state):
+                    try:
+                        return agent.invoke(state.get("messages", []))
+                    except Exception as e:
+                        return {"messages": [{"role": "assistant", "content": f"Error: {e}"}]}
+                self.handoff_graph.add_node(agent_name, agent_wrapper)
             
         # Set starting agent
         if self.config.default_active_agent:
