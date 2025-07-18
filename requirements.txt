@@ -1,0 +1,41 @@
+# Core LangGraph and LangChain dependencies
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-core>=0.3.0
+
+# Optional LangGraph ecosystem packages
+# Uncomment and install as needed:
+
+# langgraph-supervisor>=0.1.0  # For supervisor agents
+# langgraph-swarm>=0.1.0       # For swarm multi-agent systems  
+# langchain-mcp-adapters>=0.1.0 # For MCP server integration
+# langmem>=0.1.0               # For advanced memory management
+# agentevals>=0.1.0            # For agent evaluation utilities
+
+# Redis support for persistent memory
+redis>=5.0.0
+
+# Pydantic for data validation
+pydantic>=2.0.0
+
+# Additional utilities
+typing-extensions>=4.0.0
+asyncio>=3.9.0
+
+# Optional AI model providers (choose one or more):
+# langchain-openai>=0.2.0      # For OpenAI models
+# langchain-anthropic>=0.2.0   # For Anthropic models
+# langchain-google-genai>=0.1.0 # For Google AI models
+# langchain-huggingface>=0.1.0  # For Hugging Face models
+# langchain-ollama>=0.1.0      # For Ollama models
+
+# Development and testing dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+
+# Documentation dependencies
+sphinx>=7.0.0
+sphinx-rtd-theme>=1.3.0
