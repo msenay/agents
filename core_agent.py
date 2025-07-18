@@ -1231,6 +1231,8 @@ def create_memory_agent(
     name: str = "MemoryAgent",
     tools: List[BaseTool] = None,
     memory_type: str = "langmem_combined",
+    redis_url: Optional[str] = None,
+    enable_evaluation: bool = False,
     system_prompt: str = "You are an assistant with advanced memory capabilities for persistent conversations."
 ) -> CoreAgent:
     """
@@ -1244,6 +1246,8 @@ def create_memory_agent(
         tools=tools or [],
         enable_memory=True,
         memory_type=memory_type,
+        redis_url=redis_url,
+        enable_evaluation=enable_evaluation,
         enable_streaming=True
     )
     
