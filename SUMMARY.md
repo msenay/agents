@@ -2,6 +2,13 @@
 
 Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir **CoreAgent Framework** yaratıldı. Framework, LangGraph ekosisteminin tüm özelliklerini opsiyonel olarak içerir ve farklı prompt'lar, tool'lar ve konfigürasyonlarla yeni agenlar yaratmaya imkan sağlar.
 
+## 🎯 Temel Felsefe: "Minimal by Default, Powerful When Needed"
+
+- **Minimal başlangıç**: Sadece ihtiyacınız olanları etkinleştirin
+- **Bağımsız özellikler**: Her özellik opsiyonel ve ayrı ayrı konfigüre edilebilir  
+- **Uzmanlaşmış agent'lar**: Farklı tool'lar ve özelliklerle özel agent'lar yaratın
+- **Orchestrator'lar**: Supervisor, swarm, handoff gibi multi-agent sistemler kurun
+
 ## 🎯 Yaratılan Sistem
 
 ### Ana Bileşenler
@@ -13,10 +20,11 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 5. **`examples/mcp_example.py`** - MCP (Model Context Protocol) entegrasyonu örnekleri
 6. **`examples/langmem_example.py`** - LangMem hafıza yönetimi örnekleri
 7. **`examples/agentevals_example.py`** - AgentEvals performans değerlendirme örnekleri
-8. **`requirements.txt`** - Gerekli bağımlılıklar
-9. **`README.md`** - Kapsamlı İngilizce dokümantasyon
-10. **`SUMMARY.md`** - Türkçe özet dokümantasyon
-11. **`test_framework.py`** - Test scripti
+8. **`examples/optimized_usage_example.py`** - Optimize edilmiş kullanım örnekleri
+9. **`requirements.txt`** - Gerekli bağımlılıklar
+10. **`README.md`** - Kapsamlı İngilizce dokümantasyon
+11. **`SUMMARY.md`** - Türkçe özet dokümantasyon
+12. **`test_framework.py`** - Test scripti
 
 ### İçerdiği Özellikler (Dökümanda Belirtilen)
 
@@ -403,7 +411,11 @@ config = AgentConfig(
 
 ### Factory Fonksiyonları
 
-- `create_basic_agent()` - Basit agent yaratır
+- `create_simple_agent()` - Minimal agent yaratır (opsiyonel özellikler)
+- `create_advanced_agent()` - Gelişmiş özelliklerle agent yaratır
+- `create_memory_agent()` - Hafıza odaklı agent yaratır
+- `create_evaluated_agent()` - Performans değerlendirmeli agent yaratır
+- `create_human_interactive_agent()` - İnsan etkileşimli agent yaratır
 - `create_advanced_agent()` - Gelişmiş özellikli agent yaratır
 - `create_supervisor_agent()` - Multi-agent koordinasyon için supervisor yaratır
 

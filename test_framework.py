@@ -8,7 +8,7 @@ to ensure everything is working correctly.
 
 import sys
 import traceback
-from core_agent import CoreAgent, AgentConfig, create_basic_agent
+from core_agent import CoreAgent, AgentConfig, create_simple_agent
 from langchain_core.tools import tool
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage, AIMessage
@@ -44,27 +44,37 @@ def test_echo(message: str) -> str:
     return f"Echo: {message}"
 
 
-def test_basic_agent_creation():
-    """Test basic agent creation"""
-    print("Testing basic agent creation...")
+def test_simple_agent_creation():
+    """Test simple agent creation (minimal configuration)"""
+    print("Testing simple agent creation...")
     
     try:
+        from core_agent import create_simple_agent
+        
         model = TestChatModel()
         tools = [test_calculator, test_echo]
         
-        # Test factory function
-        agent = create_basic_agent(model=model, tools=tools)
+        # Test minimal agent - no memory by default
+        simple_agent = create_simple_agent(
+            model=model, 
+            name="TestSimpleAgent",
+            tools=tools,
+            enable_memory=False
+        )
         
-        # Check agent properties
-        assert agent.config.name == "BasicAgent"
-        assert len(agent.config.tools) == 2
-        assert agent.config.enable_memory == True
+        # Check minimal configuration
+        assert simple_agent.config.name == "TestSimpleAgent"
+        assert len(simple_agent.config.tools) == 2
+        assert simple_agent.config.enable_memory == False
+        assert simple_agent.config.enable_evaluation == False
+        assert simple_agent.config.enable_human_feedback == False
+        assert simple_agent.config.enable_supervisor == False
         
-        print("✓ Basic agent creation successful")
+        print("✓ Simple agent creation successful")
         return True
         
     except Exception as e:
-        print(f"✗ Basic agent creation failed: {e}")
+        print(f"✗ Simple agent creation failed: {e}")
         traceback.print_exc()
         return False
 
@@ -169,7 +179,12 @@ def test_agent_status():
     print("Testing agent status...")
     
     try:
-        agent = create_basic_agent(model=TestChatModel(), tools=[test_calculator])
+        agent = create_simple_agent(
+            model=TestChatModel(), 
+            name="TestStatusAgent",
+            tools=[test_calculator],
+            enable_memory=True
+        )
         status = agent.get_status()
         
         # Check status structure
@@ -192,7 +207,12 @@ def test_config_save_load():
     print("Testing configuration save/load...")
     
     try:
-        agent = create_basic_agent(model=TestChatModel(), tools=[test_calculator])
+        agent = create_simple_agent(
+            model=TestChatModel(), 
+            name="TestConfigAgent",
+            tools=[test_calculator],
+            enable_memory=True
+        )
         
         # Save configuration
         config_file = "test_config.json"
@@ -202,7 +222,7 @@ def test_config_save_load():
         loaded_config = CoreAgent.load_config(config_file)
         
         # Check loaded config
-        assert loaded_config.name == "BasicAgent"
+        assert loaded_config.name == "TestConfigAgent"
         assert loaded_config.enable_memory == True
         
         # Cleanup
@@ -435,7 +455,7 @@ def run_all_tests():
     
     tests = [
         test_package_availability,
-        test_basic_agent_creation,
+        test_simple_agent_creation,
         test_custom_config_agent,
         test_memory_functionality,
         test_subgraph_functionality,

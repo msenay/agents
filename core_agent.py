@@ -96,61 +96,96 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AgentConfig:
-    """Configuration class for core agent settings"""
+    """
+    Modular configuration for CoreAgent - only enable what you need!
     
-    # Core settings
+    Core Philosophy:
+    - Minimal by default, powerful when needed
+    - Each feature is optional and independently configurable  
+    - Perfect for creating specialized agents or orchestrators
+    """
+    
+    # REQUIRED: Core agent identity
     name: str = "CoreAgent"
-    description: str = "A comprehensive core agent with optional features"
-    
-    # Model settings
     model: Optional[BaseChatModel] = None
+    
+    # REQUIRED: Agent behavior 
     system_prompt: str = "You are a helpful AI assistant."
-    
-    # Tools and capabilities
     tools: List[BaseTool] = field(default_factory=list)
-    tool_calling_enabled: bool = True
     
-    # Memory settings
-    enable_memory: bool = True
+    # OPTIONAL: Agent description (for multi-agent scenarios)
+    description: str = ""
+    
+    # ============================================================================
+    # OPTIONAL FEATURES - Enable only what you need!
+    # ============================================================================
+    
+    # Memory Management (Default: DISABLED)
+    enable_memory: bool = False
     memory_type: str = "memory"  # "memory", "redis", "both", "langmem_short", "langmem_long", "langmem_combined"
     redis_url: Optional[str] = None
     
-    # LangMem configuration
+    # LangMem Advanced Memory (only when memory_type starts with "langmem")
     langmem_max_tokens: int = 384
     langmem_max_summary_tokens: int = 128
     langmem_enable_summarization: bool = True
     
-    # Multi-agent settings
-    enable_supervisor: bool = False
-    enable_swarm: bool = False
-    enable_handoff: bool = False
-    agents: Dict[str, Any] = field(default_factory=dict)  # For multi-agent systems
-    default_active_agent: Optional[str] = None  # For swarm systems
-    
-    # Advanced features
-    enable_mcp: bool = False
-    mcp_servers: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # MCP server configurations
-    enable_evaluation: bool = False
-    
-    # Hooks and customization
-    pre_model_hook: Optional[Callable] = None
-    post_model_hook: Optional[Callable] = None
-    response_format: Optional[Type[BaseModel]] = None
-    
-    # Human-in-the-loop
+    # Human-in-the-Loop (Default: DISABLED)
     enable_human_feedback: bool = False
     interrupt_before: List[str] = field(default_factory=list)
     interrupt_after: List[str] = field(default_factory=list)
     
-    # Streaming
-    enable_streaming: bool = True
+    # Performance Evaluation (Default: DISABLED)
+    enable_evaluation: bool = False
+    evaluation_metrics: List[str] = field(default_factory=lambda: ["accuracy", "relevance", "helpfulness"])
     
-    # Subgraph settings
+    # External Tool Servers - MCP (Default: DISABLED)
+    enable_mcp: bool = False
+    mcp_servers: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    
+    # ============================================================================
+    # ORCHESTRATION FEATURES - For multi-agent systems
+    # ============================================================================
+    
+    # Supervisor Pattern - Central coordinator
+    enable_supervisor: bool = False
+    
+    # Swarm Pattern - Dynamic agent handoffs  
+    enable_swarm: bool = False
+    default_active_agent: Optional[str] = None
+    
+    # Handoff Pattern - Manual agent transfers
+    enable_handoff: bool = False
+    
+    # Multi-agent configuration
+    agents: Dict[str, Any] = field(default_factory=dict)
+    
+    # ============================================================================
+    # TECHNICAL CONFIGURATION
+    # ============================================================================
+    
+    # Response Structure
+    response_format: Optional[Type[BaseModel]] = None  # Custom response schema
+    enable_streaming: bool = True  # Stream responses by default
+    
+    # Extensibility Hooks
+    pre_model_hook: Optional[Callable] = None   # Before LLM call
+    post_model_hook: Optional[Callable] = None  # After LLM call
+    
+    # Advanced Features
     enable_subgraphs: bool = False
     subgraph_configs: Dict[str, Any] = field(default_factory=dict)
     
-    # Evaluation settings
-    evaluation_metrics: List[str] = field(default_factory=lambda: ["accuracy", "relevance", "helpfulness"])
+    def __post_init__(self):
+        """Validate configuration after initialization"""
+        if not self.model:
+            logger.warning("⚠️ No model specified - some features may not work")
+        
+        if not self.name:
+            self.name = "CoreAgent"
+            
+        if not self.description:
+            self.description = f"Specialized agent: {self.name}"
 
 
 class CoreAgentState(BaseModel):
@@ -721,7 +756,7 @@ class CoreAgent:
         """Determine whether to use tools, generate response, or get human feedback"""
         if self.config.enable_human_feedback and state.human_feedback is None:
             return "human"
-        elif self.config.tools and self.config.tool_calling_enabled:
+        elif self.config.tools:
             return "tools"
         else:
             return "response"
@@ -942,7 +977,6 @@ class CoreAgent:
             "system_prompt": self.config.system_prompt,
             "enable_memory": self.config.enable_memory,
             "memory_type": self.config.memory_type,
-            "tool_calling_enabled": self.config.tool_calling_enabled,
             "enable_supervisor": self.config.enable_supervisor,
             "enable_swarm": self.config.enable_swarm,
             "enable_evaluation": self.config.enable_evaluation,
@@ -988,59 +1022,96 @@ class CoreAgent:
         }
 
 
-# Factory functions for common agent types
+# ============================================================================
+# SIMPLE AGENT CREATORS - For single specialized agents
+# ============================================================================
 
-def create_basic_agent(model: BaseChatModel, tools: List[BaseTool] = None) -> CoreAgent:
-    """Create a basic agent with minimal configuration"""
+def create_simple_agent(
+    model: BaseChatModel,
+    name: str = "SimpleAgent",
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are a helpful AI assistant.",
+    enable_memory: bool = False,
+    memory_type: str = "memory"
+) -> CoreAgent:
+    """
+    Create a simple, lightweight agent - minimal configuration
+    Perfect for: Task-specific agents, testing, simple automation
+    """
     config = AgentConfig(
-        name="BasicAgent",
+        name=name,
         model=model,
+        system_prompt=system_prompt,
         tools=tools or [],
-        enable_memory=True,
-        memory_type="memory"
+        enable_memory=enable_memory,
+        memory_type=memory_type if enable_memory else "memory",
+        enable_streaming=True
     )
+    
     return CoreAgent(config)
 
 
 def create_advanced_agent(
     model: BaseChatModel,
+    name: str = "AdvancedAgent",
     tools: List[BaseTool] = None,
-    enable_redis: bool = False,
-    redis_url: str = None,
-    enable_supervisor: bool = False,
-    enable_evaluation: bool = False
+    system_prompt: str = "You are an advanced AI assistant with enhanced capabilities.",
+    enable_memory: bool = True,
+    memory_type: str = "memory",
+    enable_evaluation: bool = False,
+    enable_human_feedback: bool = False,
+    response_format: Optional[Type[BaseModel]] = None,
+    enable_mcp: bool = False,
+    mcp_servers: Dict[str, Dict[str, Any]] = None
 ) -> CoreAgent:
-    """Create an advanced agent with enhanced capabilities"""
+    """
+    Create an advanced agent with optional enhanced features
+    Perfect for: Production agents, complex workflows, custom requirements
+    """
     config = AgentConfig(
-        name="AdvancedAgent",
+        name=name,
         model=model,
+        system_prompt=system_prompt,
         tools=tools or [],
-        enable_memory=True,
-        memory_type="redis" if enable_redis else "memory",
-        redis_url=redis_url,
-        enable_supervisor=enable_supervisor,
+        enable_memory=enable_memory,
+        memory_type=memory_type,
         enable_evaluation=enable_evaluation,
-        enable_streaming=True,
-        enable_human_feedback=True
+        enable_human_feedback=enable_human_feedback,
+        response_format=response_format,
+        enable_mcp=enable_mcp,
+        mcp_servers=mcp_servers or {},
+        enable_streaming=True
     )
+    
     return CoreAgent(config)
 
 
+# ============================================================================
+# ORCHESTRATOR CREATORS - For multi-agent systems
+# ============================================================================
+
 def create_supervisor_agent(
     model: BaseChatModel,
+    name: str = "SupervisorAgent",
     agents: Dict[str, Any] = None,
-    prompt: str = "You manage multiple specialized agents. Assign work to them based on their capabilities."
+    system_prompt: str = "You manage multiple specialized agents. Assign work to them based on their capabilities.",
+    enable_memory: bool = True,
+    memory_type: str = "memory",
+    enable_evaluation: bool = False
 ) -> CoreAgent:
-    """Create a supervisor agent for multi-agent orchestration"""
+    """
+    Create a supervisor agent for hierarchical multi-agent orchestration
+    Perfect for: Central coordination, task delegation, workflow management
+    """
     config = AgentConfig(
-        name="SupervisorAgent",
+        name=name,
         model=model,
-        system_prompt=prompt,
+        system_prompt=system_prompt,
         enable_supervisor=True,
         agents=agents or {},
-        enable_memory=True,
-        memory_type="memory",
-        enable_evaluation=True,
+        enable_memory=enable_memory,
+        memory_type=memory_type,
+        enable_evaluation=enable_evaluation,
         enable_streaming=True
     )
     
@@ -1049,18 +1120,26 @@ def create_supervisor_agent(
 
 def create_swarm_agent(
     model: BaseChatModel,
+    name: str = "SwarmAgent",
     agents: Dict[str, Any] = None,
-    default_active_agent: str = None
+    default_active_agent: str = None,
+    system_prompt: str = "You coordinate with other agents dynamically based on expertise needed.",
+    enable_memory: bool = True,
+    memory_type: str = "memory"
 ) -> CoreAgent:
-    """Create a swarm agent for dynamic multi-agent coordination"""
+    """
+    Create a swarm agent for dynamic agent coordination
+    Perfect for: Flexible workflows, expertise-based routing, collaborative problem solving
+    """
     config = AgentConfig(
-        name="SwarmAgent",
+        name=name,
         model=model,
+        system_prompt=system_prompt,
         enable_swarm=True,
         agents=agents or {},
         default_active_agent=default_active_agent,
-        enable_memory=True,
-        memory_type="memory",
+        enable_memory=enable_memory,
+        memory_type=memory_type,
         enable_streaming=True
     )
     
@@ -1069,20 +1148,26 @@ def create_swarm_agent(
 
 def create_handoff_agent(
     model: BaseChatModel,
+    name: str = "HandoffAgent",
     agents: Dict[str, Any] = None,
     default_active_agent: str = None,
-    prompt: str = "You can transfer conversations to specialized agents when needed."
+    system_prompt: str = "You can transfer conversations to specialized agents when needed.",
+    enable_memory: bool = True,
+    memory_type: str = "memory"
 ) -> CoreAgent:
-    """Create a handoff agent for manual agent transfers"""
+    """
+    Create a handoff agent for manual agent transfers
+    Perfect for: User-controlled routing, step-by-step workflows, escalation patterns
+    """
     config = AgentConfig(
-        name="HandoffAgent", 
+        name=name,
         model=model,
-        system_prompt=prompt,
+        system_prompt=system_prompt,
         enable_handoff=True,
         agents=agents or {},
         default_active_agent=default_active_agent,
-        enable_memory=True,
-        memory_type="memory",
+        enable_memory=enable_memory,
+        memory_type=memory_type,
         enable_streaming=True
     )
     
@@ -1137,20 +1222,79 @@ def create_langmem_agent(
     return CoreAgent(config)
 
 
+# ============================================================================
+# SPECIALIZED FEATURE AGENTS - For specific use cases
+# ============================================================================
+
+def create_memory_agent(
+    model: BaseChatModel,
+    name: str = "MemoryAgent",
+    tools: List[BaseTool] = None,
+    memory_type: str = "langmem_combined",
+    system_prompt: str = "You are an assistant with advanced memory capabilities for persistent conversations."
+) -> CoreAgent:
+    """
+    Create an agent optimized for memory-intensive tasks
+    Perfect for: Long conversations, user profiling, context retention
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        enable_memory=True,
+        memory_type=memory_type,
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
 def create_evaluated_agent(
     model: BaseChatModel,
+    name: str = "EvaluatedAgent",
     tools: List[BaseTool] = None,
     evaluation_metrics: List[str] = None,
-    prompt: str = "You are an assistant with performance evaluation capabilities."
+    system_prompt: str = "You are an assistant with performance evaluation capabilities."
 ) -> CoreAgent:
-    """Create an agent with AgentEvals evaluation capabilities"""
+    """
+    Create an agent with comprehensive evaluation capabilities
+    Perfect for: Quality assurance, performance monitoring, testing
+    """
     config = AgentConfig(
-        name="EvaluatedAgent",
+        name=name,
         model=model,
-        system_prompt=prompt,
+        system_prompt=system_prompt,
         tools=tools or [],
         enable_evaluation=True,
         evaluation_metrics=evaluation_metrics or ["accuracy", "relevance", "helpfulness"],
+        enable_memory=True,
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
+def create_human_interactive_agent(
+    model: BaseChatModel,
+    name: str = "InteractiveAgent",
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are an assistant that works collaboratively with humans.",
+    interrupt_before: List[str] = None,
+    interrupt_after: List[str] = None
+) -> CoreAgent:
+    """
+    Create an agent with human-in-the-loop capabilities
+    Perfect for: Collaborative workflows, approval processes, guided tasks
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        enable_human_feedback=True,
+        interrupt_before=interrupt_before or ["execute_tools"],
+        interrupt_after=interrupt_after or ["generate_response"],
         enable_memory=True,
         enable_streaming=True
     )
