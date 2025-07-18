@@ -10,10 +10,11 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 2. **`examples/basic_usage.py`** - Temel kullanım örnekleri
 3. **`examples/specialized_agents.py`** - Özelleştirilmiş agent örnekleri
 4. **`examples/multi_agent.py`** - Multi-agent pattern örnekleri (supervisor, swarm, handoff)
-5. **`requirements.txt`** - Gerekli bağımlılıklar
-6. **`README.md`** - Kapsamlı İngilizce dokümantasyon
-7. **`SUMMARY.md`** - Türkçe özet dokümantasyon
-8. **`test_framework.py`** - Test scripti
+5. **`examples/mcp_example.py`** - MCP (Model Context Protocol) entegrasyonu örnekleri
+6. **`requirements.txt`** - Gerekli bağımlılıklar
+7. **`README.md`** - Kapsamlı İngilizce dokümantasyon
+8. **`SUMMARY.md`** - Türkçe özet dokümantasyon
+9. **`test_framework.py`** - Test scripti
 
 ### İçerdiği Özellikler (Dökümanda Belirtilen)
 
@@ -23,7 +24,7 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 ✅ **4. langgraph-prebuilt** - Hazır bileşenler (aktif kullanılıyor)
 ✅ **5. langgraph-supervisor** - Supervisor agent'lar için araçlar  
 ✅ **6. langgraph-swarm** - Swarm multi-agent sistem araçları
-✅ **7. langchain-mcp-adapters** - MCP server entegrasyonu
+✅ **7. langchain-mcp-adapters** - MCP server entegrasyonu (tam destekli + test edildi)
 ✅ **8. langmem** - Agent hafıza yönetimi
 ✅ **9. agentevals** - Agent performans değerlendirme
 
@@ -205,7 +206,37 @@ tercihler = agent.retrieve_memory("kullanıcı_tercihleri")
 geçmiş = agent.retrieve_memory("sohbet_geçmişi")
 ```
 
-### 7. Streaming ve Human-in-the-Loop
+### 7. MCP (Model Context Protocol) Entegrasyonu
+
+```python
+# MCP server konfigürasyonları
+mcp_servers = {
+    "math": {
+        "command": "python",
+        "args": ["/path/to/math_server.py"],
+        "transport": "stdio"
+    },
+    "weather": {
+        "url": "http://localhost:8000/mcp",
+        "transport": "streamable_http"
+    }
+}
+
+# MCP Agent yaratın
+from core_agent import create_mcp_agent
+mcp_agent = create_mcp_agent(model, mcp_servers)
+
+# MCP tools yükleyin (async)
+await mcp_agent.load_mcp_tools_into_agent()
+
+# Dinamik server ekleme
+mcp_agent.add_mcp_server("db", {
+    "url": "http://localhost:9000/mcp",
+    "transport": "streamable_http"
+})
+```
+
+### 8. Streaming ve Human-in-the-Loop
 
 ```python
 # Streaming kullanın

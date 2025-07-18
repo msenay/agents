@@ -45,9 +45,11 @@ except ImportError:
     swarm_handoff_tool = None
 
 try:
-    from langchain_mcp_adapters import MCPAdapter
+    from langchain_mcp_adapters.client import MultiServerMCPClient
+    MCP_AVAILABLE = True
 except ImportError:
-    MCPAdapter = None
+    MultiServerMCPClient = None
+    MCP_AVAILABLE = False
 
 try:
     from langmem import ShortTermMemory, LongTermMemory
@@ -107,6 +109,7 @@ class AgentConfig:
     
     # Advanced features
     enable_mcp: bool = False
+    mcp_servers: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # MCP server configurations
     enable_evaluation: bool = False
     
     # Hooks and customization
@@ -382,6 +385,51 @@ class SupervisorManager:
         return list(self.handoff_tools.keys()) if self.handoff_tools else []
 
 
+class MCPManager:
+    """Manages MCP (Model Context Protocol) server connections and tools"""
+    
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.client = None
+        self.mcp_tools = []
+        
+        if config.enable_mcp and MCP_AVAILABLE:
+            self._initialize_mcp_client()
+            
+    def _initialize_mcp_client(self):
+        """Initialize MCP client with configured servers"""
+        try:
+            if self.config.mcp_servers:
+                self.client = MultiServerMCPClient(self.config.mcp_servers)
+                logger.info("MCP client initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize MCP client: {e}")
+            
+    async def get_mcp_tools(self) -> List[Any]:
+        """Get tools from MCP servers"""
+        if not self.client:
+            return []
+            
+        try:
+            tools = await self.client.get_tools()
+            self.mcp_tools = tools
+            logger.info(f"Retrieved {len(tools)} tools from MCP servers")
+            return tools
+        except Exception as e:
+            logger.warning(f"Failed to get MCP tools: {e}")
+            return []
+            
+    def get_server_names(self) -> List[str]:
+        """Get list of configured MCP server names"""
+        return list(self.config.mcp_servers.keys())
+        
+    def add_server(self, name: str, config: Dict[str, Any]):
+        """Add a new MCP server configuration"""
+        self.config.mcp_servers[name] = config
+        if self.config.enable_mcp and MCP_AVAILABLE:
+            self._initialize_mcp_client()
+
+
 class EvaluationManager:
     """Manages agent performance evaluation"""
     
@@ -427,6 +475,7 @@ class CoreAgent:
         self.subgraph_manager = SubgraphManager()
         self.memory_manager = MemoryManager(config)
         self.supervisor_manager = SupervisorManager(config)
+        self.mcp_manager = MCPManager(config)
         self.evaluation_manager = EvaluationManager(config)
         
         # Core graph
@@ -651,6 +700,27 @@ class CoreAgent:
         """Retrieve information from memory"""
         return self.memory_manager.retrieve_memory(key, memory_type)
         
+    # MCP (Model Context Protocol) management
+    
+    async def get_mcp_tools(self) -> List[Any]:
+        """Get tools from configured MCP servers"""
+        return await self.mcp_manager.get_mcp_tools()
+        
+    def add_mcp_server(self, name: str, server_config: Dict[str, Any]):
+        """Add a new MCP server configuration"""
+        self.mcp_manager.add_server(name, server_config)
+        
+    def get_mcp_servers(self) -> List[str]:
+        """Get list of configured MCP server names"""
+        return self.mcp_manager.get_server_names()
+        
+    async def load_mcp_tools_into_agent(self):
+        """Load MCP tools into the agent's tool list"""
+        if self.config.enable_mcp:
+            mcp_tools = await self.get_mcp_tools()
+            self.config.tools.extend(mcp_tools)
+            logger.info(f"Added {len(mcp_tools)} MCP tools to agent")
+            
     # Evaluation
     
     def evaluate_last_response(self) -> Dict[str, float]:
@@ -714,6 +784,8 @@ class CoreAgent:
                 "tools": len(self.config.tools),
                 "supervisor": self.config.enable_supervisor,
                 "swarm": self.config.enable_swarm,
+                "handoff": self.config.enable_handoff,
+                "mcp": self.config.enable_mcp,
                 "evaluation": self.config.enable_evaluation,
                 "streaming": self.config.enable_streaming,
                 "human_feedback": self.config.enable_human_feedback,
@@ -721,6 +793,8 @@ class CoreAgent:
             },
             "memory_type": self.config.memory_type,
             "supervised_agents": len(self.supervisor_manager.agents),
+            "mcp_servers": len(self.config.mcp_servers),
+            "mcp_tools": len(self.mcp_manager.mcp_tools),
         }
 
 
@@ -825,6 +899,28 @@ def create_handoff_agent(
     return CoreAgent(config)
 
 
+def create_mcp_agent(
+    model: BaseChatModel,
+    mcp_servers: Dict[str, Dict[str, Any]] = None,
+    tools: List[BaseTool] = None,
+    prompt: str = "You are an assistant with access to MCP tools and services."
+) -> CoreAgent:
+    """Create an agent with MCP (Model Context Protocol) support"""
+    config = AgentConfig(
+        name="MCPAgent",
+        model=model,
+        system_prompt=prompt,
+        tools=tools or [],
+        enable_mcp=True,
+        mcp_servers=mcp_servers or {},
+        enable_memory=True,
+        memory_type="memory",
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
 # Example usage and template
 if __name__ == "__main__":
     # This is an example of how to use the CoreAgent
@@ -835,7 +931,7 @@ if __name__ == "__main__":
     print("- langgraph-prebuilt: ✓")
     print("- langgraph-supervisor:", "✓" if create_supervisor else "✗")
     print("- langgraph-swarm:", "✓" if create_swarm else "✗")
-    print("- langchain-mcp-adapters:", "✓" if MCPAdapter else "✗")
+    print("- langchain-mcp-adapters:", "✓" if MCP_AVAILABLE else "✗")
     print("- langmem:", "✓" if ShortTermMemory else "✗")
     print("- agentevals:", "✓" if AgentEvaluator else "✗")
     print("- Redis support:", "✓" if RedisSaver else "✗")

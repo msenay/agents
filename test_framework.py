@@ -219,6 +219,60 @@ def test_config_save_load():
         return False
 
 
+def test_mcp_functionality():
+    """Test MCP (Model Context Protocol) functionality"""
+    print("Testing MCP functionality...")
+    
+    try:
+        from core_agent import create_mcp_agent, MCP_AVAILABLE
+        
+        # Test MCP agent creation
+        mcp_servers = {
+            "test_server": {
+                "command": "python",
+                "args": ["-c", "print('test')"],
+                "transport": "stdio"
+            }
+        }
+        
+        config = AgentConfig(
+            name="MCPTestAgent",
+            model=TestChatModel(),
+            enable_mcp=True,
+            mcp_servers=mcp_servers
+        )
+        
+        agent = CoreAgent(config)
+        
+        # Check MCP configuration
+        assert agent.config.enable_mcp == True
+        assert len(agent.config.mcp_servers) == 1
+        assert "test_server" in agent.config.mcp_servers
+        
+        # Test MCP methods
+        servers = agent.get_mcp_servers()
+        assert "test_server" in servers
+        
+        # Test factory function
+        mcp_agent = create_mcp_agent(TestChatModel(), mcp_servers)
+        assert mcp_agent.config.name == "MCPAgent"
+        assert mcp_agent.config.enable_mcp == True
+        
+        status = agent.get_status()
+        assert "mcp" in status["features"]
+        assert status["features"]["mcp"] == True
+        assert status["mcp_servers"] == 1
+        
+        print(f"✓ MCP functionality test completed")
+        print(f"  MCP Available: {'Yes' if MCP_AVAILABLE else 'No (install langchain-mcp-adapters)'}")
+        return True
+        
+    except Exception as e:
+        print(f"✗ MCP functionality failed: {e}")
+        traceback.print_exc()
+        return False
+
+
 def test_package_availability():
     """Test which optional packages are available"""
     print("Testing package availability...")
@@ -226,14 +280,14 @@ def test_package_availability():
     # Import statements from core_agent to check availability
     from core_agent import (
         RedisSaver, create_supervisor, create_swarm, 
-        MCPAdapter, ShortTermMemory, LongTermMemory, AgentEvaluator
+        MCP_AVAILABLE, ShortTermMemory, LongTermMemory, AgentEvaluator
     )
     
     packages = {
         "RedisSaver": RedisSaver,
         "create_supervisor": create_supervisor,
         "create_swarm": create_swarm,
-        "MCPAdapter": MCPAdapter,
+        "MCP_AVAILABLE": MCP_AVAILABLE,
         "ShortTermMemory": ShortTermMemory,
         "LongTermMemory": LongTermMemory,
         "AgentEvaluator": AgentEvaluator
@@ -259,7 +313,8 @@ def run_all_tests():
         test_memory_functionality,
         test_subgraph_functionality,
         test_agent_status,
-        test_config_save_load
+        test_config_save_load,
+        test_mcp_functionality
     ]
     
     results = []
