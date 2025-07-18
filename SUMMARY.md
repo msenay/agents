@@ -9,21 +9,29 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 1. **`core_agent.py`** - Ana framework dosyası
 2. **`examples/basic_usage.py`** - Temel kullanım örnekleri
 3. **`examples/specialized_agents.py`** - Özelleştirilmiş agent örnekleri
-4. **`requirements.txt`** - Gerekli bağımlılıklar
-5. **`README.md`** - Kapsamlı dokümantasyon
-6. **`test_framework.py`** - Test scripti
+4. **`examples/multi_agent.py`** - Multi-agent pattern örnekleri (supervisor, swarm, handoff)
+5. **`requirements.txt`** - Gerekli bağımlılıklar
+6. **`README.md`** - Kapsamlı İngilizce dokümantasyon
+7. **`SUMMARY.md`** - Türkçe özet dokümantasyon
+8. **`test_framework.py`** - Test scripti
 
 ### İçerdiği Özellikler (Dökümanda Belirtilen)
 
 ✅ **1. Subgraph (graf-içinde-graf) kapsülleme** - Yeniden kullanılabilir çekirdek bileşenler
 ✅ **2. Kalıcı bellek için RedisSaver** - Çok oturumlu uzun hafıza
-✅ **3. SupervisorGraph** - Hiyerarşik çok-ajan orkestratörü
-✅ **4. langgraph-prebuilt** - Hazır bileşenler
+✅ **3. SupervisorGraph** - Hiyerarşik çok-ajan orkestratörü (3 pattern: supervisor, swarm, handoff)
+✅ **4. langgraph-prebuilt** - Hazır bileşenler (aktif kullanılıyor)
 ✅ **5. langgraph-supervisor** - Supervisor agent'lar için araçlar  
 ✅ **6. langgraph-swarm** - Swarm multi-agent sistem araçları
 ✅ **7. langchain-mcp-adapters** - MCP server entegrasyonu
 ✅ **8. langmem** - Agent hafıza yönetimi
 ✅ **9. agentevals** - Agent performans değerlendirme
+
+### 🆕 Multi-Agent Mimarileri
+
+1. **Supervisor Pattern** - Merkezi koordinatör agent'lar arasında görev dağıtır
+2. **Swarm Pattern** - Agent'lar dinamik olarak birbirlerine transfer yapar  
+3. **Handoff Pattern** - Manuel agent transferleri (built-in olarak mevcut)
 
 ### Ek Özellikler
 
@@ -145,25 +153,44 @@ class MüşteriHizmetleriAgent(CoreAgent):
 
 ### 5. Multi-Agent Koordinasyon
 
+Framework 3 farklı multi-agent mimarisi destekler:
+
+#### A) Supervisor Pattern (Merkezi Koordinasyon)
 ```python
 # Özelleştirilmiş agent'lar yaratın
-kod_agent = KodİncelemeAgent(model)
-araştırma_agent = AraştırmaAgent(model)
-müşteri_agent = MüşteriHizmetleriAgent(model)
+flight_agent = UçuşAgent(model)
+hotel_agent = OtelAgent(model)
 
-# Supervisor agent yaratın
+# Supervisor yaratın
 from core_agent import create_supervisor_agent
 
-team = {
-    "kod": kod_agent,
-    "araştırma": araştırma_agent, 
-    "müşteri": müşteri_agent
-}
+agents = {"flight": flight_agent, "hotel": hotel_agent}
+supervisor = create_supervisor_agent(model, agents)
 
-supervisor = create_supervisor_agent(model, team)
+# Merkezi koordinasyon
+result = supervisor.coordinate_task("Uçuş ve otel rezervasyonu yap")
+```
 
-# Görevleri koordine edin
-result = supervisor.coordinate_task("Bu kodu incele ve en iyi uygulamaları araştır")
+#### B) Swarm Pattern (Dinamik Transfer)
+```python
+from core_agent import create_swarm_agent
+
+# Swarm sistemi yaratın
+swarm = create_swarm_agent(model, agents, default_active_agent="flight")
+
+# Dinamik agent değişimi
+result = swarm.coordinate_task("Seyahat planla")
+```
+
+#### C) Handoff Pattern (Manuel Transfer)
+```python
+from core_agent import create_handoff_agent
+
+# Handoff sistemi yaratın
+handoff = create_handoff_agent(model, agents, default_active_agent="flight")
+
+# Manuel transferler
+result = handoff.coordinate_task("Yardım et")
 ```
 
 ### 6. Hafıza Yönetimi

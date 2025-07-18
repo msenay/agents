@@ -225,14 +225,14 @@ def test_package_availability():
     
     # Import statements from core_agent to check availability
     from core_agent import (
-        RedisSaver, SupervisorGraph, SwarmAgent, 
+        RedisSaver, create_supervisor, create_swarm, 
         MCPAdapter, ShortTermMemory, LongTermMemory, AgentEvaluator
     )
     
     packages = {
         "RedisSaver": RedisSaver,
-        "SupervisorGraph": SupervisorGraph,
-        "SwarmAgent": SwarmAgent,
+        "create_supervisor": create_supervisor,
+        "create_swarm": create_swarm,
         "MCPAdapter": MCPAdapter,
         "ShortTermMemory": ShortTermMemory,
         "LongTermMemory": LongTermMemory,

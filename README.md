@@ -17,12 +17,12 @@ The CoreAgent framework includes all the features mentioned in the LangGraph doc
 - **Agent Evaluation**: Built-in performance evaluation utilities
 
 ### LangGraph Ecosystem Support
-- `langgraph-prebuilt`: Prebuilt components to create agents
-- `langgraph-supervisor`: Tools for building supervisor agents  
-- `langgraph-swarm`: Tools for building swarm multi-agent systems
-- `langchain-mcp-adapters`: Interfaces to MCP servers for tool and resource integration
-- `langmem`: Agent memory management (short-term and long-term)
-- `agentevals`: Utilities to evaluate agent performance
+- `langgraph-prebuilt`: Prebuilt components to create agents ✅ **Included**
+- `langgraph-supervisor`: Tools for building supervisor agents ✅ **Supported**
+- `langgraph-swarm`: Tools for building swarm multi-agent systems ✅ **Supported**
+- `langchain-mcp-adapters`: Interfaces to MCP servers for tool and resource integration ✅ **Supported**
+- `langmem`: Agent memory management (short-term and long-term) ✅ **Supported**
+- `agentevals`: Utilities to evaluate agent performance ✅ **Supported**
 
 ## 🚀 Quick Start
 
@@ -176,17 +176,41 @@ agent.add_subgraph("tool_execution", tool_subgraph)
 ```
 
 ### Multi-Agent Coordination
+
+The framework supports three multi-agent patterns:
+
+#### 1. Supervisor Pattern (Central Coordination)
 ```python
 # Create specialized agents
-code_agent = CodeReviewAgent(model)
-research_agent = ResearchAgent(model)
+flight_agent = FlightAgent(model)
+hotel_agent = HotelAgent(model)
 
 # Create supervisor
-team = {"code": code_agent, "research": research_agent}
-supervisor = create_supervisor_agent(model, team)
+agents = {"flight": flight_agent, "hotel": hotel_agent}
+supervisor = create_supervisor_agent(model, agents)
 
 # Coordinate tasks
-result = supervisor.coordinate_task("Review this code and research best practices")
+result = supervisor.coordinate_task("Book a flight and hotel")
+```
+
+#### 2. Swarm Pattern (Dynamic Handoffs)
+```python
+# Create swarm system
+agents = {"flight": flight_agent, "hotel": hotel_agent}
+swarm = create_swarm_agent(model, agents, default_active_agent="flight")
+
+# Dynamic coordination
+result = swarm.coordinate_task("Plan my trip")
+```
+
+#### 3. Handoff Pattern (Manual Transfers)
+```python
+# Create handoff system
+agents = {"flight": flight_agent, "hotel": hotel_agent}
+handoff = create_handoff_agent(model, agents, default_active_agent="flight")
+
+# Manual transfers between agents
+result = handoff.coordinate_task("Help with travel planning")
 ```
 
 ### Streaming Responses
@@ -282,7 +306,9 @@ Complete configuration options for customizing agent behavior, tools, memory, an
 #### Factory Functions
 - `create_basic_agent(model, tools)`: Quick agent creation
 - `create_advanced_agent(model, **options)`: Feature-rich agent
-- `create_supervisor_agent(model, agents)`: Multi-agent coordination
+- `create_supervisor_agent(model, agents)`: Supervisor pattern coordination
+- `create_swarm_agent(model, agents, default_agent)`: Swarm pattern coordination  
+- `create_handoff_agent(model, agents, default_agent)`: Handoff pattern coordination
 
 ## 🤝 Contributing
 

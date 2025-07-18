@@ -34,14 +34,15 @@ except ImportError:
     RedisSaver = None
     
 try:
-    from langgraph_supervisor import SupervisorGraph
+    from langgraph_supervisor import create_supervisor
 except ImportError:
-    SupervisorGraph = None
+    create_supervisor = None
 
 try:
-    from langgraph_swarm import SwarmAgent
+    from langgraph_swarm import create_swarm, create_handoff_tool as swarm_handoff_tool
 except ImportError:
-    SwarmAgent = None
+    create_swarm = None
+    swarm_handoff_tool = None
 
 try:
     from langchain_mcp_adapters import MCPAdapter
@@ -61,11 +62,14 @@ except ImportError:
 
 # LangChain imports
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.tools import BaseTool
+from langchain_core.tools import BaseTool, tool, InjectedToolCallId
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field
+from langgraph.prebuilt import InjectedState
+from langgraph.types import Command
+from typing import Annotated
 
 
 # Configure logging
@@ -94,9 +98,14 @@ class AgentConfig:
     memory_type: str = "memory"  # "memory", "redis", or "both"
     redis_url: Optional[str] = None
     
-    # Advanced features
+    # Multi-agent settings
     enable_supervisor: bool = False
     enable_swarm: bool = False
+    enable_handoff: bool = False
+    agents: Dict[str, Any] = field(default_factory=dict)  # For multi-agent systems
+    default_active_agent: Optional[str] = None  # For swarm systems
+    
+    # Advanced features
     enable_mcp: bool = False
     enable_evaluation: bool = False
     
@@ -218,35 +227,159 @@ class MemoryManager:
 
 
 class SupervisorManager:
-    """Manages hierarchical multi-agent orchestration"""
+    """Manages hierarchical multi-agent orchestration with supervisor, swarm, and handoff patterns"""
     
     def __init__(self, config: AgentConfig):
         self.config = config
         self.supervisor_graph = None
+        self.swarm_graph = None
+        self.handoff_graph = None
         self.agents = {}
+        self.handoff_tools = {}
         
-        if config.enable_supervisor and SupervisorGraph:
+        if config.enable_supervisor and create_supervisor:
             self._initialize_supervisor()
+        elif config.enable_swarm and create_swarm:
+            self._initialize_swarm()
+        elif config.enable_handoff:
+            self._initialize_handoff()
             
     def _initialize_supervisor(self):
         """Initialize the supervisor graph"""
         try:
-            self.supervisor_graph = SupervisorGraph()
-            logger.info("Supervisor graph initialized")
+            if self.config.agents:
+                agents_list = list(self.config.agents.values())
+                self.supervisor_graph = create_supervisor(
+                    agents=agents_list,
+                    model=self.config.model,
+                    prompt=self.config.system_prompt
+                ).compile()
+                logger.info("Supervisor graph initialized")
         except Exception as e:
             logger.warning(f"Failed to initialize supervisor: {e}")
             
+    def _initialize_swarm(self):
+        """Initialize the swarm graph"""
+        try:
+            if self.config.agents and create_swarm:
+                agents_list = list(self.config.agents.values())
+                self.swarm_graph = create_swarm(
+                    agents=agents_list,
+                    default_active_agent=self.config.default_active_agent or list(self.config.agents.keys())[0]
+                ).compile()
+                logger.info("Swarm graph initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize swarm: {e}")
+            
+    def _initialize_handoff(self):
+        """Initialize the handoff graph"""
+        try:
+            if self.config.agents:
+                self._create_handoff_tools()
+                self._create_handoff_graph()
+                logger.info("Handoff graph initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize handoff: {e}")
+            
+    def _create_handoff_tools(self):
+        """Create handoff tools for agent-to-agent transfers"""
+        def create_handoff_tool(*, agent_name: str, description: str = None):
+            name = f"transfer_to_{agent_name}"
+            description = description or f"Transfer to {agent_name}"
+
+            @tool(name, description=description)
+            def handoff_tool(
+                state: Annotated[dict, InjectedState], 
+                tool_call_id: Annotated[str, InjectedToolCallId],
+            ) -> Command:
+                tool_message = {
+                    "role": "tool",
+                    "content": f"Successfully transferred to {agent_name}",
+                    "name": name,
+                    "tool_call_id": tool_call_id,
+                }
+                return Command(  
+                    goto=agent_name,  
+                    update={"messages": state.get("messages", []) + [tool_message]},  
+                    graph=Command.PARENT,  
+                )
+            return handoff_tool
+            
+        # Create handoff tools for each agent
+        for agent_name in self.config.agents.keys():
+            self.handoff_tools[agent_name] = create_handoff_tool(
+                agent_name=agent_name,
+                description=f"Transfer user to the {agent_name} assistant."
+            )
+            
+    def _create_handoff_graph(self):
+        """Create the handoff graph with all agents"""
+        from langgraph.graph import MessagesState, START
+        
+        self.handoff_graph = StateGraph(MessagesState)
+        
+        # Add all agents as nodes
+        for agent_name, agent in self.config.agents.items():
+            self.handoff_graph.add_node(agent_name, agent)
+            
+        # Set starting agent
+        if self.config.default_active_agent:
+            self.handoff_graph.add_edge(START, self.config.default_active_agent)
+        else:
+            # Default to first agent
+            first_agent = list(self.config.agents.keys())[0]
+            self.handoff_graph.add_edge(START, first_agent)
+            
+        self.handoff_graph = self.handoff_graph.compile()
+             
     def add_agent(self, name: str, agent: Any):
         """Add an agent to be managed by the supervisor"""
         self.agents[name] = agent
         
     def coordinate_agents(self, task: str) -> Dict[str, Any]:
         """Coordinate multiple agents for a complex task"""
-        if not self.supervisor_graph:
-            return {"error": "Supervisor not available"}
+        if self.supervisor_graph:
+            return self._run_supervisor(task)
+        elif self.swarm_graph:
+            return self._run_swarm(task)
+        elif self.handoff_graph:
+            return self._run_handoff(task)
+        else:
+            return {"error": "No multi-agent system available"}
             
-        # Implementation would depend on the specific supervisor library
-        return {"status": "coordinated", "task": task}
+    def _run_supervisor(self, task: str) -> Dict[str, Any]:
+        """Run task through supervisor pattern"""
+        try:
+            result = self.supervisor_graph.invoke({
+                "messages": [{"role": "user", "content": task}]
+            })
+            return {"status": "supervised", "result": result}
+        except Exception as e:
+            return {"error": f"Supervisor execution failed: {e}"}
+            
+    def _run_swarm(self, task: str) -> Dict[str, Any]:
+        """Run task through swarm pattern"""
+        try:
+            result = self.swarm_graph.invoke({
+                "messages": [{"role": "user", "content": task}]
+            })
+            return {"status": "swarmed", "result": result}
+        except Exception as e:
+            return {"error": f"Swarm execution failed: {e}"}
+            
+    def _run_handoff(self, task: str) -> Dict[str, Any]:
+        """Run task through handoff pattern"""
+        try:
+            result = self.handoff_graph.invoke({
+                "messages": [{"role": "user", "content": task}]
+            })
+            return {"status": "handoff", "result": result}
+        except Exception as e:
+            return {"error": f"Handoff execution failed: {e}"}
+            
+    def get_available_transfers(self) -> List[str]:
+        """Get list of available transfer targets"""
+        return list(self.handoff_tools.keys()) if self.handoff_tools else []
 
 
 class EvaluationManager:
@@ -631,26 +764,65 @@ def create_advanced_agent(
 
 def create_supervisor_agent(
     model: BaseChatModel,
-    supervised_agents: Dict[str, Any] = None
+    agents: Dict[str, Any] = None,
+    prompt: str = "You manage multiple specialized agents. Assign work to them based on their capabilities."
 ) -> CoreAgent:
     """Create a supervisor agent for multi-agent orchestration"""
     config = AgentConfig(
         name="SupervisorAgent",
         model=model,
+        system_prompt=prompt,
         enable_supervisor=True,
+        agents=agents or {},
         enable_memory=True,
-        memory_type="redis",
+        memory_type="memory",
         enable_evaluation=True,
         enable_streaming=True
     )
     
-    agent = CoreAgent(config)
+    return CoreAgent(config)
+
+
+def create_swarm_agent(
+    model: BaseChatModel,
+    agents: Dict[str, Any] = None,
+    default_active_agent: str = None
+) -> CoreAgent:
+    """Create a swarm agent for dynamic multi-agent coordination"""
+    config = AgentConfig(
+        name="SwarmAgent",
+        model=model,
+        enable_swarm=True,
+        agents=agents or {},
+        default_active_agent=default_active_agent,
+        enable_memory=True,
+        memory_type="memory",
+        enable_streaming=True
+    )
     
-    if supervised_agents:
-        for name, supervised_agent in supervised_agents.items():
-            agent.add_supervised_agent(name, supervised_agent)
-            
-    return agent
+    return CoreAgent(config)
+
+
+def create_handoff_agent(
+    model: BaseChatModel,
+    agents: Dict[str, Any] = None,
+    default_active_agent: str = None,
+    prompt: str = "You can transfer conversations to specialized agents when needed."
+) -> CoreAgent:
+    """Create a handoff agent for manual agent transfers"""
+    config = AgentConfig(
+        name="HandoffAgent", 
+        model=model,
+        system_prompt=prompt,
+        enable_handoff=True,
+        agents=agents or {},
+        default_active_agent=default_active_agent,
+        enable_memory=True,
+        memory_type="memory",
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
 
 
 # Example usage and template
@@ -661,8 +833,8 @@ if __name__ == "__main__":
     print("CoreAgent Framework initialized")
     print("Available packages:")
     print("- langgraph-prebuilt: ✓")
-    print("- langgraph-supervisor:", "✓" if SupervisorGraph else "✗")
-    print("- langgraph-swarm:", "✓" if SwarmAgent else "✗")
+    print("- langgraph-supervisor:", "✓" if create_supervisor else "✗")
+    print("- langgraph-swarm:", "✓" if create_swarm else "✗")
     print("- langchain-mcp-adapters:", "✓" if MCPAdapter else "✗")
     print("- langmem:", "✓" if ShortTermMemory else "✗")
     print("- agentevals:", "✓" if AgentEvaluator else "✗")
