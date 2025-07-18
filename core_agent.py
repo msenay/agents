@@ -43,6 +43,13 @@ except ImportError:
     PostgresStore = None
 
 try:
+    from langgraph.checkpoint.mongodb import MongoDBSaver
+    from langgraph.store.mongodb import MongoDBStore
+except ImportError:
+    MongoDBSaver = None
+    MongoDBStore = None
+
+try:
     from langgraph.store.memory import InMemoryStore
 except ImportError:
     InMemoryStore = None
@@ -163,15 +170,16 @@ class AgentConfig:
     
     # Short-term Memory (Thread-level persistence)
     enable_short_term_memory: bool = False
-    short_term_memory_type: str = "inmemory"  # "inmemory", "redis", "postgres"
+    short_term_memory_type: str = "inmemory"  # "inmemory", "redis", "postgres", "mongodb"
     
     # Long-term Memory (Cross-session persistence) 
     enable_long_term_memory: bool = False
-    long_term_memory_type: str = "inmemory"  # "inmemory", "redis", "postgres"
+    long_term_memory_type: str = "inmemory"  # "inmemory", "redis", "postgres", "mongodb"
     
     # Database Connection Strings
     redis_url: Optional[str] = None
     postgres_url: Optional[str] = None
+    mongodb_url: Optional[str] = None  # MongoDB connection string
     
     # Session-Based Memory (Advanced Redis Memory)
     session_id: Optional[str] = None  # Session ID for shared memory between agents
@@ -392,6 +400,21 @@ class MemoryManager:
                 self.checkpointer = PostgresSaver.from_conn_string(self.config.postgres_url)
                 logger.info("PostgresSaver checkpointer initialized")
                 
+            elif checkpointer_type == "mongodb" and MongoDBSaver and self.config.mongodb_url:
+                # MongoDB checkpointer with TTL support
+                ttl_config = None
+                if self.config.enable_ttl:
+                    ttl_config = {
+                        "default_ttl": self.config.default_ttl_minutes,
+                        "refresh_on_read": self.config.refresh_on_read
+                    }
+                
+                self.checkpointer = MongoDBSaver.from_conn_string(
+                    self.config.mongodb_url,
+                    ttl=ttl_config
+                )
+                logger.info("MongoDBSaver checkpointer initialized")
+                
             else:
                 # Fallback to InMemorySaver
                 self.checkpointer = InMemorySaver()
@@ -447,6 +470,14 @@ class MemoryManager:
                     index=index_config
                 )
                 logger.info("PostgresStore initialized")
+                
+            elif store_type == "mongodb" and MongoDBStore and self.config.mongodb_url:
+                self.store = MongoDBStore.from_conn_string(
+                    self.config.mongodb_url,
+                    index=index_config,
+                    ttl=ttl_config
+                )
+                logger.info("MongoDBStore initialized")
                 
             else:
                 # Fallback to InMemoryStore
@@ -1659,14 +1690,15 @@ def create_memory_agent(
     model: BaseChatModel,
     name: str = "MemoryAgent",
     tools: List[BaseTool] = None,
-    short_term_memory: str = "inmemory",  # "inmemory", "redis", "postgres"
-    long_term_memory: str = "inmemory",   # "inmemory", "redis", "postgres" 
+    short_term_memory: str = "inmemory",  # "inmemory", "redis", "postgres", "mongodb"
+    long_term_memory: str = "inmemory",   # "inmemory", "redis", "postgres", "mongodb" 
     enable_semantic_search: bool = True,
     enable_memory_tools: bool = True,
     enable_message_trimming: bool = True,
     enable_summarization: bool = False,
     redis_url: Optional[str] = None,
     postgres_url: Optional[str] = None,
+    mongodb_url: Optional[str] = None,
     system_prompt: str = "You are an assistant with advanced memory capabilities for persistent conversations. You can store and search information across sessions."
 ) -> CoreAgent:
     """
@@ -1700,6 +1732,7 @@ def create_memory_agent(
         # Database connections
         redis_url=redis_url,
         postgres_url=postgres_url,
+        mongodb_url=mongodb_url,
         
         # Performance optimizations
         max_tokens=4000,
@@ -1716,11 +1749,12 @@ def create_memory_agent(
 def create_short_term_memory_agent(
     model: BaseChatModel,
     name: str = "ShortTermAgent",
-    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres"
+    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres", "mongodb"
     enable_trimming: bool = True,
     max_tokens: int = 4000,
     redis_url: Optional[str] = None,
     postgres_url: Optional[str] = None,
+    mongodb_url: Optional[str] = None,
     tools: List[BaseTool] = None,
     system_prompt: str = "You are an assistant with short-term memory for multi-turn conversations."
 ) -> CoreAgent:
@@ -1749,6 +1783,7 @@ def create_short_term_memory_agent(
         # Database connections
         redis_url=redis_url,
         postgres_url=postgres_url,
+        mongodb_url=mongodb_url,
     )
     
     return CoreAgent(config)
@@ -1757,12 +1792,13 @@ def create_short_term_memory_agent(
 def create_long_term_memory_agent(
     model: BaseChatModel,
     name: str = "LongTermAgent", 
-    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres"
+    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres", "mongodb"
     enable_semantic_search: bool = True,
     enable_memory_tools: bool = True,
     embedding_model: str = "openai:text-embedding-3-small",
     redis_url: Optional[str] = None,
     postgres_url: Optional[str] = None,
+    mongodb_url: Optional[str] = None,
     tools: List[BaseTool] = None,
     system_prompt: str = "You are an assistant with long-term memory for persistent information storage and retrieval across sessions."
 ) -> CoreAgent:
@@ -1791,6 +1827,7 @@ def create_long_term_memory_agent(
         # Database connections
         redis_url=redis_url,
         postgres_url=postgres_url,
+        mongodb_url=mongodb_url,
     )
     
     return CoreAgent(config)
@@ -1840,13 +1877,14 @@ def create_message_management_agent(
 def create_semantic_search_agent(
     model: BaseChatModel,
     name: str = "SemanticSearchAgent",
-    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres"
+    memory_backend: str = "inmemory",  # "inmemory", "redis", "postgres", "mongodb"
     embedding_model: str = "openai:text-embedding-3-small",
     embedding_dims: int = 1536,
     distance_type: str = "cosine",
     enable_memory_tools: bool = True,
     redis_url: Optional[str] = None,
     postgres_url: Optional[str] = None,
+    mongodb_url: Optional[str] = None,
     tools: List[BaseTool] = None,
     system_prompt: str = "You are an assistant with semantic search capabilities. You can store and find information using meaning-based similarity."
 ) -> CoreAgent:
@@ -1877,6 +1915,7 @@ def create_semantic_search_agent(
         # Database connections
         redis_url=redis_url,
         postgres_url=postgres_url,
+        mongodb_url=mongodb_url,
     )
     
     return CoreAgent(config)
@@ -1885,10 +1924,11 @@ def create_semantic_search_agent(
 def create_ttl_memory_agent(
     model: BaseChatModel,
     name: str = "TTLMemoryAgent",
-    memory_backend: str = "redis",  # TTL works best with Redis
+    memory_backend: str = "redis",  # TTL works with Redis and MongoDB
     ttl_minutes: int = 1440,  # 24 hours default
     refresh_on_read: bool = True,
-    redis_url: str = "redis://localhost:6379",
+    redis_url: Optional[str] = "redis://localhost:6379",
+    mongodb_url: Optional[str] = None,
     tools: List[BaseTool] = None,
     system_prompt: str = "You are an assistant with time-limited memory that automatically expires after a set time."
 ) -> CoreAgent:
@@ -1915,8 +1955,9 @@ def create_ttl_memory_agent(
         default_ttl_minutes=ttl_minutes,
         refresh_on_read=refresh_on_read,
         
-        # Database connection
+        # Database connections
         redis_url=redis_url,
+        mongodb_url=mongodb_url,
     )
     
     return CoreAgent(config)
@@ -1998,6 +2039,7 @@ def create_session_agent(
     memory_namespace: str = "default",
     enable_shared_memory: bool = True,
     redis_url: Optional[str] = None,
+    mongodb_url: Optional[str] = None,
     system_prompt: str = "You are an agent with session-based shared memory capabilities."
 ) -> CoreAgent:
     """
@@ -2030,8 +2072,9 @@ def create_session_agent(
         enable_shared_memory=enable_shared_memory,
         memory_namespace=memory_namespace,
         
-        # Database connection
+        # Database connections
         redis_url=redis_url,
+        mongodb_url=mongodb_url,
         
         enable_streaming=True
     )
