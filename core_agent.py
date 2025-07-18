@@ -31,23 +31,29 @@ from langgraph.types import Command
 try:
     from langgraph.checkpoint.redis import RedisSaver
     from langgraph.store.redis import RedisStore
+    REDIS_AVAILABLE = True
 except ImportError:
     RedisSaver = None
     RedisStore = None
+    REDIS_AVAILABLE = False
     
 try:
     from langgraph.checkpoint.postgres import PostgresSaver
     from langgraph.store.postgres import PostgresStore
+    POSTGRES_AVAILABLE = True
 except ImportError:
     PostgresSaver = None
     PostgresStore = None
+    POSTGRES_AVAILABLE = False
 
 try:
     from langgraph.checkpoint.mongodb import MongoDBSaver
     from langgraph.store.mongodb import MongoDBStore
+    MONGODB_AVAILABLE = True
 except ImportError:
     MongoDBSaver = None
     MongoDBStore = None
+    MONGODB_AVAILABLE = False
 
 try:
     from langgraph.store.memory import InMemoryStore
@@ -322,7 +328,7 @@ class SubgraphManager:
         """Get a registered subgraph by name"""
         return self.subgraphs.get(name)
         
-    def create_tool_subgraph(self, tools: List[BaseTool]) -> StateGraph:
+    def create_tool_subgraph(self, name: str, tools: List[BaseTool], model: BaseChatModel) -> StateGraph:
         """Create a subgraph for tool execution"""
         graph = StateGraph(CoreAgentState)
         
@@ -434,10 +440,18 @@ class MemoryManager:
                 logger.info("MongoDBSaver checkpointer initialized")
                 
             else:
-                # Fallback to InMemorySaver
+                # Check if it's a completely invalid type (for strict validation in tests)
+                valid_types = ["inmemory", "redis", "postgres", "mongodb"]
+                if checkpointer_type not in valid_types:
+                    raise ValueError(f"Invalid short-term memory type: {checkpointer_type}. Must be one of: {valid_types}")
+                
+                # Fallback to InMemorySaver for valid types that aren't available
                 self.checkpointer = InMemorySaver()
                 logger.warning(f"Unsupported short-term memory type: {checkpointer_type}, using InMemorySaver")
                 
+        except ValueError as e:
+            # Re-raise ValueError for strict validation (e.g., invalid memory types)
+            raise e
         except Exception as e:
             logger.error(f"Failed to initialize checkpointer: {e}")
             self.checkpointer = InMemorySaver()
@@ -750,6 +764,10 @@ class MemoryManager:
             self._test_memory = {}
         return self._test_memory.get(key)
     
+    def get_memory(self, key: str) -> Optional[str]:
+        """Get memory - alias for retrieve_memory for test compatibility"""
+        return self.retrieve_memory(key)
+    
     def has_langmem_support(self) -> bool:
         """Check if LangMem is available"""
         return LANGMEM_AVAILABLE
@@ -775,6 +793,9 @@ class SupervisorManager:
         self.handoff_graph = None
         self.agents = self.config.agents.copy()  # Initialize from config
         self.handoff_tools = {}
+        
+        # Test compatibility properties
+        self.enabled = config.enable_supervisor or config.enable_swarm or config.enable_handoff
         
         if config.enable_supervisor and create_supervisor:
             self._initialize_supervisor()
@@ -875,7 +896,7 @@ class SupervisorManager:
         """Add an agent to be managed by the supervisor"""
         self.agents[name] = agent
         
-    def coordinate_agents(self, task: str) -> Dict[str, Any]:
+    def coordinate_agents(self, task: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Coordinate multiple agents for a complex task"""
         if self.supervisor_graph:
             return self._run_supervisor(task)
@@ -934,6 +955,9 @@ class MCPManager:
         self.servers = self.config.mcp_servers.copy()  # For test compatibility
         self.mcp_tools = []
         
+        # Test compatibility properties
+        self.enabled = config.enable_mcp
+        
         if config.enable_mcp and MCP_AVAILABLE:
             self._initialize_mcp_client()
             
@@ -980,6 +1004,9 @@ class EvaluationManager:
         self.evaluator = None
         self.trajectory_evaluator = None
         self.llm_judge_evaluator = None
+        
+        # Test compatibility properties
+        self.enabled = config.enable_evaluation
         
         # Set metrics based on evaluation enabled state
         if config.enable_evaluation:
@@ -1036,7 +1063,7 @@ class EvaluationManager:
             logger.warning(f"Basic evaluation failed: {e}")
             return {"accuracy": 0.5, "relevance": 0.5, "helpfulness": 0.5}
             
-    def evaluate_trajectory(self, outputs: List[Dict], reference_outputs: List[Dict]) -> Dict[str, Any]:
+    def evaluate_trajectory(self, outputs: List[Dict], reference_outputs: List[Dict] = None) -> Dict[str, Any]:
         """Evaluate agent trajectory against reference"""
         if not self.trajectory_evaluator:
             return {
@@ -1080,6 +1107,8 @@ class EvaluationManager:
     def get_evaluator_status(self) -> Dict[str, bool]:
         """Get status of available evaluators"""
         return {
+            "enabled": self.enabled,
+            "available_metrics": self.metrics,
             "agentevals_available": AGENTEVALS_AVAILABLE,
             "basic_evaluator": self.evaluator is not None,
             "trajectory_evaluator": self.trajectory_evaluator is not None,
@@ -1118,18 +1147,18 @@ class CoreAgent:
         self.compiled_graph = None
         
         # Initialize the agent
-        self._build_agent()
+        self._build_agent(strict_mode=False)
         
-    def _build_agent(self):
+    def _build_agent(self, strict_mode: bool = False):
         """Build the core agent graph"""
         if self.config.model and hasattr(self.config, 'tools'):
             # Use prebuilt create_react_agent if model and tools are provided
-            self._build_with_prebuilt()
+            self._build_with_prebuilt(strict_mode=strict_mode)
         else:
             # Build custom graph
             self._build_custom_graph()
             
-    def _build_with_prebuilt(self):
+    def _build_with_prebuilt(self, strict_mode: bool = False):
         """Build agent using LangGraph prebuilt components"""
         try:
             # Combine configuration tools with memory tools
@@ -1185,8 +1214,12 @@ class CoreAgent:
             logger.info("Agent built with prebuilt components and comprehensive memory support")
             
         except Exception as e:
-            logger.warning(f"Failed to use prebuilt agent: {e}")
-            self._build_custom_graph()
+            if strict_mode:
+                # Re-raise exception in strict mode
+                raise e
+            else:
+                logger.warning(f"Failed to use prebuilt agent: {e}")
+                self._build_custom_graph()
             
     def _build_custom_graph(self):
         """Build custom agent graph"""
@@ -1493,17 +1526,35 @@ class CoreAgent:
         return None
             
     @classmethod
-    def load_config(cls, filepath: str) -> AgentConfig:
-        """Load agent configuration from file"""
+    def load_config(cls, filepath: str) -> 'CoreAgent':
+        """Load agent configuration from file and create CoreAgent instance"""
         with open(filepath, 'r') as f:
             config_dict = json.load(f)
             
-        return AgentConfig(**config_dict)
+        config = AgentConfig(**config_dict)
+        return cls(config)
+    
+    def build(self, strict_mode: bool = False):
+        """Build the agent graph and return it for testing purposes"""
+        if hasattr(self, 'compiled_graph') and self.compiled_graph:
+            return self.compiled_graph
+        elif hasattr(self, 'graph') and self.graph:
+            return self.graph
+        else:
+            # Try to build the agent if not already built
+            self._build_agent(strict_mode=strict_mode)
+            return self.compiled_graph if hasattr(self, 'compiled_graph') else self.graph
+    
+
+    def get_memory(self, key: str) -> Optional[str]:
+        """Get memory value for a key - delegates to memory manager"""
+        return self.memory_manager.get_memory(key)
         
     def get_status(self) -> Dict[str, Any]:
         """Get current agent status and capabilities"""
         return {
             "name": self.config.name,
+            "model": str(self.config.model) if self.config.model else None,
             "description": self.config.description,
             "features": {
                 "short_term_memory": self.config.enable_short_term_memory,
@@ -1567,6 +1618,8 @@ def create_advanced_agent(
     tools: List[BaseTool] = None,
     system_prompt: str = "You are an advanced AI assistant with enhanced capabilities.",
     enable_memory: bool = True,
+    enable_short_term_memory: bool = None,
+    enable_long_term_memory: bool = None,
     enable_evaluation: bool = False,
     enable_human_feedback: bool = False,
     response_format: Optional[Type[BaseModel]] = None,
@@ -1577,6 +1630,12 @@ def create_advanced_agent(
     Create an advanced agent with optional enhanced features
     Perfect for: Production agents, complex workflows, custom requirements
     """
+    # Handle backward compatibility and new parameters
+    if enable_short_term_memory is None:
+        enable_short_term_memory = enable_memory
+    if enable_long_term_memory is None:
+        enable_long_term_memory = enable_memory
+        
     config = AgentConfig(
         name=name,
         model=model,
@@ -1584,9 +1643,9 @@ def create_advanced_agent(
         tools=tools or [],
         
         # Memory configuration
-        enable_short_term_memory=enable_memory,
+        enable_short_term_memory=enable_short_term_memory,
         short_term_memory_type="inmemory",
-        enable_long_term_memory=enable_memory,
+        enable_long_term_memory=enable_long_term_memory,
         long_term_memory_type="inmemory",
         
         enable_evaluation=enable_evaluation,
@@ -1767,8 +1826,10 @@ def create_memory_agent(
     model: BaseChatModel,
     name: str = "MemoryAgent",
     tools: List[BaseTool] = None,
-    short_term_memory: str = "inmemory",  # "inmemory", "redis", "postgres", "mongodb"
-    long_term_memory: str = "inmemory",   # "inmemory", "redis", "postgres", "mongodb" 
+    enable_short_term_memory: bool = True,
+    enable_long_term_memory: bool = True,
+    short_term_memory_type: str = "inmemory",  # "inmemory", "redis", "postgres", "mongodb"
+    long_term_memory_type: str = "inmemory",   # "inmemory", "redis", "postgres", "mongodb" 
     enable_semantic_search: bool = True,
     enable_memory_tools: bool = True,
     enable_message_trimming: bool = True,
@@ -1795,10 +1856,10 @@ def create_memory_agent(
         tools=tools or [],
         
         # Memory configuration
-        enable_short_term_memory=True,
-        short_term_memory_type=short_term_memory,
-        enable_long_term_memory=True,
-        long_term_memory_type=long_term_memory,
+        enable_short_term_memory=enable_short_term_memory,
+        short_term_memory_type=short_term_memory_type,
+        enable_long_term_memory=enable_long_term_memory,
+        long_term_memory_type=long_term_memory_type,
         
         # Advanced memory features
         enable_semantic_search=enable_semantic_search,
@@ -2349,4 +2410,6 @@ if __name__ == "__main__":
     print("- langchain-mcp-adapters:", "✓" if MCP_AVAILABLE else "✗")
     print("- langmem:", "✓" if LANGMEM_AVAILABLE else "✗")
     print("- agentevals:", "✓" if AGENTEVALS_AVAILABLE else "✗")
-    print("- Redis support:", "✓" if RedisSaver else "✗")
+    print("- Redis support:", "✓" if REDIS_AVAILABLE else "✗")
+    print("- PostgreSQL support:", "✓" if POSTGRES_AVAILABLE else "✗")
+    print("- MongoDB support:", "✓" if MONGODB_AVAILABLE else "✗")
