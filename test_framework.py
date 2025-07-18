@@ -273,6 +273,62 @@ def test_mcp_functionality():
         return False
 
 
+def test_langmem_functionality():
+    """Test LangMem memory management functionality"""
+    print("Testing LangMem functionality...")
+    
+    try:
+        from core_agent import create_langmem_agent, LANGMEM_AVAILABLE
+        
+        # Test langmem agent creation with different memory types
+        memory_types = ["langmem_short", "langmem_long", "langmem_combined"]
+        
+        for memory_type in memory_types:
+            config = AgentConfig(
+                name=f"LangMem_{memory_type.split('_')[1].title()}Agent",
+                model=TestChatModel(),
+                enable_memory=True,
+                memory_type=memory_type,
+                langmem_max_tokens=256,
+                langmem_max_summary_tokens=64,
+                langmem_enable_summarization=True
+            )
+            
+            agent = CoreAgent(config)
+            
+            # Check langmem configuration
+            assert agent.config.memory_type == memory_type
+            assert agent.config.langmem_max_tokens == 256
+            assert agent.config.langmem_max_summary_tokens == 64
+            assert agent.config.langmem_enable_summarization == True
+            
+            # Test langmem methods
+            memory_summary = agent.get_memory_summary()
+            assert memory_summary["memory_type"] == memory_type
+            assert memory_summary["langmem_available"] == LANGMEM_AVAILABLE
+            assert memory_summary["max_tokens"] == 256
+            
+            # Test factory function
+        langmem_agent = create_langmem_agent(TestChatModel(), memory_type="langmem_combined")
+        assert langmem_agent.config.name == "LangMemAgent"
+        assert langmem_agent.config.memory_type == "langmem_combined"
+        
+        status = langmem_agent.get_status()
+        assert "memory" in status["features"]
+        assert status["features"]["memory"] == True
+        assert "langmem_support" in status
+        
+        print(f"✓ LangMem functionality test completed")
+        print(f"  LangMem Available: {'Yes' if LANGMEM_AVAILABLE else 'No (install langmem)'}")
+        print(f"  Memory types tested: {len(memory_types)}")
+        return True
+        
+    except Exception as e:
+        print(f"✗ LangMem functionality failed: {e}")
+        traceback.print_exc()
+        return False
+
+
 def test_package_availability():
     """Test which optional packages are available"""
     print("Testing package availability...")
@@ -280,7 +336,7 @@ def test_package_availability():
     # Import statements from core_agent to check availability
     from core_agent import (
         RedisSaver, create_supervisor, create_swarm, 
-        MCP_AVAILABLE, ShortTermMemory, LongTermMemory, AgentEvaluator
+        MCP_AVAILABLE, LANGMEM_AVAILABLE, ShortTermMemory, LongTermMemory, AgentEvaluator
     )
     
     packages = {
@@ -288,6 +344,7 @@ def test_package_availability():
         "create_supervisor": create_supervisor,
         "create_swarm": create_swarm,
         "MCP_AVAILABLE": MCP_AVAILABLE,
+        "LANGMEM_AVAILABLE": LANGMEM_AVAILABLE,
         "ShortTermMemory": ShortTermMemory,
         "LongTermMemory": LongTermMemory,
         "AgentEvaluator": AgentEvaluator
@@ -314,7 +371,8 @@ def run_all_tests():
         test_subgraph_functionality,
         test_agent_status,
         test_config_save_load,
-        test_mcp_functionality
+        test_mcp_functionality,
+        test_langmem_functionality
     ]
     
     results = []

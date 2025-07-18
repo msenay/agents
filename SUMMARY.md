@@ -11,10 +11,11 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 3. **`examples/specialized_agents.py`** - Özelleştirilmiş agent örnekleri
 4. **`examples/multi_agent.py`** - Multi-agent pattern örnekleri (supervisor, swarm, handoff)
 5. **`examples/mcp_example.py`** - MCP (Model Context Protocol) entegrasyonu örnekleri
-6. **`requirements.txt`** - Gerekli bağımlılıklar
-7. **`README.md`** - Kapsamlı İngilizce dokümantasyon
-8. **`SUMMARY.md`** - Türkçe özet dokümantasyon
-9. **`test_framework.py`** - Test scripti
+6. **`examples/langmem_example.py`** - LangMem hafıza yönetimi örnekleri
+7. **`requirements.txt`** - Gerekli bağımlılıklar
+8. **`README.md`** - Kapsamlı İngilizce dokümantasyon
+9. **`SUMMARY.md`** - Türkçe özet dokümantasyon
+10. **`test_framework.py`** - Test scripti
 
 ### İçerdiği Özellikler (Dökümanda Belirtilen)
 
@@ -25,7 +26,7 @@ Bu projeyi şu dökümanda belirtilen tüm özelliklerle birlikte kapsamlı bir 
 ✅ **5. langgraph-supervisor** - Supervisor agent'lar için araçlar  
 ✅ **6. langgraph-swarm** - Swarm multi-agent sistem araçları
 ✅ **7. langchain-mcp-adapters** - MCP server entegrasyonu (tam destekli + test edildi)
-✅ **8. langmem** - Agent hafıza yönetimi
+✅ **8. langmem** - Agent hafıza yönetimi (tam destekli + test edildi)
 ✅ **9. agentevals** - Agent performans değerlendirme
 
 ### 🆕 Multi-Agent Mimarileri
@@ -197,13 +198,40 @@ result = handoff.coordinate_task("Yardım et")
 ### 6. Hafıza Yönetimi
 
 ```python
-# Hafızada bilgi saklayın
+# Standart hafıza kullanın
 agent.store_memory("kullanıcı_tercihleri", {"dil": "Türkçe", "stil": "resmi"})
 agent.store_memory("sohbet_geçmişi", ["Önceki konuşma bağlamı"])
 
 # Hafızadan bilgi alın
 tercihler = agent.retrieve_memory("kullanıcı_tercihleri")
 geçmiş = agent.retrieve_memory("sohbet_geçmişi")
+
+# LangMem ile gelişmiş hafıza yönetimi
+from core_agent import create_langmem_agent
+
+# Kısa vadeli hafıza (özetleme ile)
+short_agent = create_langmem_agent(
+    model, 
+    memory_type="langmem_short",
+    max_tokens=512,
+    max_summary_tokens=128
+)
+
+# Uzun vadeli hafıza  
+long_agent = create_langmem_agent(
+    model,
+    memory_type="langmem_long"
+)
+
+# Her ikisi birlikte
+combined_agent = create_langmem_agent(
+    model,
+    memory_type="langmem_combined",
+    enable_summarization=True
+)
+
+# Hafıza durumu kontrolü
+memory_summary = agent.get_memory_summary()
 ```
 
 ### 7. MCP (Model Context Protocol) Entegrasyonu

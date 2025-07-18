@@ -53,9 +53,14 @@ except ImportError:
 
 try:
     from langmem import ShortTermMemory, LongTermMemory
+    from langmem.short_term import SummarizationNode, RunningSummary
+    LANGMEM_AVAILABLE = True
 except ImportError:
     ShortTermMemory = None
     LongTermMemory = None
+    SummarizationNode = None
+    RunningSummary = None
+    LANGMEM_AVAILABLE = False
 
 try:
     from agentevals import AgentEvaluator
@@ -97,8 +102,13 @@ class AgentConfig:
     
     # Memory settings
     enable_memory: bool = True
-    memory_type: str = "memory"  # "memory", "redis", or "both"
+    memory_type: str = "memory"  # "memory", "redis", "both", "langmem_short", "langmem_long", "langmem_combined"
     redis_url: Optional[str] = None
+    
+    # LangMem configuration
+    langmem_max_tokens: int = 384
+    langmem_max_summary_tokens: int = 128
+    langmem_enable_summarization: bool = True
     
     # Multi-agent settings
     enable_supervisor: bool = False
@@ -187,6 +197,7 @@ class MemoryManager:
         self.short_term_memory = None
         self.long_term_memory = None
         self.redis_saver = None
+        self.summarization_node = None
         
         self._initialize_memory()
         
@@ -201,11 +212,49 @@ class MemoryManager:
                     self.redis_saver = RedisSaver.from_conn_string(self.config.redis_url)
                     logger.info("Redis memory initialized")
                     
-            if ShortTermMemory:
+            # Initialize langmem components based on memory_type
+            if self.config.memory_type in ["langmem_short", "langmem_combined"] and LANGMEM_AVAILABLE:
+                self._initialize_langmem_short()
+                
+            if self.config.memory_type in ["langmem_long", "langmem_combined"] and LANGMEM_AVAILABLE:
+                self._initialize_langmem_long()
+                
+            # Fallback to basic langmem if available
+            if ShortTermMemory and not self.short_term_memory:
                 self.short_term_memory = ShortTermMemory()
                 
+            if LongTermMemory and not self.long_term_memory:
+                self.long_term_memory = LongTermMemory()
+                
+    def _initialize_langmem_short(self):
+        """Initialize LangMem short-term memory with summarization"""
+        try:
+            if ShortTermMemory:
+                self.short_term_memory = ShortTermMemory()
+                logger.info("LangMem short-term memory initialized")
+                
+            if SummarizationNode and self.config.langmem_enable_summarization:
+                from langchain_core.messages.utils import count_tokens_approximately
+                self.summarization_node = SummarizationNode(
+                    token_counter=count_tokens_approximately,
+                    model=self.config.model,
+                    max_tokens=self.config.langmem_max_tokens,
+                    max_summary_tokens=self.config.langmem_max_summary_tokens,
+                    output_messages_key="llm_input_messages"
+                )
+                logger.info("LangMem summarization node initialized")
+                
+        except Exception as e:
+            logger.warning(f"Failed to initialize LangMem short-term memory: {e}")
+            
+    def _initialize_langmem_long(self):
+        """Initialize LangMem long-term memory"""
+        try:
             if LongTermMemory:
                 self.long_term_memory = LongTermMemory()
+                logger.info("LangMem long-term memory initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize LangMem long-term memory: {e}")
                 
     def get_checkpointer(self):
         """Get the appropriate checkpointer based on configuration"""
@@ -227,6 +276,17 @@ class MemoryManager:
         elif memory_type == "long" and self.long_term_memory:
             return self.long_term_memory.retrieve(key)
         return None
+        
+    def get_summarization_hook(self):
+        """Get the summarization hook for pre_model_hook"""
+        return self.summarization_node
+        
+    def has_langmem_support(self) -> bool:
+        """Check if langmem is available and configured"""
+        return (
+            LANGMEM_AVAILABLE and 
+            self.config.memory_type in ["langmem_short", "langmem_long", "langmem_combined"]
+        )
 
 
 class SupervisorManager:
@@ -502,14 +562,24 @@ class CoreAgent:
                 'tools': self.config.tools,
             }
             
-            if self.config.pre_model_hook:
-                kwargs['pre_model_hook'] = self.config.pre_model_hook
+            # Use langmem summarization hook if available and configured
+            pre_model_hook = self.config.pre_model_hook
+            if self.memory_manager.has_langmem_support() and self.memory_manager.get_summarization_hook():
+                pre_model_hook = self.memory_manager.get_summarization_hook()
+                logger.info("Using LangMem summarization hook")
+            
+            if pre_model_hook:
+                kwargs['pre_model_hook'] = pre_model_hook
                 
             if self.config.post_model_hook:
                 kwargs['post_model_hook'] = self.config.post_model_hook
                 
             if self.config.response_format:
                 kwargs['response_format'] = self.config.response_format
+                
+            # Add checkpointer
+            if self.config.enable_memory:
+                kwargs['checkpointer'] = self.memory_manager.get_checkpointer()
                 
             self.compiled_graph = create_react_agent(**kwargs)
             logger.info("Agent built with prebuilt components")
@@ -700,6 +770,23 @@ class CoreAgent:
         """Retrieve information from memory"""
         return self.memory_manager.retrieve_memory(key, memory_type)
         
+    # LangMem specific methods
+    
+    def has_langmem_support(self) -> bool:
+        """Check if LangMem is available and configured"""
+        return self.memory_manager.has_langmem_support()
+        
+    def get_memory_summary(self) -> Dict[str, Any]:
+        """Get memory configuration summary"""
+        return {
+            "memory_type": self.config.memory_type,
+            "langmem_available": LANGMEM_AVAILABLE,
+            "langmem_configured": self.has_langmem_support(),
+            "summarization_enabled": self.config.langmem_enable_summarization,
+            "max_tokens": self.config.langmem_max_tokens,
+            "max_summary_tokens": self.config.langmem_max_summary_tokens
+        }
+        
     # MCP (Model Context Protocol) management
     
     async def get_mcp_tools(self) -> List[Any]:
@@ -792,6 +879,7 @@ class CoreAgent:
                 "subgraphs": len(self.subgraph_manager.subgraphs),
             },
             "memory_type": self.config.memory_type,
+            "langmem_support": self.has_langmem_support(),
             "supervised_agents": len(self.supervisor_manager.agents),
             "mcp_servers": len(self.config.mcp_servers),
             "mcp_tools": len(self.mcp_manager.mcp_tools),
@@ -921,6 +1009,32 @@ def create_mcp_agent(
     return CoreAgent(config)
 
 
+def create_langmem_agent(
+    model: BaseChatModel,
+    tools: List[BaseTool] = None,
+    memory_type: str = "langmem_combined",
+    max_tokens: int = 384,
+    max_summary_tokens: int = 128,
+    enable_summarization: bool = True,
+    prompt: str = "You are an assistant with advanced memory management capabilities."
+) -> CoreAgent:
+    """Create an agent with LangMem memory management"""
+    config = AgentConfig(
+        name="LangMemAgent",
+        model=model,
+        system_prompt=prompt,
+        tools=tools or [],
+        enable_memory=True,
+        memory_type=memory_type,
+        langmem_max_tokens=max_tokens,
+        langmem_max_summary_tokens=max_summary_tokens,
+        langmem_enable_summarization=enable_summarization,
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
 # Example usage and template
 if __name__ == "__main__":
     # This is an example of how to use the CoreAgent
@@ -932,6 +1046,6 @@ if __name__ == "__main__":
     print("- langgraph-supervisor:", "✓" if create_supervisor else "✗")
     print("- langgraph-swarm:", "✓" if create_swarm else "✗")
     print("- langchain-mcp-adapters:", "✓" if MCP_AVAILABLE else "✗")
-    print("- langmem:", "✓" if ShortTermMemory else "✗")
+    print("- langmem:", "✓" if LANGMEM_AVAILABLE else "✗")
     print("- agentevals:", "✓" if AgentEvaluator else "✗")
     print("- Redis support:", "✓" if RedisSaver else "✗")
