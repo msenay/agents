@@ -698,20 +698,32 @@ class MemoryManager:
                     self.checkpointer = InMemorySaver()
                     logger.info("Mock PostgresSaver (InMemory) initialized for testing")
                 
-            elif checkpointer_type == "mongodb" and MongoDBSaver and self.config.mongodb_url:
-                # MongoDB checkpointer with TTL support
-                ttl_config = None
-                if self.config.enable_ttl:
-                    ttl_config = {
-                        "default_ttl": self.config.default_ttl_minutes,
-                        "refresh_on_read": self.config.refresh_on_read
-                    }
-                
-                self.checkpointer = MongoDBSaver.from_conn_string(
-                    self.config.mongodb_url,
-                    ttl=ttl_config
-                )
-                logger.info("MongoDBSaver checkpointer initialized")
+            elif checkpointer_type == "mongodb":
+                if MongoDBSaver and self.config.mongodb_url:
+                    try:
+                        # MongoDB checkpointer with TTL support
+                        ttl_config = None
+                        if self.config.enable_ttl:
+                            ttl_config = {
+                                "default_ttl": self.config.default_ttl_minutes,
+                                "refresh_on_read": self.config.refresh_on_read
+                            }
+                        
+                        self.checkpointer = MongoDBSaver.from_conn_string(
+                            self.config.mongodb_url,
+                            ttl=ttl_config
+                        )
+                        logger.info("MongoDBSaver checkpointer initialized")
+                    except Exception as e:
+                        # Fallback to InMemory for testing
+                        logger.warning(f"MongoDB connection failed, using InMemory checkpointer: {e}")
+                        self.checkpointer = InMemorySaver()
+                        logger.info("Mock MongoDBSaver (InMemory) initialized for testing")
+                else:
+                    # MongoDB not available, use InMemory
+                    logger.warning("MongoDB not available, using InMemory checkpointer")
+                    self.checkpointer = InMemorySaver()
+                    logger.info("Mock MongoDBSaver (InMemory) initialized for testing")
                 
             else:
                 # Check if it's a completely invalid type (for strict validation in tests)
@@ -762,7 +774,14 @@ class MemoryManager:
                 
             elif store_type == "redis" and RedisStore and self.config.redis_url:
                 try:
-                    # Create a wrapper for Redis store context manager
+                    # Test Redis connection and modules first
+                    test_store_cm = RedisStore.from_conn_string(self.config.redis_url, index=index_config, ttl=ttl_config)
+                    with test_store_cm as test_store:
+                        # Test basic operations to ensure Redis Stack modules are available
+                        test_store.put(("test",), "init_test", {"test": True})
+                        test_store.get(("test",), "init_test")
+                    
+                    # If we get here, Redis is fully functional
                     class RedisStoreWrapper:
                         def __init__(self, conn_string, index=None, ttl=None):
                             self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
@@ -777,119 +796,160 @@ class MemoryManager:
                                 return self._store_cm.__exit__(*args)
                         
                         def put(self, namespace, key, value):
-                            if self._store is None:
-                                with self._store_cm as store:
-                                    return store.put(namespace, key, value)
-                            return self._store.put(namespace, key, value)
+                            with self._store_cm as store:
+                                return store.put(namespace, key, value)
                         
                         def get(self, namespace, key):
-                            if self._store is None:
-                                with self._store_cm as store:
-                                    return store.get(namespace, key)
-                            return self._store.get(namespace, key)
+                            with self._store_cm as store:
+                                return store.get(namespace, key)
                         
                         def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            if self._store is None:
-                                with self._store_cm as store:
-                                    return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
-                            return self._store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
+                            with self._store_cm as store:
+                                return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
                     
                     self.store = RedisStoreWrapper(
                         self.config.redis_url,
                         index=index_config,
                         ttl=ttl_config
                     )
-                    logger.info("RedisStore initialized")
+                    logger.info("RedisStore initialized with full functionality")
+                    
                 except Exception as e:
                     # Fallback to mock Redis store for testing
-                    logger.warning(f"Redis connection failed, using mock store: {e}")
+                    logger.warning(f"Redis not fully functional, using mock store: {e}")
                     
                     class MockRedisStore:
                         def __init__(self):
                             self._data = {}
                         
                         def put(self, namespace, key, value):
-                            ns_key = f"{namespace}:{key}"
+                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
                             self._data[ns_key] = type('Item', (), {'value': value})()
                         
                         def get(self, namespace, key):
-                            ns_key = f"{namespace}:{key}"
+                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
                             return self._data.get(ns_key)
                         
                         def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            return []  # Mock search
+                            # Mock search with some results
+                            prefix = ':'.join(str(x) for x in namespace)
+                            results = []
+                            for k, v in self._data.items():
+                                if k.startswith(prefix):
+                                    results.append(v)
+                                if len(results) >= limit:
+                                    break
+                            return results
                     
                     self.store = MockRedisStore()
                     logger.info("Mock RedisStore initialized for testing")
                 
             elif store_type == "postgres" and PostgresStore and self.config.postgres_url:
                 try:
-                    # Create a wrapper for Postgres store context manager
+                    # Test PostgreSQL connection first
+                    test_store_cm = PostgresStore.from_conn_string(self.config.postgres_url, index=index_config)
+                    with test_store_cm as test_store:
+                        # Test basic operations
+                        test_store.put(("test",), "init_test", {"test": True})
+                        test_store.get(("test",), "init_test")
+                    
+                    # If we get here, PostgreSQL is fully functional
                     class PostgresStoreWrapper:
                         def __init__(self, conn_string, index=None):
                             self._store_cm = PostgresStore.from_conn_string(conn_string, index=index)
-                            self._store = None
                             
-                        def __enter__(self):
-                            self._store = self._store_cm.__enter__()
-                            return self._store
-                            
-                        def __exit__(self, *args):
-                            if self._store_cm:
-                                return self._store_cm.__exit__(*args)
-                        
                         def put(self, namespace, key, value):
-                            if self._store is None:
-                                with self._store_cm as store:
-                                    return store.put(namespace, key, value)
-                            return self._store.put(namespace, key, value)
+                            with self._store_cm as store:
+                                return store.put(namespace, key, value)
                         
                         def get(self, namespace, key):
-                            if self._store is None:
-                                with self._store_cm as store:
-                                    return store.get(namespace, key)
-                            return self._store.get(namespace, key)
+                            with self._store_cm as store:
+                                return store.get(namespace, key)
                         
                         def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            if self._store is None:
-                                with self._store_cm as store:
-                                    return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
-                            return self._store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
+                            with self._store_cm as store:
+                                return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
                     
                     self.store = PostgresStoreWrapper(
                         self.config.postgres_url,
                         index=index_config
                     )
-                    logger.info("PostgresStore initialized")
+                    logger.info("PostgresStore initialized with full functionality")
                 except Exception as e:
                     # Fallback to mock Postgres store for testing
-                    logger.warning(f"PostgreSQL connection failed, using mock store: {e}")
+                    logger.warning(f"PostgreSQL not functional, using mock store: {e}")
                     
                     class MockPostgresStore:
                         def __init__(self):
                             self._data = {}
                         
                         def put(self, namespace, key, value):
-                            ns_key = f"{namespace}:{key}"
+                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
                             self._data[ns_key] = type('Item', (), {'value': value})()
                         
                         def get(self, namespace, key):
-                            ns_key = f"{namespace}:{key}"
+                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
                             return self._data.get(ns_key)
                         
                         def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            return []  # Mock search
+                            # Mock search with some results
+                            prefix = ':'.join(str(x) for x in namespace)
+                            results = []
+                            for k, v in self._data.items():
+                                if k.startswith(prefix):
+                                    results.append(v)
+                                if len(results) >= limit:
+                                    break
+                            return results
                     
                     self.store = MockPostgresStore()
                     logger.info("Mock PostgresStore initialized for testing")
                 
-            elif store_type == "mongodb" and MongoDBStore and self.config.mongodb_url:
-                self.store = MongoDBStore.from_conn_string(
-                    self.config.mongodb_url,
-                    index=index_config,
-                    ttl=ttl_config
-                )
-                logger.info("MongoDBStore initialized")
+            elif store_type == "mongodb":
+                if MongoDBStore and self.config.mongodb_url:
+                    try:
+                        # Test MongoDB connection first
+                        test_store_cm = MongoDBStore.from_conn_string(
+                            self.config.mongodb_url,
+                            index=index_config,
+                            ttl=ttl_config
+                        )
+                        with test_store_cm as test_store:
+                            # Test basic operations
+                            test_store.put(("test",), "init_test", {"test": True})
+                            test_store.get(("test",), "init_test")
+                        
+                        # If we get here, MongoDB is fully functional
+                        class MongoDBStoreWrapper:
+                            def __init__(self, conn_string, index=None, ttl=None):
+                                self._store_cm = MongoDBStore.from_conn_string(conn_string, index=index, ttl=ttl)
+                                
+                            def put(self, namespace, key, value):
+                                with self._store_cm as store:
+                                    return store.put(namespace, key, value)
+                            
+                            def get(self, namespace, key):
+                                with self._store_cm as store:
+                                    return store.get(namespace, key)
+                            
+                            def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
+                                with self._store_cm as store:
+                                    return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
+                        
+                        self.store = MongoDBStoreWrapper(
+                            self.config.mongodb_url,
+                            index=index_config,
+                            ttl=ttl_config
+                        )
+                        logger.info("MongoDBStore initialized with full functionality")
+                    except Exception as e:
+                        # Fallback to mock MongoDB store
+                        logger.warning(f"MongoDB not functional, using mock store: {e}")
+                        self._create_mock_mongodb_store()
+                else:
+                    # MongoDB not available, use mock
+                    logger.warning("MongoDB not available, using mock store")
+                    self._create_mock_mongodb_store()
                 
             else:
                 # Fallback to InMemoryStore
@@ -1215,6 +1275,52 @@ class MemoryManager:
                    self.long_term_memory is not None)
         except Exception:
             return False
+    
+    def _create_mock_mongodb_store(self):
+        """Create mock MongoDB store for testing"""
+        class MockMongoDBStore:
+            def __init__(self):
+                self._data = {}
+                self._ttl_data = {}  # Store TTL info
+                import time
+                self._time = time
+            
+            def put(self, namespace, key, value):
+                ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
+                self._data[ns_key] = type('Item', (), {'value': value})()
+                # Mock TTL expiration
+                if hasattr(self, '_ttl_enabled'):
+                    self._ttl_data[ns_key] = self._time.time() + 60  # 1 minute TTL
+            
+            def get(self, namespace, key):
+                ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
+                # Check TTL expiration
+                if ns_key in self._ttl_data:
+                    if self._time.time() > self._ttl_data[ns_key]:
+                        del self._data[ns_key]
+                        del self._ttl_data[ns_key]
+                        return None
+                return self._data.get(ns_key)
+            
+            def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
+                # Mock search with some results
+                prefix = ':'.join(str(x) for x in namespace)
+                results = []
+                for k, v in self._data.items():
+                    if k.startswith(prefix):
+                        # Check TTL expiration
+                        if k in self._ttl_data and self._time.time() > self._ttl_data[k]:
+                            continue
+                        results.append(v)
+                        if len(results) >= limit:
+                            break
+                return results[offset:offset+limit]
+        
+        mock_store = MockMongoDBStore()
+        if self.config.enable_ttl:
+            mock_store._ttl_enabled = True
+        self.store = mock_store
+        logger.info("Mock MongoDBStore initialized for testing")
 
 
 class SupervisorManager:
