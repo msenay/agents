@@ -1,0 +1,20 @@
+# Core LangGraph dependencies
+langgraph>=0.2.0
+langchain-core>=0.3.0
+langchain-openai>=0.2.0
+
+# Optional memory backends
+redis>=5.0.0
+pymongo>=4.0.0
+psycopg2-binary>=2.9.0
+
+# Optional advanced features
+langmem>=0.1.0
+agentevals>=0.1.0
+
+# Testing dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# Development dependencies
+python-dotenv>=1.0.0
