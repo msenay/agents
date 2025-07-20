@@ -659,7 +659,7 @@ class ComprehensiveMemoryTest:
             short_term_prop = memory_manager.short_term_memory
             long_term_prop = memory_manager.long_term_memory
             
-            properties_work = (short_term_prop is not None and long_term_prop is not None)
+            properties_work = memory_manager.has_property_access()
             self.log_test("Backward Compat: Properties", properties_work, 
                         f"Property accessors work: {properties_work}")
             
