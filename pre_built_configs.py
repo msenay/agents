@@ -28,170 +28,413 @@ from typing import Optional, Dict, Any
 
 
 # =============================================================================
-# 🚀 HIGH PERFORMANCE PRODUCTION CONFIGS
+# 🧑‍💻 SOFTWARE DEVELOPMENT WORKFLOW CONFIGS
 # =============================================================================
 
-def create_high_performance_config(
-    redis_url: str = "redis://localhost:6379",
-    postgres_url: str = "postgresql://user:pass@localhost:5432/coreagent"
+def create_coder_agent_config(
+    postgres_url: str = "postgresql://user:pass@localhost:5432/codeagent"
 ) -> AgentConfig:
     """
-    🚀 HIGH PERFORMANCE PRODUCTION CONFIGURATION
+    👨‍💻 CODER AGENT CONFIGURATION
     
-    Perfect for: Production environments, high-throughput applications, enterprise use
+    Perfect for: Code generation, refactoring, feature implementation, bug fixes
     
     Features:
-    - ✅ Redis for ultra-fast short-term memory and session sharing
-    - ✅ PostgreSQL for reliable long-term memory persistence  
-    - ✅ Aggressive rate limiting to prevent API abuse
-    - ✅ Message trimming for optimal token usage
-    - ✅ AI summarization to preserve context efficiently
-    - ✅ Semantic search with embeddings for intelligent retrieval
-    - ✅ Memory tools for self-optimizing agents
-    - ✅ TTL support for automatic memory cleanup
+    - ✅ PostgreSQL for persistent code knowledge and patterns
+    - ✅ Large context window for full file analysis
+    - ✅ Semantic search for code pattern retrieval
+    - ✅ Memory tools for learning coding patterns
+    - ✅ No rate limiting for intensive coding sessions
+    - ✅ Code-focused evaluation metrics
     
     Use Cases:
-    - Customer service chatbots with high volume
-    - Multi-tenant applications requiring isolation
-    - Enterprise AI assistants with complex workflows
-    - Production APIs serving thousands of users
+    - Feature implementation
+    - Code refactoring and optimization
+    - Bug fixing and debugging
+    - Code pattern recognition and reuse
+    - API integration and development
     
-    Performance Characteristics:
-    - Memory: Hybrid (Redis + PostgreSQL) for speed + persistence
-    - Rate Limiting: 5 req/sec with burst capacity
-    - Context Management: Smart trimming + AI summarization
-    - Scalability: Horizontal scaling ready with Redis clustering
+    Coding Benefits:
+    - Maintains context across large codebases
+    - Learns from previous coding patterns
+    - Provides consistent code style
+    - Handles complex multi-file changes
     
     Args:
-        redis_url: Redis connection string for fast memory operations
-        postgres_url: PostgreSQL connection string for persistent storage
+        postgres_url: PostgreSQL connection for code knowledge storage
         
     Returns:
-        AgentConfig: Optimized configuration for high-performance production
+        AgentConfig: Configuration optimized for code generation
     """
     return AgentConfig(
-        name="HighPerformanceAgent",
+        name="CoderAgent",
         
-        # Memory: Hybrid approach for speed + persistence
+        # Long-term code knowledge storage
         enable_memory=True,
-        memory_types=["short_term", "long_term", "session", "semantic"],
-        memory_backend="redis",  # Redis for speed
-        redis_url=redis_url,
-        postgres_url=postgres_url,  # Available for fallback
+        memory_types=["long_term", "semantic"],
+        memory_backend="postgres",
+        postgres_url=postgres_url,
         
-        # Session management for multi-user environments
-        session_id=None,  # Will be set per request
-        memory_namespace="production",
+        # Code project organization
+        memory_namespace="code_knowledge",
         
-        # Context optimization for cost efficiency
+        # Large context for full file analysis
         enable_message_trimming=True,
-        max_tokens=8000,  # Large context window
-        trim_strategy="last",
+        max_tokens=32000,  # Large context for code
+        trim_strategy="first",  # Keep recent code context
         
-        # AI features for intelligent operation
-        enable_summarization=True,
-        max_summary_tokens=256,
-        summarization_trigger_tokens=6000,
-        
-        # Memory tools for self-optimization
-        enable_memory_tools=True,
-        memory_namespace_store="prod_memories",
-        
-        # Semantic search for intelligent retrieval
-        embedding_model="openai:text-embedding-3-small",
-        embedding_dims=1536,
+        # Semantic search for code patterns
+        embedding_model="openai:text-embedding-3-large",
+        embedding_dims=3072,
         distance_type="cosine",
         
-        # TTL for automatic cleanup
-        enable_ttl=True,
-        default_ttl_minutes=2880,  # 48 hours
-        refresh_on_read=True,
+        # Memory tools for pattern learning
+        enable_memory_tools=True,
+        memory_namespace_store="code_patterns",
         
-        # Rate limiting for API protection
-        enable_rate_limiting=True,
-        requests_per_second=5.0,  # Conservative for production
-        max_bucket_size=15.0,  # Allow bursts
-        check_every_n_seconds=0.1,
+        # No rate limiting for intensive coding
+        enable_rate_limiting=False,
         
-        # Production-ready streaming
-        enable_streaming=True,
+        # No streaming for careful code generation
+        enable_streaming=False,
         
-        # Evaluation for quality monitoring
+        # Code quality evaluation
         enable_evaluation=True,
-        evaluation_metrics=["accuracy", "relevance", "helpfulness", "safety"]
+        evaluation_metrics=["code_quality", "functionality", "maintainability", "performance"]
     )
 
 
-def create_distributed_config(
-    redis_url: str = "redis://redis-cluster:6379",
-    mongodb_url: str = "mongodb://mongo-cluster:27017/coreagent"
+def create_orchestrator_agent_config(
+    redis_url: str = "redis://localhost:6379"
 ) -> AgentConfig:
     """
-    🌐 DISTRIBUTED SYSTEMS CONFIGURATION
+    🎼 ORCHESTRATOR AGENT CONFIGURATION
     
-    Perfect for: Microservices, cloud-native apps, multi-region deployments
+    Perfect for: Workflow coordination, agent supervision, task distribution
     
     Features:
-    - ✅ Redis clustering for distributed short-term memory
-    - ✅ MongoDB for flexible, schema-less document storage
-    - ✅ Session-based memory for stateless microservices
-    - ✅ TTL support for automatic data expiration
-    - ✅ Supervisor pattern for service orchestration
-    - ✅ Rate limiting with shared state
+    - ✅ Redis for fast inter-agent communication
+    - ✅ Supervisor pattern for agent coordination
+    - ✅ Session memory for workflow state management
+    - ✅ Message trimming for workflow efficiency
+    - ✅ Rate limiting for controlled coordination
+    - ✅ Streaming for real-time workflow updates
     
     Use Cases:
-    - Microservices architectures
-    - Multi-region deployments
-    - Cloud-native applications
-    - Container orchestration (Kubernetes)
+    - Software development workflow coordination
+    - Multi-agent task distribution
+    - Build pipeline orchestration
+    - Quality assurance coordination
+    - Release management supervision
     
-    Architecture Benefits:
-    - Horizontal scaling with Redis/MongoDB clustering
-    - Stateless service design with session memory
-    - Automatic failover and recovery
-    - Cross-service communication patterns
+    Orchestration Benefits:
+    - Coordinates multiple specialized agents
+    - Maintains workflow state and progress
+    - Handles error recovery and retries
+    - Provides real-time workflow monitoring
     
     Args:
-        redis_url: Redis cluster connection string
-        mongodb_url: MongoDB cluster connection string
+        redis_url: Redis connection for agent communication
         
     Returns:
-        AgentConfig: Configuration optimized for distributed systems
+        AgentConfig: Configuration optimized for workflow orchestration
     """
     return AgentConfig(
-        name="DistributedAgent",
+        name="OrchestratorAgent",
         
-        # Distributed memory architecture
+        # Fast communication for coordination
         enable_memory=True,
-        memory_types=["short_term", "long_term", "session"],
-        memory_backend="redis",  # Redis for distributed caching
+        memory_types=["short_term", "session"],
+        memory_backend="redis",
         redis_url=redis_url,
-        mongodb_url=mongodb_url,
         
-        # Session-based for stateless services
-        memory_namespace="distributed",
+        # Workflow state management
+        memory_namespace="workflow",
         
-        # TTL for data lifecycle management
-        enable_ttl=True,
-        default_ttl_minutes=1440,  # 24 hours
-        refresh_on_read=True,
-        
-        # Context management for cost control
+        # Efficient context for coordination
         enable_message_trimming=True,
-        max_tokens=4000,
+        max_tokens=8000,
         trim_strategy="last",
         
-        # Supervisor pattern for service coordination
+        # Supervisor pattern for agent management
         enable_supervisor=True,
-        agents={},  # Will be populated with microservices
+        agents={},  # Will be populated with workflow agents
         
-        # Rate limiting with distributed state
+        # Controlled coordination rate
         enable_rate_limiting=True,
-        requests_per_second=3.0,
-        max_bucket_size=10.0,
+        requests_per_second=10.0,  # High for coordination
+        max_bucket_size=30.0,
         
-        # Streaming for real-time responses
-        enable_streaming=True
+        # Real-time workflow updates
+        enable_streaming=True,
+        
+        # Workflow quality evaluation
+        enable_evaluation=True,
+        evaluation_metrics=["workflow_efficiency", "coordination_quality", "error_handling"]
+    )
+
+
+def create_unit_tester_agent_config() -> AgentConfig:
+    """
+    🧪 UNIT TESTER AGENT CONFIGURATION
+    
+    Perfect for: Test generation, test coverage analysis, test optimization
+    
+    Features:
+    - ✅ InMemory for fast test iteration
+    - ✅ Large context for analyzing code and existing tests
+    - ✅ No rate limiting for rapid test generation
+    - ✅ Memory tools for test pattern recognition
+    - ✅ Test-focused evaluation metrics
+    
+    Use Cases:
+    - Unit test generation for new code
+    - Test coverage gap analysis
+    - Test case optimization and refactoring
+    - Edge case identification
+    - Test data generation
+    
+    Testing Benefits:
+    - Generates comprehensive test suites
+    - Identifies missing test scenarios
+    - Maintains test quality standards
+    - Optimizes test execution speed
+    
+    Returns:
+        AgentConfig: Configuration optimized for unit test generation
+    """
+    return AgentConfig(
+        name="UnitTesterAgent",
+        
+        # Fast test iteration
+        enable_memory=True,
+        memory_types=["short_term", "long_term"],
+        memory_backend="inmemory",
+        
+        # Test project organization
+        memory_namespace="test_generation",
+        
+        # Large context for code analysis
+        enable_message_trimming=True,
+        max_tokens=24000,  # Large for analyzing code + tests
+        trim_strategy="first",
+        
+        # Memory tools for test patterns
+        enable_memory_tools=True,
+        memory_namespace_store="test_patterns",
+        
+        # No rate limiting for rapid testing
+        enable_rate_limiting=False,
+        
+        # No streaming for thorough test generation
+        enable_streaming=False,
+        
+        # Test quality evaluation
+        enable_evaluation=True,
+        evaluation_metrics=["test_coverage", "test_quality", "edge_case_detection", "maintainability"]
+    )
+
+
+def create_executer_agent_config() -> AgentConfig:
+    """
+    ⚡ EXECUTER AGENT CONFIGURATION
+    
+    Perfect for: Running tests, executing builds, environment management
+    
+    Features:
+    - ✅ InMemory for fast execution cycles
+    - ✅ Session memory for execution state tracking
+    - ✅ Streaming for real-time execution output
+    - ✅ Message trimming for execution log management
+    - ✅ High rate limiting for rapid execution commands
+    
+    Use Cases:
+    - Running unit tests and test suites
+    - Executing build scripts and pipelines
+    - Environment setup and teardown
+    - Performance benchmarking
+    - Integration test execution
+    
+    Execution Benefits:
+    - Handles concurrent test execution
+    - Manages execution environments
+    - Provides real-time execution feedback
+    - Tracks execution history and results
+    
+    Returns:
+        AgentConfig: Configuration optimized for code execution
+    """
+    return AgentConfig(
+        name="ExecuterAgent",
+        
+        # Fast execution tracking
+        enable_memory=True,
+        memory_types=["short_term", "session"],
+        memory_backend="inmemory",
+        
+        # Execution state tracking
+        memory_namespace="execution",
+        
+        # Execution log management
+        enable_message_trimming=True,
+        max_tokens=8000,
+        trim_strategy="last",  # Keep recent execution logs
+        
+        # High rate for rapid execution
+        enable_rate_limiting=True,
+        requests_per_second=20.0,  # High for execution commands
+        max_bucket_size=100.0,
+        
+        # Real-time execution feedback
+        enable_streaming=True,
+        
+        # Execution quality evaluation
+        enable_evaluation=True,
+        evaluation_metrics=["execution_success", "performance", "reliability", "error_handling"]
+    )
+
+
+def create_code_reviewer_agent_config(
+    postgres_url: str = "postgresql://user:pass@localhost:5432/codereview"
+) -> AgentConfig:
+    """
+    🔍 CODE REVIEWER AGENT CONFIGURATION
+    
+    Perfect for: Code review, quality analysis, security auditing, best practices
+    
+    Features:
+    - ✅ PostgreSQL for persistent review knowledge and patterns
+    - ✅ Semantic search for similar code review cases
+    - ✅ Large context for comprehensive code analysis
+    - ✅ Memory tools for review pattern learning
+    - ✅ Quality-focused evaluation metrics
+    
+    Use Cases:
+    - Pull request review automation
+    - Code quality assessment
+    - Security vulnerability detection
+    - Best practice enforcement
+    - Architecture review and suggestions
+    
+    Review Benefits:
+    - Provides consistent review quality
+    - Identifies security vulnerabilities
+    - Enforces coding standards
+    - Learns from review feedback
+    
+    Args:
+        postgres_url: PostgreSQL connection for review knowledge storage
+        
+    Returns:
+        AgentConfig: Configuration optimized for code review
+    """
+    return AgentConfig(
+        name="CodeReviewerAgent",
+        
+        # Persistent review knowledge
+        enable_memory=True,
+        memory_types=["long_term", "semantic"],
+        memory_backend="postgres",
+        postgres_url=postgres_url,
+        
+        # Code review organization
+        memory_namespace="code_review",
+        
+        # Large context for comprehensive review
+        enable_message_trimming=True,
+        max_tokens=28000,  # Large for reviewing multiple files
+        trim_strategy="first",
+        
+        # Semantic search for similar reviews
+        embedding_model="openai:text-embedding-3-large",
+        embedding_dims=3072,
+        distance_type="cosine",
+        
+        # Memory tools for review patterns
+        enable_memory_tools=True,
+        memory_namespace_store="review_patterns",
+        
+        # Moderate rate limiting for thorough review
+        enable_rate_limiting=True,
+        requests_per_second=2.0,  # Slower for thorough analysis
+        max_bucket_size=8.0,
+        
+        # No streaming for comprehensive review
+        enable_streaming=False,
+        
+        # Review quality evaluation
+        enable_evaluation=True,
+        evaluation_metrics=["review_quality", "security_detection", "best_practices", "constructiveness"]
+    )
+
+
+def create_build_agent_config(
+    redis_url: str = "redis://localhost:6379"
+) -> AgentConfig:
+    """
+    🏗️ BUILD AGENT CONFIGURATION
+    
+    Perfect for: Build automation, CI/CD pipeline, versioning, GitHub operations
+    
+    Features:
+    - ✅ Redis for fast build state management
+    - ✅ Session memory for build pipeline tracking
+    - ✅ TTL for build artifact cleanup
+    - ✅ Streaming for real-time build output
+    - ✅ Build-focused evaluation metrics
+    
+    Use Cases:
+    - Automated build pipeline execution
+    - Version tagging and release management
+    - GitHub repository operations
+    - Docker image building and publishing
+    - Deployment automation
+    
+    Build Benefits:
+    - Manages complex build pipelines
+    - Handles version control operations
+    - Provides build artifact management
+    - Enables continuous integration/deployment
+    
+    Args:
+        redis_url: Redis connection for build state management
+        
+    Returns:
+        AgentConfig: Configuration optimized for build operations
+    """
+    return AgentConfig(
+        name="BuildAgent",
+        
+        # Build state management
+        enable_memory=True,
+        memory_types=["short_term", "session"],
+        memory_backend="redis",
+        redis_url=redis_url,
+        
+        # Build pipeline organization
+        memory_namespace="build_pipeline",
+        
+        # Build log management
+        enable_message_trimming=True,
+        max_tokens=12000,
+        trim_strategy="last",  # Keep recent build logs
+        
+        # TTL for build artifact cleanup
+        enable_ttl=True,
+        default_ttl_minutes=4320,  # 3 days
+        refresh_on_read=False,
+        
+        # Build rate management
+        enable_rate_limiting=True,
+        requests_per_second=5.0,
+        max_bucket_size=20.0,
+        
+        # Real-time build feedback
+        enable_streaming=True,
+        
+        # Build quality evaluation
+        enable_evaluation=True,
+        evaluation_metrics=["build_success", "build_time", "artifact_quality", "deployment_readiness"]
     )
 
 
@@ -337,347 +580,33 @@ def create_testing_config() -> AgentConfig:
     )
 
 
-# =============================================================================
-# 🎯 SPECIALIZED USE CASE CONFIGS
-# =============================================================================
 
-def create_customer_service_config(
-    redis_url: str = "redis://localhost:6379"
-) -> AgentConfig:
-    """
-    👥 CUSTOMER SERVICE CONFIGURATION
-    
-    Perfect for: Customer support, help desks, service chatbots, FAQ systems
-    
-    Features:
-    - ✅ Session memory for conversation continuity
-    - ✅ Semantic search for knowledge base integration
-    - ✅ Message trimming to handle long conversations
-    - ✅ AI summarization for conversation history
-    - ✅ Memory tools for learning from interactions
-    - ✅ Rate limiting to prevent abuse
-    
-    Use Cases:
-    - Customer support chatbots
-    - Help desk automation
-    - FAQ and knowledge base systems
-    - Multi-turn problem solving
-    - Conversation hand-off to humans
-    
-    Customer Service Benefits:
-    - Maintains conversation context across sessions
-    - Learns from previous interactions
-    - Handles escalations gracefully
-    - Provides consistent service quality
-    
-    Args:
-        redis_url: Redis connection for session persistence
-        
-    Returns:
-        AgentConfig: Configuration optimized for customer service
-    """
-    return AgentConfig(
-        name="CustomerServiceAgent",
-        
-        # Session-focused memory for customer continuity
-        enable_memory=True,
-        memory_types=["short_term", "long_term", "session", "semantic"],
-        memory_backend="redis",
-        redis_url=redis_url,
-        
-        # Customer session management
-        memory_namespace="customer_service",
-        
-        # Long conversation support
-        enable_message_trimming=True,
-        max_tokens=6000,  # Handle long support conversations
-        trim_strategy="last",
-        
-        # AI summarization for conversation history
-        enable_summarization=True,
-        max_summary_tokens=200,
-        summarization_trigger_tokens=4000,
-        
-        # Semantic search for knowledge retrieval
-        embedding_model="openai:text-embedding-3-small",
-        embedding_dims=1536,
-        distance_type="cosine",
-        
-        # Memory tools for continuous learning
-        enable_memory_tools=True,
-        memory_namespace_store="support_knowledge",
-        
-        # Human handoff support
-        enable_human_feedback=True,
-        interrupt_before=["escalation_tool"],
-        
-        # Moderate rate limiting for customer comfort
-        enable_rate_limiting=True,
-        requests_per_second=2.0,
-        max_bucket_size=8.0,
-        
-        # Streaming for responsive interaction
-        enable_streaming=True,
-        
-        # Quality evaluation for service improvement
-        enable_evaluation=True,
-        evaluation_metrics=["helpfulness", "accuracy", "empathy", "resolution_rate"]
-    )
-
-
-def create_research_assistant_config(
-    postgres_url: str = "postgresql://user:pass@localhost:5432/research"
-) -> AgentConfig:
-    """
-    🔬 RESEARCH ASSISTANT CONFIGURATION
-    
-    Perfect for: Academic research, data analysis, literature reviews, knowledge work
-    
-    Features:
-    - ✅ PostgreSQL for reliable long-term knowledge storage
-    - ✅ Semantic search for literature and document retrieval
-    - ✅ Memory tools for building knowledge graphs
-    - ✅ No rate limiting for intensive research sessions
-    - ✅ Large context windows for document analysis
-    - ✅ AI summarization for research synthesis
-    
-    Use Cases:
-    - Academic research assistance
-    - Literature reviews and meta-analysis
-    - Document analysis and synthesis
-    - Knowledge base construction
-    - Scientific writing support
-    
-    Research Benefits:
-    - Builds comprehensive knowledge over time
-    - Connects disparate information sources
-    - Maintains research methodology consistency
-    - Supports collaborative research projects
-    
-    Args:
-        postgres_url: PostgreSQL connection for reliable knowledge storage
-        
-    Returns:
-        AgentConfig: Configuration optimized for research assistance
-    """
-    return AgentConfig(
-        name="ResearchAssistantAgent",
-        
-        # Long-term knowledge storage
-        enable_memory=True,
-        memory_types=["long_term", "semantic"],
-        memory_backend="postgres",
-        postgres_url=postgres_url,
-        
-        # Research project organization
-        memory_namespace="research",
-        
-        # Large context for document analysis
-        enable_message_trimming=True,
-        max_tokens=16000,  # Large context for research
-        trim_strategy="first",  # Keep recent research context
-        
-        # AI summarization for synthesis
-        enable_summarization=True,
-        max_summary_tokens=512,  # Detailed summaries
-        summarization_trigger_tokens=12000,
-        
-        # Advanced semantic search for literature
-        embedding_model="openai:text-embedding-3-large",  # Higher quality
-        embedding_dims=3072,
-        distance_type="cosine",
-        
-        # Memory tools for knowledge graph building
-        enable_memory_tools=True,
-        memory_namespace_store="research_knowledge",
-        
-        # No rate limiting for intensive research
-        enable_rate_limiting=False,
-        
-        # No streaming for careful analysis
-        enable_streaming=False,
-        
-        # Evaluation for research quality
-        enable_evaluation=True,
-        evaluation_metrics=["accuracy", "completeness", "methodology", "citation_quality"]
-    )
-
-
-def create_creative_assistant_config() -> AgentConfig:
-    """
-    🎨 CREATIVE ASSISTANT CONFIGURATION
-    
-    Perfect for: Content creation, creative writing, brainstorming, artistic projects
-    
-    Features:
-    - ✅ InMemory for fast iteration and experimentation
-    - ✅ Session memory for creative project continuity
-    - ✅ Minimal constraints for creative freedom
-    - ✅ No rate limiting for rapid ideation
-    - ✅ Memory tools for inspiration and reference
-    - ✅ Flexible context management
-    
-    Use Cases:
-    - Creative writing and storytelling
-    - Content creation and copywriting
-    - Brainstorming and ideation sessions
-    - Artistic project development
-    - Marketing and advertising creative
-    
-    Creative Benefits:
-    - Encourages free-flowing creative processes
-    - Maintains creative project context
-    - Supports iterative refinement
-    - Enables experimental approaches
-    
-    Returns:
-        AgentConfig: Configuration optimized for creative work
-    """
-    return AgentConfig(
-        name="CreativeAssistantAgent",
-        
-                 # Fast iteration memory
-         enable_memory=True,
-         memory_types=["short_term", "long_term", "session"],  # Added long_term for memory tools
-         memory_backend="inmemory",
-        
-        # Creative project sessions
-        memory_namespace="creative",
-        
-        # Flexible context management
-        enable_message_trimming=True,
-        max_tokens=8000,  # Large creative context
-        trim_strategy="last",
-        
-        # Memory tools for inspiration
-        enable_memory_tools=True,
-        memory_namespace_store="creative_inspiration",
-        
-        # No rate limiting for creative flow
-        enable_rate_limiting=False,
-        
-        # Streaming for real-time creative feedback
-        enable_streaming=True,
-        
-        # Creative quality evaluation
-        enable_evaluation=True,
-        evaluation_metrics=["creativity", "originality", "engagement", "style_consistency"]
-    )
-
-
-def create_enterprise_config(
-    redis_url: str = "redis://enterprise-redis:6379",
-    postgres_url: str = "postgresql://enterprise-user:pass@enterprise-db:5432/agents"
-) -> AgentConfig:
-    """
-    🏢 ENTERPRISE CONFIGURATION
-    
-    Perfect for: Large organizations, compliance requirements, audit trails, governance
-    
-    Features:
-    - ✅ Multi-backend architecture for redundancy
-    - ✅ Comprehensive audit trails and logging
-    - ✅ Strict rate limiting for resource control
-    - ✅ Session isolation for security
-    - ✅ Human oversight and approval workflows
-    - ✅ Evaluation for compliance monitoring
-    - ✅ TTL for data governance
-    
-    Use Cases:
-    - Enterprise AI assistants
-    - Compliance-sensitive applications
-    - Multi-departmental AI systems
-    - Audit-required environments
-    - Regulated industry applications
-    
-    Enterprise Benefits:
-    - Meets compliance and audit requirements
-    - Provides comprehensive governance controls
-    - Ensures data privacy and security
-    - Supports organizational policies
-    
-    Args:
-        redis_url: Enterprise Redis cluster connection
-        postgres_url: Enterprise PostgreSQL connection
-        
-    Returns:
-        AgentConfig: Configuration for enterprise environments
-    """
-    return AgentConfig(
-        name="EnterpriseAgent",
-        
-        # Multi-backend for redundancy
-        enable_memory=True,
-        memory_types=["short_term", "long_term", "session", "semantic"],
-        memory_backend="redis",
-        redis_url=redis_url,
-        postgres_url=postgres_url,
-        
-        # Enterprise session management
-        memory_namespace="enterprise",
-        
-        # Conservative context management
-        enable_message_trimming=True,
-        max_tokens=4000,
-        trim_strategy="last",
-        
-        # AI summarization with audit trails
-        enable_summarization=True,
-        max_summary_tokens=128,
-        summarization_trigger_tokens=3000,
-        
-        # Memory tools for knowledge management
-        enable_memory_tools=True,
-        memory_namespace_store="enterprise_knowledge",
-        
-        # Data governance with TTL
-        enable_ttl=True,
-        default_ttl_minutes=10080,  # 7 days
-        refresh_on_read=False,  # Strict expiration
-        
-        # Human oversight for compliance
-        enable_human_feedback=True,
-        interrupt_before=["sensitive_action", "data_access"],
-        interrupt_after=["decision_making", "external_api"],
-        
-        # Strict rate limiting
-        enable_rate_limiting=True,
-        requests_per_second=1.0,
-        max_bucket_size=3.0,
-        
-        # No streaming for audit trails
-        enable_streaming=False,
-        
-        # Comprehensive evaluation
-        enable_evaluation=True,
-        evaluation_metrics=["accuracy", "compliance", "security", "audit_trail", "policy_adherence"]
-    )
 
 
 # =============================================================================
 # 📋 PRE-BUILT CONFIG REGISTRY
 # =============================================================================
 
-# Create pre-built configurations that are ready to use
-HIGH_PERFORMANCE_CONFIG = create_high_performance_config()
-DISTRIBUTED_CONFIG = create_distributed_config()
+# Create pre-built configurations for software development workflow
+CODER_AGENT_CONFIG = create_coder_agent_config()
+UNIT_TESTER_AGENT_CONFIG = create_unit_tester_agent_config()
+EXECUTER_AGENT_CONFIG = create_executer_agent_config()
+CODE_REVIEWER_AGENT_CONFIG = create_code_reviewer_agent_config()
+BUILD_AGENT_CONFIG = create_build_agent_config()
+ORCHESTRATOR_AGENT_CONFIG = create_orchestrator_agent_config()
 DEVELOPMENT_CONFIG = create_development_config()
 TESTING_CONFIG = create_testing_config()
-CUSTOMER_SERVICE_CONFIG = create_customer_service_config()
-RESEARCH_ASSISTANT_CONFIG = create_research_assistant_config()
-CREATIVE_ASSISTANT_CONFIG = create_creative_assistant_config()
-ENTERPRISE_CONFIG = create_enterprise_config()
 
 # Registry for easy access
 CONFIG_REGISTRY = {
-    "high_performance": HIGH_PERFORMANCE_CONFIG,
-    "distributed": DISTRIBUTED_CONFIG,
+    "coder": CODER_AGENT_CONFIG,
+    "unit_tester": UNIT_TESTER_AGENT_CONFIG,
+    "executer": EXECUTER_AGENT_CONFIG,
+    "code_reviewer": CODE_REVIEWER_AGENT_CONFIG,
+    "build": BUILD_AGENT_CONFIG,
+    "orchestrator": ORCHESTRATOR_AGENT_CONFIG,
     "development": DEVELOPMENT_CONFIG,
     "testing": TESTING_CONFIG,
-    "customer_service": CUSTOMER_SERVICE_CONFIG,
-    "research_assistant": RESEARCH_ASSISTANT_CONFIG,
-    "creative_assistant": CREATIVE_ASSISTANT_CONFIG,
-    "enterprise": ENTERPRISE_CONFIG,
 }
 
 
@@ -718,14 +647,14 @@ def list_configs() -> Dict[str, str]:
         ...     print(f"{name}: {desc}")
     """
     return {
-        "high_performance": "🚀 Production-ready with Redis+PostgreSQL, rate limiting, and all features",
-        "distributed": "🌐 Microservices architecture with Redis clustering and MongoDB",
+        "coder": "👨‍💻 Code generation with PostgreSQL knowledge storage and large context",
+        "unit_tester": "🧪 Test generation with fast iteration and pattern recognition",
+        "executer": "⚡ Test execution with real-time feedback and high throughput",
+        "code_reviewer": "🔍 Code review with quality analysis and security auditing",
+        "build": "🏗️ Build automation with CI/CD pipeline and version management",
+        "orchestrator": "🎼 Workflow coordination with multi-agent supervision",
         "development": "🛠️ Local development with InMemory backend and minimal dependencies",
         "testing": "🧪 Automated testing with deterministic behavior and fast execution",
-        "customer_service": "👥 Customer support with session continuity and knowledge base",
-        "research_assistant": "🔬 Academic research with PostgreSQL and semantic search",
-        "creative_assistant": "🎨 Creative work with flexible constraints and rapid iteration",
-        "enterprise": "🏢 Enterprise-grade with compliance, audit trails, and governance",
     }
 
 
@@ -763,19 +692,19 @@ def create_custom_config(**kwargs) -> AgentConfig:
 def print_config_comparison():
     """Print a comparison table of all pre-built configurations."""
     
-    print("🎯 PRE-BUILT AGENT CONFIGURATIONS COMPARISON")
+    print("🧑‍💻 SOFTWARE DEVELOPMENT WORKFLOW CONFIGURATIONS")
     print("=" * 80)
     print()
     
     configs = [
-        ("High Performance", HIGH_PERFORMANCE_CONFIG, "🚀 Production Redis+PG"),
-        ("Distributed", DISTRIBUTED_CONFIG, "🌐 Microservices"),
-        ("Development", DEVELOPMENT_CONFIG, "🛠️ Local InMemory"),
+        ("Coder Agent", CODER_AGENT_CONFIG, "👨‍💻 Code Generation"),
+        ("Unit Tester", UNIT_TESTER_AGENT_CONFIG, "🧪 Test Generation"),
+        ("Executer", EXECUTER_AGENT_CONFIG, "⚡ Test Execution"),
+        ("Code Reviewer", CODE_REVIEWER_AGENT_CONFIG, "🔍 Code Review"),
+        ("Build Agent", BUILD_AGENT_CONFIG, "🏗️ Build & Deploy"),
+        ("Orchestrator", ORCHESTRATOR_AGENT_CONFIG, "🎼 Workflow Control"),
+        ("Development", DEVELOPMENT_CONFIG, "🛠️ Local Development"),
         ("Testing", TESTING_CONFIG, "🧪 Automated Testing"),
-        ("Customer Service", CUSTOMER_SERVICE_CONFIG, "👥 Support Chat"),
-        ("Research Assistant", RESEARCH_ASSISTANT_CONFIG, "🔬 Academic Research"),
-        ("Creative Assistant", CREATIVE_ASSISTANT_CONFIG, "🎨 Creative Work"),
-        ("Enterprise", ENTERPRISE_CONFIG, "🏢 Compliance & Audit"),
     ]
     
     # Header
@@ -801,9 +730,9 @@ def print_config_comparison():
     
     print()
     print("💡 Usage:")
-    print("   from pre_built_configs import HIGH_PERFORMANCE_CONFIG")
+    print("   from pre_built_configs import CODER_AGENT_CONFIG")
     print("   from core_agent import CoreAgent")
-    print("   agent = CoreAgent(HIGH_PERFORMANCE_CONFIG)")
+    print("   agent = CoreAgent(CODER_AGENT_CONFIG)")
 
 
 if __name__ == "__main__":
