@@ -177,18 +177,13 @@ class AgentConfig:
     description: str = ""  # Human-readable description of what this agent does - useful for multi-agent scenarios
     
     # ============================================================================
-    # OPTIONAL FEATURES - Enable only what you need!
+    # MEMORY MANAGEMENT - Persistence & Context Management
     # ============================================================================
     
-    # ============================================================================
-    # MEMORY MANAGEMENT - Comprehensive LangGraph Memory Support
-    # ============================================================================
-    
-    # Short-term Memory Configuration (Conversation-level persistence)
+    # Basic Memory Configuration
     enable_short_term_memory: bool = False  # Enable memory within a single conversation thread - remembers context during chat
     short_term_memory_type: str = "inmemory"  # Storage backend: "inmemory" (fast, temporary), "redis" (distributed), "postgres" (persistent), "mongodb" (document-based)
     
-    # Long-term Memory Configuration (Cross-session persistence) 
     enable_long_term_memory: bool = False  # Enable memory across multiple conversations - agent remembers past interactions
     long_term_memory_type: str = "inmemory"  # Storage backend for long-term data - same options as short-term but typically persistent
     
@@ -197,24 +192,37 @@ class AgentConfig:
     postgres_url: Optional[str] = None  # PostgreSQL connection string (postgresql://user:pass@host:port/db) - for structured, reliable persistence
     mongodb_url: Optional[str] = None  # MongoDB connection string (mongodb://host:port/database) - for flexible document storage
     
-    # Advanced Memory Sharing Configuration
+    # Multi-Agent Memory Sharing
     session_id: Optional[str] = None  # Unique session identifier - enables memory sharing between multiple agents in same session
     enable_shared_memory: bool = False  # Allow multiple agents to share memory within a session - enables collaborative workflows
     memory_namespace: str = "default"  # Memory isolation namespace - prevents memory conflicts between different agent groups
     
-    # Context Management Configuration
+    # ============================================================================
+    # CONTEXT MANAGEMENT - Message Handling & Optimization
+    # ============================================================================
+    
+    # Message Trimming Configuration
     enable_message_trimming: bool = False  # Automatically trim conversation history when it gets too long - prevents token limit errors
     max_tokens: int = 4000  # Maximum tokens to keep in conversation context - controls memory usage and API costs
     trim_strategy: str = "last"  # Which messages to keep when trimming: "first" (keep early messages), "last" (keep recent messages)
     start_on: str = "human"  # Message type to start trimming from - usually "human" to maintain conversation flow
     end_on: List[str] = field(default_factory=lambda: ["human", "tool"])  # Message types to end trimming on - preserves important context
     
-    # Intelligent Summarization Configuration (LangMem)
+    # Intelligent Summarization (LangMem)
     enable_summarization: bool = False  # Use AI to summarize old conversations instead of deleting them - preserves context efficiently
     max_summary_tokens: int = 128  # Maximum length of generated summaries - balances detail vs. conciseness
     summarization_trigger_tokens: int = 2000  # When to start summarizing (token count) - prevents memory overflow
     
-    # Semantic Search & Retrieval Configuration
+    # Memory Expiration (TTL - Time To Live)
+    enable_ttl: bool = False  # Enable automatic memory expiration - prevents indefinite memory growth
+    default_ttl_minutes: int = 1440  # Default memory lifetime in minutes (1440 = 24 hours) - balances persistence vs. storage
+    refresh_on_read: bool = True  # Reset expiration timer when memory is accessed - keeps frequently used memories longer
+    
+    # ============================================================================
+    # SEARCH & RETRIEVAL - Semantic Memory Access
+    # ============================================================================
+    
+    # Semantic Search Configuration
     enable_semantic_search: bool = False  # Enable AI-powered search through agent's memory using meaning rather than keywords
     embedding_model: str = "openai:text-embedding-3-small"  # Model for converting text to vectors - determines search quality and cost
     embedding_dims: int = 1536  # Vector dimensions for embeddings - higher = more precise but slower
@@ -224,62 +232,69 @@ class AgentConfig:
     enable_memory_tools: bool = False  # Provide agent with tools to actively manage its own memory - enables self-organizing memory
     memory_namespace_store: str = "memories"  # Storage namespace for memory tools - keeps memory data organized
     
-    # Memory Expiration Configuration (TTL - Time To Live)
-    enable_ttl: bool = False  # Enable automatic memory expiration - prevents indefinite memory growth
-    default_ttl_minutes: int = 1440  # Default memory lifetime in minutes (1440 = 24 hours) - balances persistence vs. storage
-    refresh_on_read: bool = True  # Reset expiration timer when memory is accessed - keeps frequently used memories longer
+    # ============================================================================
+    # EXTERNAL INTEGRATIONS - Tools & Services
+    # ============================================================================
     
-    # Human-in-the-Loop Configuration (Safety & Control)
-    enable_human_feedback: bool = False  # Require human approval for certain actions - adds safety layer for sensitive operations
-    interrupt_before: List[str] = field(default_factory=list)  # List of nodes to pause before execution - enables human review
-    interrupt_after: List[str] = field(default_factory=list)  # List of nodes to pause after execution - enables human validation
-    
-    # Performance Evaluation & Monitoring Configuration
-    enable_evaluation: bool = False  # Enable automatic agent performance assessment - provides quality metrics and improvement insights
-    evaluation_metrics: List[str] = field(default_factory=lambda: ["accuracy", "relevance", "helpfulness"])  # Metrics to track - determines what aspects of performance are measured
-    
-    # External Tool Servers Configuration (MCP - Model Context Protocol)
+    # MCP (Model Context Protocol) - External Tool Servers
     enable_mcp: bool = False  # Enable integration with external tool servers - expands agent capabilities beyond built-in tools
     mcp_servers: Dict[str, Dict[str, Any]] = field(default_factory=dict)  # Configuration for MCP servers - defines available external tool services
     
     # ============================================================================
-    # ORCHESTRATION FEATURES - For multi-agent systems
+    # SAFETY & CONTROL - Human Oversight & Quality Assurance
     # ============================================================================
     
-    # Supervisor Pattern Configuration (Centralized Control)
+    # Human-in-the-Loop Configuration
+    enable_human_feedback: bool = False  # Require human approval for certain actions - adds safety layer for sensitive operations
+    interrupt_before: List[str] = field(default_factory=list)  # List of nodes to pause before execution - enables human review
+    interrupt_after: List[str] = field(default_factory=list)  # List of nodes to pause after execution - enables human validation
+    
+    # Performance Evaluation & Monitoring
+    enable_evaluation: bool = False  # Enable automatic agent performance assessment - provides quality metrics and improvement insights
+    evaluation_metrics: List[str] = field(default_factory=lambda: ["accuracy", "relevance", "helpfulness"])  # Metrics to track - determines what aspects of performance are measured
+    
+    # ============================================================================
+    # MULTI-AGENT ORCHESTRATION - Coordination Patterns & Team Management
+    # ============================================================================
+    
+    # Supervisor Pattern (Centralized Control)
     enable_supervisor: bool = False  # Enable hierarchical agent management - one agent coordinates others like a project manager
     
-    # Swarm Pattern Configuration (Dynamic Collaboration)
+    # Swarm Pattern (Dynamic Collaboration)
     enable_swarm: bool = False  # Enable flexible agent handoffs - agents can dynamically pass tasks to specialists
     default_active_agent: Optional[str] = None  # Initial agent in swarm - determines who starts handling tasks
     
-    # Handoff Pattern Configuration (Sequential Processing)
+    # Handoff Pattern (Sequential Processing)
     enable_handoff: bool = False  # Enable manual agent transfers - allows deliberate passing of tasks between specific agents
     handoff_agents: List[str] = field(default_factory=list)  # Available agents for handoff - defines the possible transfer targets
     
-    # Multi-agent System Configuration
+    # Team Management
     agents: Dict[str, Any] = field(default_factory=dict)  # Registry of all agents in the system - enables agent discovery and coordination
     
     # ============================================================================
-    # TECHNICAL CONFIGURATION
+    # PERFORMANCE & OPTIMIZATION - Speed, Efficiency & Reliability
     # ============================================================================
     
-    # API Rate Limiting Configuration (Prevents HTTP 429 Errors)
+    # API Rate Limiting (Prevents HTTP 429 Errors)
     enable_rate_limiting: bool = False  # Enable automatic API request throttling - prevents rate limit errors and API bans
     requests_per_second: float = 1.0  # Maximum API requests per second - controls how fast agent makes LLM calls (conservative default)
     check_every_n_seconds: float = 0.1  # How often to check token availability - lower = more responsive, higher = less overhead
     max_bucket_size: float = 10.0  # Maximum burst capacity - allows temporary spikes in request rate
     custom_rate_limiter: Optional[BaseRateLimiter] = None  # Custom rate limiter implementation - for advanced rate limiting strategies
     
-    # Response Format Configuration
+    # Response Configuration
     response_format: Optional[Type[BaseModel]] = None  # Structured output schema - forces agent to respond in specific JSON format
     enable_streaming: bool = True  # Real-time response streaming - shows thinking process as it happens vs. waiting for complete response
     
-    # Extensibility & Customization Hooks
+    # ============================================================================
+    # EXTENSIBILITY & CUSTOMIZATION - Hooks & Advanced Architecture
+    # ============================================================================
+    
+    # Workflow Hooks
     pre_model_hook: Optional[Callable] = None   # Function called before each LLM request - enables request modification and logging
     post_model_hook: Optional[Callable] = None  # Function called after each LLM response - enables response processing and analysis
     
-    # Advanced Architecture Configuration
+    # Advanced Architecture
     enable_subgraphs: bool = False  # Enable modular workflow components - allows building complex, reusable agent behaviors
     subgraph_configs: Dict[str, Any] = field(default_factory=dict)  # Configuration for subgraph modules - defines reusable workflow components
     
