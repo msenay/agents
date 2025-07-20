@@ -83,17 +83,22 @@ class TestAgentConfig(unittest.TestCase):
         self.assertFalse(config.enable_mcp)
     
     def test_agent_config_full_creation(self):
-        """Test creating AgentConfig with all parameters"""
+        """Test creating AgentConfig with all parameters (new API)"""
         config = AgentConfig(
             name="FullAgent",
             model=self.mock_model,
             system_prompt="Custom prompt",
             tools=[self.mock_tool],
             description="Test description",
-            enable_short_term_memory=True, 
-            enable_long_term_memory=True,
-            short_term_memory_type="redis",
+            
+            # New memory API
+            enable_memory=True,
+            memory_types=["short_term", "long_term", "session", "semantic"],
+            memory_backend="redis",
             redis_url="redis://localhost:6379",
+            session_id="test_session",
+            
+            # Other features
             enable_human_feedback=True,
             interrupt_before=["tool_node"],
             interrupt_after=["agent_node"],
@@ -101,12 +106,11 @@ class TestAgentConfig(unittest.TestCase):
             evaluation_metrics=["accuracy", "speed"],
             enable_mcp=True,
             mcp_servers={"test": {"type": "stdio"}},
+            
+            # Single multi-agent pattern (fixed conflict)
             enable_supervisor=True,
             agents={"agent1": Mock()},
-            enable_swarm=True,
-            default_active_agent="agent1",
-            enable_handoff=True,
-            handoff_agents=["agent1", "agent2"],
+            
             enable_streaming=True,
             response_format=None,
             pre_model_hook=None,
@@ -117,16 +121,20 @@ class TestAgentConfig(unittest.TestCase):
         self.assertEqual(config.model, self.mock_model)
         self.assertEqual(config.system_prompt, "Custom prompt")
         self.assertEqual(len(config.tools), 1)
+        
+        # Test backward compatibility properties
         self.assertTrue(config.enable_short_term_memory)
         self.assertTrue(config.enable_long_term_memory)
+        self.assertTrue(config.enable_shared_memory)
+        self.assertTrue(config.enable_semantic_search)
         self.assertEqual(config.short_term_memory_type, "redis")
         self.assertEqual(config.redis_url, "redis://localhost:6379")
         self.assertTrue(config.enable_human_feedback)
         self.assertTrue(config.enable_evaluation)
         self.assertTrue(config.enable_mcp)
         self.assertTrue(config.enable_supervisor)
-        self.assertTrue(config.enable_swarm)
-        self.assertTrue(config.enable_handoff)
+        self.assertFalse(config.enable_swarm)  # Not enabled in config
+        self.assertFalse(config.enable_handoff)  # Not enabled in config
     
     def test_agent_config_post_init(self):
         """Test AgentConfig post-initialization validation"""
@@ -136,48 +144,61 @@ class TestAgentConfig(unittest.TestCase):
         self.assertEqual(config.description, "Specialized agent: CoreAgent")
     
     def test_agent_config_invalid_memory_type(self):
-        """Test AgentConfig with invalid memory type"""
+        """Test AgentConfig with invalid memory type (new API)"""
         with self.assertRaises(ValueError):
             config = AgentConfig(
                 name="TestAgent",
                 model=self.mock_model,
-                enable_short_term_memory=True, 
-                enable_long_term_memory=True,
-                short_term_memory_type="invalid_type"
+                enable_memory=True,
+                memory_backend="invalid_type"
             )
             # Create memory manager which should validate the type
             MemoryManager(config)
     
     def test_agent_config_memory_without_enable(self):
-        """Test AgentConfig memory settings without enable_memory"""
+        """Test AgentConfig memory settings without enable_memory (new API)"""
         config = AgentConfig(
             name="TestAgent",
             model=self.mock_model,
-            short_term_memory_type="redis",  # Should be ignored
-            redis_url="redis://localhost"  # Should be ignored
+            enable_memory=False,  # Memory explicitly disabled
+            redis_url="redis://localhost"  # Should be ignored when memory disabled
         )
         
+        # Memory shouldn't be enabled even if URLs are provided
         self.assertFalse(config.enable_short_term_memory)
         self.assertFalse(config.enable_long_term_memory)
-        self.assertEqual(config.short_term_memory_type, "redis")  # Still set but not used
+        self.assertFalse(config.enable_shared_memory)
+        self.assertFalse(config.enable_semantic_search)
+        self.assertEqual(config.memory_backend, "inmemory")  # Default backend
         
     def test_agent_config_backward_compatibility(self):
-        """Test backward compatibility properties"""
+        """Test backward compatibility properties (new API)"""
         config = AgentConfig(
-            enable_short_term_memory=True,
-            short_term_memory_type="redis"
+            enable_memory=True,
+            memory_types=["short_term"],
+            memory_backend="redis",
+            redis_url="redis://localhost:6379"
         )
         
+        # Test backward compatibility properties
         self.assertTrue(config.enable_memory)
+        self.assertTrue(config.enable_short_term_memory)
+        self.assertFalse(config.enable_long_term_memory)
         self.assertEqual(config.memory_type, "redis")
+        self.assertEqual(config.short_term_memory_type, "redis")
         
         config2 = AgentConfig(
-            enable_long_term_memory=True,
-            long_term_memory_type="postgres"
+            enable_memory=True,
+            memory_types=["long_term"],
+            memory_backend="postgres",
+            postgres_url="postgresql://user:pass@localhost:5432/db"
         )
         
         self.assertTrue(config2.enable_memory)
+        self.assertFalse(config2.enable_short_term_memory)
+        self.assertTrue(config2.enable_long_term_memory)
         self.assertEqual(config2.memory_type, "postgres")
+        self.assertEqual(config2.long_term_memory_type, "postgres")
 
 
 class TestCoreAgentState(unittest.TestCase):

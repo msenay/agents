@@ -118,6 +118,33 @@ class ComprehensiveMemoryTest:
             print(f"    └─ {details}")
         self.results.append({"name": test_name, "success": success, "details": details})
     
+    def create_memory_config(self, name, memory_types=None, backend="inmemory", **kwargs):
+        """Helper to create memory config with new API"""
+        if memory_types is None:
+            memory_types = ["short_term"]
+            
+        config_params = {
+            "name": name,
+            "model": self.model,
+            "enable_memory": True,
+            "memory_types": memory_types,
+            "memory_backend": backend,
+            "session_id": self.session_id
+        }
+        
+        # Add backend-specific URLs
+        if backend == "redis":
+            config_params["redis_url"] = REDIS_URL
+        elif backend == "postgres":
+            config_params["postgres_url"] = POSTGRES_URL
+        elif backend == "mongodb":
+            config_params["mongodb_url"] = MONGODB_URL
+            
+        # Add any additional parameters
+        config_params.update(kwargs)
+        
+        return AgentConfig(**config_params)
+    
     def test_checkpointers(self):
         """Test 1: Short-term Memory Checkpointers"""
         print("\n🧠 TEST 1: Short-term Memory Checkpointers")
@@ -138,15 +165,10 @@ class ComprehensiveMemoryTest:
                 continue
             
             try:
-                config = AgentConfig(
+                config = self.create_memory_config(
                     name=f"CheckpointerAgent_{memory_type}",
-                    model=self.model,
-                    enable_short_term_memory=True,
-                    short_term_memory_type=memory_type,
-                    redis_url=REDIS_URL if memory_type == "redis" else None,
-                    postgres_url=POSTGRES_URL if memory_type == "postgres" else None,
-                    mongodb_url=MONGODB_URL if memory_type == "mongodb" else None,
-                    session_id=self.session_id
+                    memory_types=["short_term"],
+                    backend=memory_type
                 )
                 
                 # Test memory manager initialization
@@ -193,15 +215,10 @@ class ComprehensiveMemoryTest:
                 continue
             
             try:
-                config = AgentConfig(
+                config = self.create_memory_config(
                     name=f"StoreAgent_{memory_type}",
-                    model=self.model,
-                    enable_long_term_memory=True,
-                    long_term_memory_type=memory_type,
-                    redis_url=REDIS_URL if memory_type == "redis" else None,
-                    postgres_url=POSTGRES_URL if memory_type == "postgres" else None,
-                    mongodb_url=MONGODB_URL if memory_type == "mongodb" else None,
-                    session_id=self.session_id
+                    memory_types=["long_term"],
+                    backend=memory_type
                 )
                 
                 # Test memory manager initialization
@@ -258,22 +275,18 @@ class ComprehensiveMemoryTest:
             shared_session = f"shared_session_{int(time.time())}"
             
             # Create two agents with same session
-            config1 = AgentConfig(
-                name="SessionAgent1",
-                model=self.model,
-                enable_short_term_memory=True,
-                enable_shared_memory=True,
-                redis_url=REDIS_URL,
+            config1 = self.create_memory_config(
+                name="SessionAgent1", 
+                memory_types=["short_term", "session"],
+                backend="redis",
                 session_id=shared_session,
                 memory_namespace="agent1"
             )
             
-            config2 = AgentConfig(
+            config2 = self.create_memory_config(
                 name="SessionAgent2",
-                model=self.model,
-                enable_short_term_memory=True,
-                enable_shared_memory=True,
-                redis_url=REDIS_URL,
+                memory_types=["short_term", "session"],
+                backend="redis",
                 session_id=shared_session,  # Same session
                 memory_namespace="agent2"
             )
@@ -336,13 +349,10 @@ class ComprehensiveMemoryTest:
         print("=" * 60)
         
         try:
-            config = AgentConfig(
+            config = self.create_memory_config(
                 name="SemanticAgent",
-                model=self.model,
-                enable_long_term_memory=True,
-                enable_semantic_search=True,
+                memory_types=["long_term", "semantic"]
                 # Embeddings will fail without API key, but we test the setup
-                session_id=self.session_id
             )
             
             memory_manager = MemoryManager(config)
@@ -387,13 +397,11 @@ class ComprehensiveMemoryTest:
         print("=" * 60)
         
         try:
-            config = AgentConfig(
+            config = self.create_memory_config(
                 name="MemoryToolsAgent",
-                model=self.model,
-                enable_long_term_memory=True,
+                memory_types=["long_term"],
                 enable_memory_tools=True,
-                memory_namespace_store="memory_tools_test",
-                session_id=self.session_id
+                memory_namespace_store="memory_tools_test"
             )
             
             memory_manager = MemoryManager(config)
@@ -437,14 +445,12 @@ class ComprehensiveMemoryTest:
         
         # Test message trimming
         try:
-            config = AgentConfig(
+            config = self.create_memory_config(
                 name="TrimmingAgent",
-                model=self.model,
-                enable_short_term_memory=True,
+                memory_types=["short_term"],
                 enable_message_trimming=True,
                 max_tokens=200,  # Low for testing
-                trim_strategy="last",
-                session_id=self.session_id
+                trim_strategy="last"
             )
             
             memory_manager = MemoryManager(config)
@@ -474,11 +480,9 @@ class ComprehensiveMemoryTest:
         
         # Test message deletion hooks
         try:
-            config = AgentConfig(
+            config = self.create_memory_config(
                 name="DeletionAgent",
-                model=self.model,
-                enable_short_term_memory=True,
-                session_id=self.session_id
+                memory_types=["short_term"]
             )
             
             memory_manager = MemoryManager(config)
@@ -502,14 +506,12 @@ class ComprehensiveMemoryTest:
         
         # Test summarization
         try:
-            config = AgentConfig(
+            config = self.create_memory_config(
                 name="SummarizationAgent",
-                model=self.model,
-                enable_short_term_memory=True,
+                memory_types=["short_term"],
                 enable_summarization=True,
                 max_summary_tokens=64,
-                summarization_trigger_tokens=150,
-                session_id=self.session_id
+                summarization_trigger_tokens=150
             )
             
             memory_manager = MemoryManager(config)
@@ -562,19 +564,18 @@ class ComprehensiveMemoryTest:
                 continue
             
             try:
-                config = AgentConfig(
+                # TTL only works on Redis/MongoDB, so skip inmemory
+                if memory_type == "inmemory":
+                    self.log_test(f"TTL: {memory_type}", False, f"TTL not supported on {memory_type}")
+                    continue
+                    
+                config = self.create_memory_config(
                     name=f"TTLAgent_{memory_type}",
-                    model=self.model,
-                    enable_short_term_memory=True,
-                    short_term_memory_type=memory_type,
-                    enable_long_term_memory=True,
-                    long_term_memory_type=memory_type,
+                    memory_types=["short_term", "long_term"],
+                    backend=memory_type,
                     enable_ttl=True,
                     default_ttl_minutes=1,  # 1 minute for testing
-                    refresh_on_read=True,
-                    redis_url=REDIS_URL if memory_type == "redis" else None,
-                    mongodb_url=MONGODB_URL if memory_type == "mongodb" else None,
-                    session_id=self.session_id
+                    refresh_on_read=True
                 )
                 
                 memory_manager = MemoryManager(config)
@@ -618,11 +619,9 @@ class ComprehensiveMemoryTest:
         print("=" * 60)
         
         try:
-            config = AgentConfig(
+            config = self.create_memory_config(
                 name="BackwardCompatAgent",
-                model=self.model,
-                enable_long_term_memory=True,
-                session_id=self.session_id
+                memory_types=["long_term"]
             )
             
             memory_manager = MemoryManager(config)
