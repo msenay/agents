@@ -99,6 +99,15 @@ try:
 except ImportError:
     create_supervisor = None
 
+# Rate limiter imports
+try:
+    from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
+    RATE_LIMITER_AVAILABLE = True
+except ImportError:
+    InMemoryRateLimiter = None
+    BaseRateLimiter = None
+    RATE_LIMITER_AVAILABLE = False
+
 try:
     from langgraph_swarm import create_swarm, create_handoff_tool as swarm_handoff_tool
 except ImportError:
@@ -254,6 +263,13 @@ class AgentConfig:
     # TECHNICAL CONFIGURATION
     # ============================================================================
     
+    # Rate Limiting - Prevent API rate limit errors
+    enable_rate_limiting: bool = False
+    requests_per_second: float = 1.0  # Requests per second (default: conservative)
+    check_every_n_seconds: float = 0.1  # Check frequency for rate limiter
+    max_bucket_size: float = 10.0  # Maximum burst size
+    custom_rate_limiter: Optional[BaseRateLimiter] = None  # Custom rate limiter instance
+    
     # Response Structure
     response_format: Optional[Type[BaseModel]] = None  # Custom response schema
     enable_streaming: bool = True  # Stream responses by default
@@ -321,6 +337,70 @@ class CoreAgentState(BaseModel):
     
     class Config:
         arbitrary_types_allowed = True
+
+
+class RateLimiterManager:
+    """Manages rate limiting for API calls to prevent 429 errors"""
+    
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.enabled = config.enable_rate_limiting and RATE_LIMITER_AVAILABLE
+        self.rate_limiter: Optional[BaseRateLimiter] = None
+        
+        if self.enabled:
+            self._initialize_rate_limiter()
+    
+    def _initialize_rate_limiter(self):
+        """Initialize the rate limiter based on configuration"""
+        try:
+            if self.config.custom_rate_limiter:
+                # Use custom rate limiter if provided
+                self.rate_limiter = self.config.custom_rate_limiter
+                logger.info(f"Custom rate limiter initialized")
+            else:
+                # Create InMemoryRateLimiter with configuration
+                self.rate_limiter = InMemoryRateLimiter(
+                    requests_per_second=self.config.requests_per_second,
+                    check_every_n_seconds=self.config.check_every_n_seconds,
+                    max_bucket_size=self.config.max_bucket_size
+                )
+                logger.info(f"Rate limiter initialized: {self.config.requests_per_second} req/sec, "
+                           f"bucket size: {self.config.max_bucket_size}")
+        except Exception as e:
+            logger.warning(f"Failed to initialize rate limiter: {e}")
+            self.enabled = False
+            self.rate_limiter = None
+    
+    def get_rate_limiter(self) -> Optional[BaseRateLimiter]:
+        """Get the configured rate limiter for model initialization"""
+        return self.rate_limiter if self.enabled else None
+    
+    @property
+    def enabled_status(self) -> bool:
+        """Check if rate limiting is enabled and working"""
+        return self.enabled and self.rate_limiter is not None
+    
+    def acquire_token(self, blocking: bool = True) -> bool:
+        """Manually acquire a token from the rate limiter"""
+        if not self.enabled_status:
+            return True
+        
+        try:
+            return self.rate_limiter.acquire(blocking=blocking)
+        except Exception as e:
+            logger.warning(f"Rate limiter acquire failed: {e}")
+            return True  # Fall back to allowing the request
+    
+    async def aacquire_token(self, blocking: bool = True) -> bool:
+        """Async version of acquire_token"""
+        if not self.enabled_status:
+            return True
+        
+        try:
+            return await self.rate_limiter.aacquire(blocking=blocking)
+        except Exception as e:
+            logger.warning(f"Rate limiter aacquire failed: {e}")
+            return True  # Fall back to allowing the request
 
 
 class SubgraphManager:
@@ -1164,6 +1244,7 @@ class CoreAgent:
         self.supervisor_manager = SupervisorManager(config)
         self.mcp_manager = MCPManager(config)
         self.evaluation_manager = EvaluationManager(config)
+        self.rate_limiter_manager = RateLimiterManager(config)
         
         # Core graph
         self.graph = None
@@ -1181,6 +1262,50 @@ class CoreAgent:
             # Build custom graph
             self._build_custom_graph()
             
+    def _prepare_model_with_rate_limiter(self):
+        """Prepare model with rate limiter if enabled"""
+        if not self.config.model:
+            return None
+            
+        model = self.config.model
+        
+        # Apply rate limiter if enabled
+        if self.rate_limiter_manager.enabled_status:
+            rate_limiter = self.rate_limiter_manager.get_rate_limiter()
+            
+            # Check if model supports rate_limiter parameter
+            if hasattr(model, 'rate_limiter') or hasattr(model.__class__, 'rate_limiter'):
+                try:
+                    # Create a new model instance with rate limiter
+                    model_kwargs = {}
+                    
+                    # Copy existing model parameters
+                    if hasattr(model, 'model_name'):
+                        model_kwargs['model_name'] = model.model_name
+                    if hasattr(model, 'model'):
+                        model_kwargs['model'] = model.model
+                    if hasattr(model, 'temperature'):
+                        model_kwargs['temperature'] = model.temperature
+                    if hasattr(model, 'max_tokens'):
+                        model_kwargs['max_tokens'] = model.max_tokens
+                    if hasattr(model, 'api_key'):
+                        model_kwargs['api_key'] = model.api_key
+                    
+                    # Add rate limiter
+                    model_kwargs['rate_limiter'] = rate_limiter
+                    
+                    # Create new model instance with rate limiter
+                    model = model.__class__(**model_kwargs)
+                    logger.info(f"Model configured with rate limiter: {self.config.requests_per_second} req/sec")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to configure model with rate limiter: {e}")
+                    logger.info("Continuing with original model without rate limiter")
+            else:
+                logger.warning("Model does not support rate_limiter parameter. Rate limiting disabled for this model.")
+        
+        return model
+
     def _build_with_prebuilt(self, strict_mode: bool = False):
         """Build agent using LangGraph prebuilt components"""
         try:
@@ -1193,8 +1318,11 @@ class CoreAgent:
                 all_tools.extend(memory_tools)
                 logger.info(f"Added {len(memory_tools)} memory tools to agent")
             
+            # Prepare model with rate limiter
+            model_with_rate_limiter = self._prepare_model_with_rate_limiter()
+            
             kwargs = {
-                'model': self.config.model,
+                'model': model_with_rate_limiter,
                 'tools': all_tools,
             }
             
@@ -1628,6 +1756,64 @@ def create_simple_agent(
         enable_short_term_memory=enable_memory,
         short_term_memory_type="inmemory" if enable_memory else "inmemory",
         enable_long_term_memory=False,
+        
+        enable_streaming=True
+    )
+    
+    return CoreAgent(config)
+
+
+def create_rate_limited_agent(
+    model: BaseChatModel,
+    requests_per_second: float = 1.0,
+    name: str = "RateLimitedAgent",
+    tools: List[BaseTool] = None,
+    system_prompt: str = "You are a helpful AI assistant with rate limiting.",
+    enable_memory: bool = False,
+    max_bucket_size: float = 10.0,
+    check_every_n_seconds: float = 0.1,
+    custom_rate_limiter: Optional[BaseRateLimiter] = None
+) -> CoreAgent:
+    """
+    Create an agent with built-in rate limiting to prevent API 429 errors
+    
+    Perfect for:
+    - Production environments with API rate limits
+    - Batch processing with many requests
+    - Preventing rate limit errors during testing
+    - Multi-agent systems with shared API quotas
+    
+    Args:
+        model: The language model to use
+        requests_per_second: Maximum requests per second (default: 1.0 - conservative)
+        name: Agent name
+        tools: List of tools for the agent
+        system_prompt: System prompt for the agent
+        enable_memory: Whether to enable memory
+        max_bucket_size: Maximum burst size for token bucket
+        check_every_n_seconds: How often to check token availability
+        custom_rate_limiter: Custom rate limiter instance (overrides other rate limit settings)
+    
+    Returns:
+        CoreAgent with rate limiting enabled
+    """
+    config = AgentConfig(
+        name=name,
+        model=model,
+        system_prompt=system_prompt,
+        tools=tools or [],
+        
+        # Memory configuration (optional)
+        enable_short_term_memory=enable_memory,
+        short_term_memory_type="inmemory" if enable_memory else "inmemory",
+        enable_long_term_memory=False,
+        
+        # Rate limiting configuration
+        enable_rate_limiting=True,
+        requests_per_second=requests_per_second,
+        max_bucket_size=max_bucket_size,
+        check_every_n_seconds=check_every_n_seconds,
+        custom_rate_limiter=custom_rate_limiter,
         
         enable_streaming=True
     )
@@ -2436,3 +2622,4 @@ if __name__ == "__main__":
     print("- Redis support:", "✓" if REDIS_AVAILABLE else "✗")
     print("- PostgreSQL support:", "✓" if POSTGRES_AVAILABLE else "✗")
     print("- MongoDB support:", "✓" if MONGODB_AVAILABLE else "✗")
+    print("- Rate limiter support:", "✓" if RATE_LIMITER_AVAILABLE else "✗")

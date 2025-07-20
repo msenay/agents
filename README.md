@@ -401,6 +401,13 @@ from core_agent import *
 # Simple agent (minimal configuration)
 agent = create_simple_agent(model)
 
+# Rate-limited agent (prevents API 429 errors)
+agent = create_rate_limited_agent(
+    model=model,
+    requests_per_second=2.0,  # Safe rate limiting
+    max_bucket_size=5.0
+)
+
 # Advanced agent (full features)
 agent = create_advanced_agent(
     model=model,
@@ -1100,6 +1107,133 @@ Please help me:
 # 7. Human: "y" → Agent continues
 # 8. 🛑 PAUSES: "Ready to deploy to production. Approve? (y/n)"
 # 9. Human: "n" → Agent stops, no deployment
+```
+
+---
+
+## 🚦 Rate Limiting - "The API Guardian"
+
+**What it is:** Built-in protection against **API rate limit errors** (HTTP 429) by controlling how fast your agent makes requests to the language model.
+
+**How it works:**
+- **Token bucket algorithm** - maintains a "bucket" of tokens representing request credits
+- **Automatic throttling** - when bucket is empty, requests wait for tokens to refill
+- **Configurable limits** - set requests per second and burst size
+- **Transparent integration** - rate limiter wraps your model automatically
+
+**When to use:**
+- ✅ **Production environments** with strict API rate limits
+- ✅ **Batch processing** that makes many requests
+- ✅ **Multi-agent systems** sharing the same API quota
+- ✅ **Testing** to avoid hitting rate limits during development
+- ✅ **Cost control** - prevent runaway API usage
+
+**Real-world analogy:** Like a traffic light that controls the flow of cars (requests) to prevent traffic jams (rate limit errors).
+
+### 🎛️ **Rate Limiting Options**
+
+```python
+# Basic rate-limited agent - prevents 429 errors
+agent = create_rate_limited_agent(
+    model=ChatOpenAI(model="gpt-4"),
+    requests_per_second=1.0,  # Conservative: 1 request per second
+    name="SafeAgent"
+)
+
+# Production rate limiting - balanced performance
+agent = create_rate_limited_agent(
+    model=ChatOpenAI(model="gpt-4"),
+    requests_per_second=5.0,    # 5 requests per second
+    max_bucket_size=10.0,       # Allow burst of 10 requests
+    check_every_n_seconds=0.1   # Check token availability every 100ms
+)
+
+# Custom rate limiter - advanced use cases
+from langchain_core.rate_limiters import InMemoryRateLimiter
+
+custom_limiter = InMemoryRateLimiter(
+    requests_per_second=2.0,
+    max_bucket_size=5.0
+)
+
+agent = create_rate_limited_agent(
+    model=ChatOpenAI(model="gpt-4"),
+    custom_rate_limiter=custom_limiter
+)
+
+# Enable in any agent configuration
+config = AgentConfig(
+    model=ChatOpenAI(model="gpt-4"),
+    enable_rate_limiting=True,
+    requests_per_second=3.0,
+    max_bucket_size=8.0
+)
+agent = CoreAgent(config)
+```
+
+### 📊 **Rate Limiting Parameters**
+
+| Parameter | What it controls | Recommended values |
+|-----------|------------------|-------------------|
+| **requests_per_second** | Maximum requests per second | 1.0 (conservative) to 10.0 (aggressive) |
+| **max_bucket_size** | Maximum burst capacity | 2x to 5x requests_per_second |
+| **check_every_n_seconds** | Token check frequency | 0.1s (responsive) to 1.0s (relaxed) |
+
+### 🔧 **Rate Limiting Strategies**
+
+**Conservative (Recommended for production):**
+```python
+agent = create_rate_limited_agent(
+    model=model,
+    requests_per_second=1.0,    # Very safe
+    max_bucket_size=2.0         # Small burst
+)
+```
+
+**Balanced (Good for most use cases):**
+```python
+agent = create_rate_limited_agent(
+    model=model,
+    requests_per_second=3.0,    # Moderate speed
+    max_bucket_size=6.0         # Reasonable burst
+)
+```
+
+**Aggressive (High throughput, higher risk):**
+```python
+agent = create_rate_limited_agent(
+    model=model,
+    requests_per_second=10.0,   # Fast requests
+    max_bucket_size=20.0        # Large burst capacity
+)
+```
+
+### 🚀 **Real-World Example: Batch Processing**
+
+```python
+# Process many items while respecting rate limits
+from core_agent import create_rate_limited_agent
+from langchain_openai import ChatOpenAI
+
+# Create rate-limited agent for batch processing
+agent = create_rate_limited_agent(
+    model=ChatOpenAI(model="gpt-4"),
+    requests_per_second=2.0,  # Stay well under OpenAI limits
+    max_bucket_size=5.0,      # Allow small bursts
+    name="BatchProcessor"
+)
+
+# Process items with automatic rate limiting
+items_to_process = ["task1", "task2", "task3", "task4", "task5"]
+results = []
+
+for item in items_to_process:
+    # Agent automatically waits if rate limit would be exceeded
+    result = agent.invoke(f"Process this item: {item}")
+    results.append(result)
+    print(f"Processed {item} - No rate limit errors!")
+
+print(f"Successfully processed {len(results)} items without 429 errors!")
 ```
 
 ---
