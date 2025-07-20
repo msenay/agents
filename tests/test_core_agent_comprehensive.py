@@ -49,13 +49,13 @@ from langgraph.graph import StateGraph
 from core_agent import (
     AgentConfig, CoreAgentState, CoreAgent,
     SubgraphManager, MemoryManager, SupervisorManager, 
-    MCPManager, EvaluationManager,
+    MCPManager, EvaluationManager, RateLimiterManager,
     create_simple_agent, create_advanced_agent,
     create_supervisor_agent, create_swarm_agent, create_handoff_agent,
     create_memory_agent, create_evaluated_agent, create_human_interactive_agent,
-    create_mcp_agent, create_langmem_agent,
+    create_mcp_agent, create_langmem_agent, create_rate_limited_agent,
     REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE, AGENTEVALS_AVAILABLE, 
-    LANGMEM_AVAILABLE, MCP_AVAILABLE
+    LANGMEM_AVAILABLE, MCP_AVAILABLE, RATE_LIMITER_AVAILABLE
 )
 
 
@@ -743,6 +743,25 @@ class TestFactoryFunctions(unittest.TestCase):
         self.assertIsInstance(agent, CoreAgent)
         self.assertTrue(agent.config.enable_short_term_memory)
         self.assertEqual(agent.config.short_term_memory_type, "inmemory")  # Updated expectation
+    
+    def test_create_rate_limited_agent(self):
+        """Test creating a rate-limited agent"""
+        with patch('core_agent.create_react_agent') as mock_create:
+            mock_create.return_value = Mock()
+            
+            agent = create_rate_limited_agent(
+                model=self.mock_model,
+                requests_per_second=2.0,
+                max_bucket_size=5.0,
+                name="RateLimitedAgent"
+            )
+            
+            self.assertIsInstance(agent, CoreAgent)
+            self.assertEqual(agent.config.name, "RateLimitedAgent")
+            self.assertTrue(agent.config.enable_rate_limiting)
+            self.assertEqual(agent.config.requests_per_second, 2.0)
+            self.assertEqual(agent.config.max_bucket_size, 5.0)
+            self.assertIsNotNone(agent.rate_limiter_manager)
 
 
 class TestErrorHandling(unittest.TestCase):
@@ -851,6 +870,10 @@ class TestOptionalFeatures(unittest.TestCase):
     def test_agentevals_availability(self):
         """Test AgentEvals availability detection"""
         self.assertIsInstance(AGENTEVALS_AVAILABLE, bool)
+    
+    def test_rate_limiter_availability(self):
+        """Test Rate Limiter availability detection"""
+        self.assertIsInstance(RATE_LIMITER_AVAILABLE, bool)
 
 
 class TestAsyncOperations(unittest.TestCase):
@@ -997,6 +1020,203 @@ class TestPerformanceAndMemory(unittest.TestCase):
         
         # Should handle cleanup gracefully
         self.assertIsNotNone(agent.memory_manager)
+
+
+class TestRateLimiterManager(unittest.TestCase):
+    """Test RateLimiterManager functionality"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_model = Mock(spec=BaseChatModel)
+    
+    def test_rate_limiter_manager_creation_disabled(self):
+        """Test RateLimiterManager creation when disabled"""
+        config = AgentConfig(
+            model=self.mock_model,
+            enable_rate_limiting=False
+        )
+        
+        manager = RateLimiterManager(config)
+        
+        self.assertFalse(manager.enabled_status)
+        self.assertIsNone(manager.rate_limiter)
+    
+    def test_rate_limiter_manager_creation_enabled(self):
+        """Test RateLimiterManager creation when enabled"""
+        config = AgentConfig(
+            model=self.mock_model,
+            enable_rate_limiting=True,
+            requests_per_second=2.0,
+            max_bucket_size=5.0
+        )
+        
+        manager = RateLimiterManager(config)
+        
+        # Should be enabled if RATE_LIMITER_AVAILABLE
+        self.assertEqual(manager.enabled, RATE_LIMITER_AVAILABLE)
+        if RATE_LIMITER_AVAILABLE:
+            self.assertIsNotNone(manager.rate_limiter)
+    
+    def test_rate_limiter_custom_instance(self):
+        """Test RateLimiterManager with custom rate limiter"""
+        mock_rate_limiter = Mock()
+        
+        config = AgentConfig(
+            model=self.mock_model,
+            enable_rate_limiting=True,
+            custom_rate_limiter=mock_rate_limiter
+        )
+        
+        manager = RateLimiterManager(config)
+        
+        if RATE_LIMITER_AVAILABLE:
+            self.assertEqual(manager.rate_limiter, mock_rate_limiter)
+    
+    def test_acquire_token_disabled(self):
+        """Test token acquisition when rate limiting is disabled"""
+        config = AgentConfig(
+            model=self.mock_model,
+            enable_rate_limiting=False
+        )
+        
+        manager = RateLimiterManager(config)
+        
+        # Should always return True when disabled
+        result = manager.acquire_token(blocking=False)
+        self.assertTrue(result)
+    
+    def test_acquire_token_enabled(self):
+        """Test token acquisition when rate limiting is enabled"""
+        config = AgentConfig(
+            model=self.mock_model,
+            enable_rate_limiting=True,
+            requests_per_second=10.0,  # Fast for testing
+            max_bucket_size=5.0
+        )
+        
+        manager = RateLimiterManager(config)
+        
+        if RATE_LIMITER_AVAILABLE:
+            # Should work with blocking=False (might fail if no tokens)
+            result = manager.acquire_token(blocking=False)
+            self.assertIsInstance(result, bool)
+    
+    async def test_aacquire_token(self):
+        """Test async token acquisition"""
+        config = AgentConfig(
+            model=self.mock_model,
+            enable_rate_limiting=True,
+            requests_per_second=10.0,
+            max_bucket_size=5.0
+        )
+        
+        manager = RateLimiterManager(config)
+        
+        # Should work regardless of rate limiter availability
+        result = await manager.aacquire_token(blocking=False)
+        self.assertIsInstance(result, bool)
+
+
+class TestRateLimitedAgent(unittest.TestCase):
+    """Test rate-limited agent creation and functionality"""
+    
+    def setUp(self):
+        """Set up test fixtures"""
+        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model.model_name = "test-model"
+    
+    def test_create_rate_limited_agent(self):
+        """Test creating rate-limited agent"""
+        agent = create_rate_limited_agent(
+            model=self.mock_model,
+            requests_per_second=2.0,
+            name="TestRateLimitedAgent"
+        )
+        
+        self.assertEqual(agent.config.name, "TestRateLimitedAgent")
+        self.assertTrue(agent.config.enable_rate_limiting)
+        self.assertEqual(agent.config.requests_per_second, 2.0)
+        self.assertEqual(agent.rate_limiter_manager.enabled, RATE_LIMITER_AVAILABLE)
+    
+    def test_create_rate_limited_agent_with_custom_limiter(self):
+        """Test creating rate-limited agent with custom rate limiter"""
+        mock_rate_limiter = Mock()
+        
+        agent = create_rate_limited_agent(
+            model=self.mock_model,
+            custom_rate_limiter=mock_rate_limiter,
+            name="CustomRateLimitedAgent"
+        )
+        
+        self.assertTrue(agent.config.enable_rate_limiting)
+        self.assertEqual(agent.config.custom_rate_limiter, mock_rate_limiter)
+    
+    def test_rate_limited_agent_config_parameters(self):
+        """Test rate-limited agent with all configuration parameters"""
+        agent = create_rate_limited_agent(
+            model=self.mock_model,
+            requests_per_second=5.0,
+            max_bucket_size=10.0,
+            check_every_n_seconds=0.05,
+            enable_memory=True,
+            name="FullConfigAgent"
+        )
+        
+        config = agent.config
+        self.assertEqual(config.requests_per_second, 5.0)
+        self.assertEqual(config.max_bucket_size, 10.0)
+        self.assertEqual(config.check_every_n_seconds, 0.05)
+        self.assertTrue(config.enable_short_term_memory)
+        self.assertEqual(config.name, "FullConfigAgent")
+    
+    def test_agent_config_rate_limiting_integration(self):
+        """Test AgentConfig with rate limiting parameters"""
+        config = AgentConfig(
+            model=self.mock_model,
+            enable_rate_limiting=True,
+            requests_per_second=3.0,
+            max_bucket_size=8.0,
+            check_every_n_seconds=0.2
+        )
+        
+        agent = CoreAgent(config)
+        
+        self.assertTrue(agent.config.enable_rate_limiting)
+        self.assertEqual(agent.config.requests_per_second, 3.0)
+        self.assertEqual(agent.config.max_bucket_size, 8.0)
+        self.assertEqual(agent.config.check_every_n_seconds, 0.2)
+        self.assertIsNotNone(agent.rate_limiter_manager)
+
+
+class TestRateLimiterOptionalFeatures(unittest.TestCase):
+    """Test rate limiter optional feature availability"""
+    
+    def test_rate_limiter_availability(self):
+        """Test RATE_LIMITER_AVAILABLE constant"""
+        # Should be a boolean
+        self.assertIsInstance(RATE_LIMITER_AVAILABLE, bool)
+        
+        # Test import success/failure
+        try:
+            from langchain_core.rate_limiters import InMemoryRateLimiter
+            expected_available = True
+        except ImportError:
+            expected_available = False
+        
+        self.assertEqual(RATE_LIMITER_AVAILABLE, expected_available)
+    
+    def test_rate_limiter_graceful_degradation(self):
+        """Test graceful degradation when rate limiter is not available"""
+        config = AgentConfig(
+            enable_rate_limiting=True,
+            requests_per_second=2.0
+        )
+        
+        manager = RateLimiterManager(config)
+        
+        # Should handle gracefully regardless of availability
+        result = manager.acquire_token(blocking=False)
+        self.assertIsInstance(result, bool)
 
 
 if __name__ == '__main__':
