@@ -15,46 +15,15 @@ from langgraph.store.memory import InMemoryStore
 from langchain_core.messages.utils import trim_messages, count_tokens_approximately
 from langchain_core.messages import RemoveMessage
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
-# Optional LangMem dependencies
-try:
-    from langmem import create_manage_memory_tool, create_search_memory_tool
-    from langmem.short_term import SummarizationNode
-except ImportError:
-    create_manage_memory_tool = None
-    create_search_memory_tool = None
-    SummarizationNode = None
-
-try:
-    from langchain.embeddings import init_embeddings
-except ImportError:
-    init_embeddings = None
+from langmem import create_manage_memory_tool, create_search_memory_tool
+from langmem.short_term import SummarizationNode
+from langchain.embeddings import init_embeddings
 from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
-# Optional dependencies - import with try/catch
-try:
-    from langgraph_supervisor import create_supervisor
-except ImportError:
-    create_supervisor = None
-
-try:
-    from langgraph_swarm import create_swarm
-except ImportError:
-    create_swarm = None
-
-try:
-    from langchain_mcp_adapters.client import MultiServerMCPClient
-except ImportError:
-    MultiServerMCPClient = None
-
-try:
-    from agentevals.trajectory.match import create_trajectory_match_evaluator
-except ImportError:
-    create_trajectory_match_evaluator = None
-
-try:
-    from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE
-except ImportError:
-    create_trajectory_llm_as_judge = None
-    TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
+from langgraph_supervisor import create_supervisor
+from langgraph_swarm import create_swarm
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from agentevals.trajectory.match import create_trajectory_match_evaluator
+from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE
 
 from langchain_core.tools import BaseTool, tool, InjectedToolCallId
 from langchain_core.language_models import BaseChatModel
@@ -839,9 +808,9 @@ class SupervisorManager:
         # Test compatibility properties
         self.enabled = config.enable_supervisor or config.enable_swarm or config.enable_handoff
 
-        if config.enable_supervisor and create_supervisor:
+        if config.enable_supervisor:
             self._initialize_supervisor()
-        elif config.enable_swarm and create_swarm:
+        elif config.enable_swarm:
             self._initialize_swarm()
         elif config.enable_handoff:
             self._initialize_handoff()
@@ -863,7 +832,7 @@ class SupervisorManager:
     def _initialize_swarm(self):
         """Initialize the swarm graph"""
         try:
-            if self.config.agents and create_swarm:
+            if self.config.agents:
                 agents_list = list(self.config.agents.values())
                 self.swarm_graph = create_swarm(
                     agents=agents_list,
@@ -1078,14 +1047,13 @@ class EvaluationManager:
     def _initialize_evaluators(self):
         """Initialize AgentEvals evaluators"""
         # Trajectory match evaluator
-        if create_trajectory_match_evaluator:
-            self.trajectory_evaluator = create_trajectory_match_evaluator(
-                trajectory_match_mode="superset"
-            )
-            logger.info("Trajectory match evaluator initialized")
+        self.trajectory_evaluator = create_trajectory_match_evaluator(
+            trajectory_match_mode="superset"
+        )
+        logger.info("Trajectory match evaluator initialized")
 
         # LLM-as-a-judge evaluator
-        if create_trajectory_llm_as_judge and self.config.model:
+        if self.config.model:
             self.llm_judge_evaluator = create_trajectory_llm_as_judge(
                 prompt=TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE,
                 model=self.config.model
