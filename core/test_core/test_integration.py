@@ -46,7 +46,7 @@ if __name__ == "__main__":
             # Memory kullanım response
             "I remember our previous conversation about Python functions. The Fibonacci function I created works well!",
             # Tool kullanım response  
-            "I've successfully executed the Python code and it generated the Fibonacci sequence correctly.",
+            "I remember our previous conversation about the Fibonacci function and I've successfully executed the Python code.",
         ]
     
     def invoke(self, messages, **kwargs):
