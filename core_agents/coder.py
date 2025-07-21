@@ -45,6 +45,7 @@ class AgentGeneratorInput(BaseModel):
     agent_name: str = Field(description="Name for the agent")
     purpose: str = Field(description="What the agent should do")
     tools_needed: List[str] = Field(default=[], description="List of tools if needed")
+    use_our_core: bool = Field(default=False, description="Whether to use Core Agent infrastructure")
 
 
 def create_agent_generator_tool(model):
@@ -57,27 +58,52 @@ def create_agent_generator_tool(model):
         args_schema: type[BaseModel] = AgentGeneratorInput
         
         def _run(self, template_type: str, agent_name: str, purpose: str, 
-                 tools_needed: List[str] = None) -> str:
+                 tools_needed: List[str] = None, use_our_core: bool = False) -> str:
             """Generate agent code based on template type"""
             
             if tools_needed is None:
                 tools_needed = []
             
-            prompt = f"""Generate a complete LangGraph agent with the following specifications:
+            # Different prompts based on whether to use Core Agent
+            if use_our_core:
+                prompt = f"""Generate a complete LangGraph agent that uses our Core Agent infrastructure:
             
 Type: {template_type}
 Name: {agent_name}
 Purpose: {purpose}
 Tools: {tools_needed if tools_needed else 'None'}
 
-Requirements:
-1. Use the Core Agent infrastructure from /workspace/core/core_agent.py
-2. Include all necessary imports
-3. Create a working agent class that inherits from CoreAgent
-4. Add proper configuration using AgentConfig
-5. Include a demo function
-6. Add error handling and logging
-7. Make it production-ready
+Requirements for Core Agent based implementation:
+1. Import and inherit from CoreAgent at /workspace/core/core_agent.py
+2. Use AgentConfig from /workspace/core/config.py
+3. Leverage Core Agent's built-in features (memory, tools, etc.)
+4. Create a proper __init__ method that calls super().__init__(config)
+5. Include all necessary imports
+6. Add a demo function
+7. Use proper error handling and logging
+
+Generate the complete Python code:"""
+            else:
+                prompt = f"""Generate a complete standalone LangGraph agent:
+            
+Type: {template_type}
+Name: {agent_name}  
+Purpose: {purpose}
+Tools: {tools_needed if tools_needed else 'None'}
+
+Requirements for standalone implementation:
+1. Use standard LangGraph patterns (StateGraph, add_node, add_edge)
+2. Define proper agent state with TypedDict
+3. Create clean node functions for each step
+4. Add proper tool integration if needed
+5. Include all necessary imports (langchain, langgraph, etc.)
+6. Create a working example/demo at the end
+7. Make it self-contained and ready to run
+
+For {template_type} type:
+{"- Simple: Basic agent with state management and clear workflow" if template_type == "simple" else ""}
+{"- With Tools: Include tool node, proper tool calling and result handling" if template_type == "with_tools" else ""}
+{"- Multi-agent: Create supervisor pattern with multiple sub-agents coordinating" if template_type == "multi_agent" else ""}
 
 Generate the complete Python code:"""
             
@@ -129,27 +155,47 @@ class CoderAgent(CoreAgent):
     
     def _get_system_prompt(self) -> str:
         """System prompt for the Coder Agent"""
-        return """You are a Coder Agent specialized in creating LangGraph agents.
+        return """You are an expert Coder Agent specialized in creating LangGraph agents.
 
 Your expertise includes:
-- Creating simple agents for basic tasks
-- Building agents with custom tools
-- Designing multi-agent systems with coordination
-- Using Core Agent infrastructure effectively
+- Creating standalone LangGraph agents with proper state management
+- Building agents with custom tools and tool integration
+- Designing multi-agent systems with supervisor patterns
+- Using Core Agent infrastructure when requested
 - Writing clean, maintainable, production-ready code
 
-When creating agents:
-1. Always use the Core Agent framework as foundation
-2. Include proper error handling and logging
-3. Add comprehensive documentation
-4. Create demo functions for testing
-5. Follow Python best practices
+Key capabilities:
+1. STANDALONE AGENTS (default): Create pure LangGraph agents with StateGraph, nodes, edges
+2. CORE AGENT BASED: Use our Core Agent framework when use_our_core=True
+3. SIMPLE AGENTS: Basic workflow with state management
+4. WITH TOOLS: Proper tool integration, tool node, and result handling
+5. MULTI-AGENT: Supervisor pattern with agent coordination
 
-You generate complete, working code that can be executed immediately."""
+Best practices you follow:
+- Always include ALL necessary imports
+- Add proper error handling and logging
+- Create working demo/example code
+- Use TypedDict for state definitions
+- Add clear documentation and comments
+- Make code immediately executable
+- Follow LangGraph best practices
+
+You generate complete, working, production-ready code."""
     
     def generate_agent(self, template_type: str, agent_name: str, purpose: str, 
-                      tools_needed: List[str] = None) -> Dict[str, Any]:
-        """Generate an agent based on requirements"""
+                      tools_needed: List[str] = None, use_our_core: bool = False) -> Dict[str, Any]:
+        """Generate an agent based on requirements
+        
+        Args:
+            template_type: Type of agent (simple, with_tools, multi_agent)
+            agent_name: Name for the generated agent
+            purpose: What the agent should do
+            tools_needed: List of tools if needed
+            use_our_core: Whether to use Core Agent infrastructure (default: False for standalone)
+        
+        Returns:
+            Dict with success status, generated code, and metadata
+        """
         
         if tools_needed is None:
             tools_needed = []
@@ -170,8 +216,8 @@ You generate complete, working code that can be executed immediately."""
                 }
             
             # Generate the agent code
-            print(f"🎯 Generating {template_type} agent: {agent_name}")
-            agent_code = generator_tool._run(template_type, agent_name, purpose, tools_needed)
+            print(f"🎯 Generating {template_type} agent: {agent_name} (Core Agent: {use_our_core})")
+            agent_code = generator_tool._run(template_type, agent_name, purpose, tools_needed, use_our_core)
             
             return {
                 "success": True,
@@ -210,48 +256,77 @@ You generate complete, working code that can be executed immediately."""
 
 def demo_coder_agent():
     """Demonstrate the Coder Agent functionality"""
-    print("🚀 CODER AGENT DEMO")
+    print("🚀 CODER AGENT DEMO - The Ultimate Agent Generator")
     print("=" * 80)
     
     try:
         # Create coder agent
         agent = CoderAgent()
         
-        # Example 1: Generate a simple agent
-        print("\n📝 Example 1: Generating a simple agent")
+        # Example 1: Generate a simple standalone agent
+        print("\n📝 Example 1: Generating a simple STANDALONE agent")
         result = agent.generate_agent(
             template_type="simple",
             agent_name="DataAnalyzer",
-            purpose="Analyze and summarize data from various sources"
+            purpose="Analyze and summarize data from various sources",
+            use_our_core=False  # Standalone LangGraph agent
         )
         
         if result["success"]:
-            print(f"✅ Generated: {result['agent_name']}")
+            print(f"✅ Generated: {result['agent_name']} (Standalone)")
             print(f"📄 Code preview: {result['code'][:200]}...")
         else:
             print(f"❌ Error: {result['error']}")
         
-        # Example 2: Generate agent with tools
-        print("\n📝 Example 2: Generating agent with tools")
+        # Example 2: Generate agent with tools using Core Agent
+        print("\n📝 Example 2: Generating agent with tools using CORE AGENT")
         result = agent.generate_agent(
             template_type="with_tools",
             agent_name="WebSearcher", 
             purpose="Search and extract information from the web",
-            tools_needed=["web_search", "web_scraper", "summarizer"]
+            tools_needed=["web_search", "web_scraper", "summarizer"],
+            use_our_core=True  # Use Core Agent infrastructure
         )
         
         if result["success"]:
-            print(f"✅ Generated: {result['agent_name']} with tools: {result['tools']}")
+            print(f"✅ Generated: {result['agent_name']} with tools: {result['tools']} (Core Agent)")
         else:
             print(f"❌ Error: {result['error']}")
         
-        # Example 3: Test chat
-        print("\n💬 Example 3: Chat with Coder Agent")
-        response = agent.chat("What are the best practices for creating a LangGraph agent?")
-        print(f"Response: {response[:300]}...")
+        # Example 3: Multi-agent system
+        print("\n📝 Example 3: Generating a MULTI-AGENT system")
+        result = agent.generate_agent(
+            template_type="multi_agent",
+            agent_name="ResearchTeam",
+            purpose="Coordinate multiple agents for comprehensive research tasks",
+            tools_needed=["researcher", "analyst", "writer"],
+            use_our_core=False  # Standalone for flexibility
+        )
+        
+        if result["success"]:
+            print(f"✅ Generated: {result['agent_name']} multi-agent system")
+        else:
+            print(f"❌ Error: {result['error']}")
+        
+        # Example 4: Test chat functionality
+        print("\n💬 Example 4: Chat with Coder Agent")
+        response = agent.chat("What are the key differences between standalone and Core Agent based implementations?")
+        print(f"Response: {response[:400]}...")
+        
+        # Example 5: Generate with specific requirements
+        print("\n📝 Example 5: Custom agent with specific requirements")
+        response = agent.chat(
+            "Create a simple agent called 'EmailProcessor' that can read, classify, and respond to emails. "
+            "Make it standalone with proper error handling."
+        )
+        print(f"Generated code preview: {response[:300]}...")
         
         print("\n" + "=" * 80)
-        print("✅ Coder Agent demo completed!")
+        print("✅ Coder Agent demo completed successfully!")
+        print("\n💡 Tips:")
+        print("- Use 'use_our_core=True' to leverage Core Agent infrastructure")
+        print("- Use 'use_our_core=False' (default) for standalone LangGraph agents")
+        print("- The agent can generate simple, with_tools, and multi_agent systems")
         
     except Exception as e:
         print(f"❌ Demo failed: {str(e)}")
