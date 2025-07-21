@@ -41,10 +41,8 @@ os.environ["OPENAI_API_KEY"] = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca7
 
 from core.core_agent import CoreAgent
 from core.config import AgentConfig
-from core.managers import (
-    REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE,
-    RATE_LIMITER_AVAILABLE, LANGMEM_AVAILABLE
-)
+# Tüm özellikler artık direkt kullanılabilir
+# Config üzerinden enable/disable edilebilir
 
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 

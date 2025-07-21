@@ -25,10 +25,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from core.config import AgentConfig
 from core.managers import (
     SubgraphManager, MemoryManager, SupervisorManager, 
-    MCPManager, EvaluationManager, RateLimiterManager,
-    LANGMEM_AVAILABLE, AGENTEVALS_AVAILABLE, MCP_AVAILABLE, 
-    RATE_LIMITER_AVAILABLE, MESSAGE_UTILS_AVAILABLE,
-    REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE
+    MCPManager, EvaluationManager, RateLimiterManager
 )
 from core.model import CoreAgentState
 
@@ -387,7 +384,6 @@ class CoreAgent:
         """Get memory configuration summary"""
         return {
             "memory_type": self.config.memory_type,
-            "langmem_available": LANGMEM_AVAILABLE,
             "langmem_configured": self.has_langmem_support(),
             "summarization_enabled": self.config.langmem_enable_summarization,
             "max_tokens": self.config.langmem_max_tokens,

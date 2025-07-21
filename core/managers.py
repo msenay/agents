@@ -1,7 +1,6 @@
 from typing import Optional, List, Dict, Any
 
 import logging
-import os
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
@@ -16,86 +15,19 @@ from langgraph.checkpoint.mongodb import MongoDBSaver
 # from langgraph.store.mongodb import MongoDBStore
 from langgraph.store.memory import InMemoryStore
 
-# Availability flags from environment
-LANGMEM_AVAILABLE = os.getenv("LANGMEM_AVAILABLE", "true").lower() == "true"
-AGENTEVALS_AVAILABLE = os.getenv("AGENTEVALS_AVAILABLE", "true").lower() == "true"
-MCP_AVAILABLE = os.getenv("MCP_AVAILABLE", "true").lower() == "true"
-RATE_LIMITER_AVAILABLE = os.getenv("RATE_LIMITER_AVAILABLE", "true").lower() == "true"
-MESSAGE_UTILS_AVAILABLE = os.getenv("MESSAGE_UTILS_AVAILABLE", "true").lower() == "true"
-REDIS_AVAILABLE = os.getenv("REDIS_AVAILABLE", "true").lower() == "true"
-POSTGRES_AVAILABLE = os.getenv("POSTGRES_AVAILABLE", "true").lower() == "true"
-MONGODB_AVAILABLE = os.getenv("MONGODB_AVAILABLE", "true").lower() == "true"
-
-# Try to import optional dependencies
-if MESSAGE_UTILS_AVAILABLE:
-    try:
-        from langchain_core.messages.utils import trim_messages, count_tokens_approximately
-        from langchain_core.messages import RemoveMessage
-        from langgraph.graph.message import REMOVE_ALL_MESSAGES
-    except ImportError:
-        MESSAGE_UTILS_AVAILABLE = False
-        trim_messages = None
-        count_tokens_approximately = None
-        RemoveMessage = None
-        REMOVE_ALL_MESSAGES = None
-else:
-    trim_messages = None
-    count_tokens_approximately = None
-    RemoveMessage = None
-    REMOVE_ALL_MESSAGES = None
-
-if LANGMEM_AVAILABLE:
-    try:
-        from langmem import create_manage_memory_tool, create_search_memory_tool
-        from langmem.short_term import SummarizationNode
-    except ImportError:
-        LANGMEM_AVAILABLE = False
-        create_manage_memory_tool = None
-        create_search_memory_tool = None
-        SummarizationNode = None
-else:
-    create_manage_memory_tool = None
-    create_search_memory_tool = None
-    SummarizationNode = None
-
+# Direkt import'lar
+from langchain_core.messages.utils import trim_messages, count_tokens_approximately
+from langchain_core.messages import RemoveMessage
+from langgraph.graph.message import REMOVE_ALL_MESSAGES
+from langmem import create_manage_memory_tool, create_search_memory_tool
+from langmem.short_term import SummarizationNode
 from langchain.embeddings import init_embeddings
-
-if RATE_LIMITER_AVAILABLE:
-    try:
-        from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
-    except ImportError:
-        RATE_LIMITER_AVAILABLE = False
-        InMemoryRateLimiter = None
-        BaseRateLimiter = None
-else:
-    InMemoryRateLimiter = None
-    BaseRateLimiter = None
-
+from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
 from langgraph_supervisor import create_supervisor
 from langgraph_swarm import create_swarm
-
-if MCP_AVAILABLE:
-    try:
-        from langchain_mcp_adapters.client import MultiServerMCPClient
-    except ImportError:
-        MCP_AVAILABLE = False
-        MultiServerMCPClient = None
-else:
-    MultiServerMCPClient = None
-
-if AGENTEVALS_AVAILABLE:
-    try:
-        from agentevals.trajectory.match import create_trajectory_match_evaluator
-        from agentevals.trajectory.llm import (create_trajectory_llm_as_judge,TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
-    except ImportError:
-        AGENTEVALS_AVAILABLE = False
-        create_trajectory_match_evaluator = None
-        create_trajectory_llm_as_judge = None
-        TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
-else:
-    create_trajectory_match_evaluator = None
-    create_trajectory_llm_as_judge = None
-    TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from agentevals.trajectory.match import create_trajectory_match_evaluator
+from agentevals.trajectory.llm import (create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
 
 from langchain_core.tools import BaseTool, tool, InjectedToolCallId
 from langchain_core.language_models import BaseChatModel
@@ -114,7 +46,7 @@ class RateLimiterManager:
 
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.enabled = config.enable_rate_limiting and RATE_LIMITER_AVAILABLE
+        self.enabled = config.enable_rate_limiting
         self.rate_limiter: Optional[BaseRateLimiter] = None
 
         if self.enabled:
@@ -605,7 +537,7 @@ class MemoryManager:
 
     def _initialize_message_trimmer(self):
         """Initialize message trimming functionality"""
-        if MESSAGE_UTILS_AVAILABLE and trim_messages and count_tokens_approximately:
+        if trim_messages and count_tokens_approximately:
             def message_trimmer_hook(state):
                 """Hook for trimming messages before LLM call"""
                 messages = state.get("messages", [])
@@ -631,7 +563,7 @@ class MemoryManager:
 
     def _initialize_summarization(self):
         """Initialize LangMem summarization"""
-        if LANGMEM_AVAILABLE and SummarizationNode and count_tokens_approximately:
+        if SummarizationNode and count_tokens_approximately:
             try:
                 self.summarization_node = SummarizationNode(
                     token_counter=count_tokens_approximately,
@@ -669,7 +601,7 @@ class MemoryManager:
 
     def _initialize_memory_tools(self):
         """Initialize LangMem memory tools for agent use"""
-        if LANGMEM_AVAILABLE and self.store:
+        if self.store:
             try:
                 if create_manage_memory_tool:
                     manage_tool = create_manage_memory_tool(
@@ -732,7 +664,7 @@ class MemoryManager:
 
     def delete_messages_hook(self, messages_to_remove: List[str] = None, remove_all: bool = False):
         """Create a hook to delete specific messages or all messages"""
-        if not MESSAGE_UTILS_AVAILABLE or not RemoveMessage:
+        if not RemoveMessage:
             return None
 
         def delete_hook(state):
@@ -851,7 +783,7 @@ class MemoryManager:
 
     def has_langmem_support(self) -> bool:
         """Check if LangMem is available (including mock support)"""
-        return LANGMEM_AVAILABLE or (len(self.memory_tools) > 0) or (self.summarization_node is not None)
+        return (len(self.memory_tools) > 0) or (self.summarization_node is not None)
 
     @property
     def short_term_memory(self):
@@ -1065,7 +997,7 @@ class MCPManager:
         # Test compatibility properties
         self.enabled = config.enable_mcp
 
-        if config.enable_mcp and MCP_AVAILABLE:
+        if config.enable_mcp:
             self._initialize_mcp_client()
 
     def _initialize_mcp_client(self):
@@ -1099,7 +1031,7 @@ class MCPManager:
         """Add a new MCP server configuration"""
         self.config.mcp_servers[name] = config
         self.servers[name] = config  # For test compatibility
-        if self.config.enable_mcp and MCP_AVAILABLE:
+        if self.config.enable_mcp:
             self._initialize_mcp_client()
 
 
@@ -1121,7 +1053,7 @@ class EvaluationManager:
         else:
             self.metrics = []  # Empty if evaluation disabled
 
-        if config.enable_evaluation and AGENTEVALS_AVAILABLE:
+        if config.enable_evaluation:
             self._initialize_evaluators()
 
     def _initialize_evaluators(self):
@@ -1216,7 +1148,7 @@ class EvaluationManager:
         return {
             "enabled": self.enabled,
             "available_metrics": self.metrics,
-            "agentevals_available": AGENTEVALS_AVAILABLE,
+            "evaluation_enabled": self.config.enable_evaluation,
             "basic_evaluator": self.evaluator is not None,
             "trajectory_evaluator": self.trajectory_evaluator is not None,
             "llm_judge_evaluator": self.llm_judge_evaluator is not None

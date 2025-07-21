@@ -51,10 +51,8 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.core_agent import CoreAgent
-from core.managers import (
-    REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE,
-    LANGMEM_AVAILABLE, MESSAGE_UTILS_AVAILABLE
-)
+# Tüm özellikler artık direkt kullanılabilir
+# Config üzerinden enable/disable edilebilir
 
 # Database connection strings
 REDIS_URL = "redis://localhost:6379"

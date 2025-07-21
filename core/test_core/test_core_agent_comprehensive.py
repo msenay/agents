@@ -43,9 +43,7 @@ from core.core_agent import CoreAgentState, CoreAgent
 from core.config import AgentConfig
 from core.managers import (
     SubgraphManager, MemoryManager, SupervisorManager, 
-    MCPManager, EvaluationManager, RateLimiterManager,
-    AGENTEVALS_AVAILABLE, LANGMEM_AVAILABLE, MCP_AVAILABLE, 
-    RATE_LIMITER_AVAILABLE, MESSAGE_UTILS_AVAILABLE
+    MCPManager, EvaluationManager, RateLimiterManager
 )
 
 from simple_agent_creators import (create_simple_agent, create_advanced_agent,
@@ -745,7 +743,7 @@ class TestFactoryFunctions(unittest.TestCase):
             self.assertTrue(agent.config.enable_evaluation)
     
     @patch('core_agent.create_react_agent')
-    @patch('core_agent.LANGMEM_AVAILABLE', True)
+    # LangMem artık direkt kullanılabilir
     def test_create_langmem_agent(self, mock_create_react):
         """Test creating a langmem agent"""
         mock_create_react.return_value = Mock()
@@ -875,21 +873,23 @@ class TestOptionalFeatures(unittest.TestCase):
             manager = MemoryManager(config)
             # Should fall back gracefully
     
-    def test_langmem_availability(self):
-        """Test LangMem availability detection"""
-        self.assertIsInstance(LANGMEM_AVAILABLE, bool)
-    
-    def test_mcp_availability(self):
-        """Test MCP availability detection"""
-        self.assertIsInstance(MCP_AVAILABLE, bool)
-    
-    def test_agentevals_availability(self):
-        """Test AgentEvals availability detection"""
-        self.assertIsInstance(AGENTEVALS_AVAILABLE, bool)
-    
-    def test_rate_limiter_availability(self):
-        """Test Rate Limiter availability detection"""
-        self.assertIsInstance(RATE_LIMITER_AVAILABLE, bool)
+    def test_all_features_configurable(self):
+        """Test that all features can be configured"""
+        # Create config with all features enabled
+        config = AgentConfig(
+            enable_rate_limiting=True,
+            enable_mcp=True,
+            enable_evaluation=True,
+            enable_long_term_memory=True,
+            enable_short_term_memory=True
+        )
+        
+        # All features should be configurable through AgentConfig
+        self.assertTrue(config.enable_rate_limiting)
+        self.assertTrue(config.enable_mcp)
+        self.assertTrue(config.enable_evaluation)
+        self.assertTrue(config.enable_long_term_memory)
+        self.assertTrue(config.enable_short_term_memory)
 
 
 class TestAsyncOperations(unittest.TestCase):
@@ -1068,10 +1068,9 @@ class TestRateLimiterManager(unittest.TestCase):
         
         manager = RateLimiterManager(config)
         
-        # Should be enabled if RATE_LIMITER_AVAILABLE
-        self.assertEqual(manager.enabled, RATE_LIMITER_AVAILABLE)
-        if RATE_LIMITER_AVAILABLE:
-            self.assertIsNotNone(manager.rate_limiter)
+        # Should be enabled based on config
+        self.assertTrue(manager.enabled)
+        self.assertIsNotNone(manager.rate_limiter)
     
     def test_rate_limiter_custom_instance(self):
         """Test RateLimiterManager with custom rate limiter"""
@@ -1085,8 +1084,7 @@ class TestRateLimiterManager(unittest.TestCase):
         
         manager = RateLimiterManager(config)
         
-        if RATE_LIMITER_AVAILABLE:
-            self.assertEqual(manager.rate_limiter, mock_rate_limiter)
+        self.assertEqual(manager.rate_limiter, mock_rate_limiter)
     
     def test_acquire_token_disabled(self):
         """Test token acquisition when rate limiting is disabled"""
@@ -1112,10 +1110,9 @@ class TestRateLimiterManager(unittest.TestCase):
         
         manager = RateLimiterManager(config)
         
-        if RATE_LIMITER_AVAILABLE:
-            # Should work with blocking=False (might fail if no tokens)
-            result = manager.acquire_token(blocking=False)
-            self.assertIsInstance(result, bool)
+        # Should work with blocking=False (might fail if no tokens)
+        result = manager.acquire_token(blocking=False)
+        self.assertIsInstance(result, bool)
     
     async def test_aacquire_token(self):
         """Test async token acquisition"""
@@ -1152,7 +1149,7 @@ class TestRateLimitedAgent(unittest.TestCase):
         self.assertEqual(agent.config.name, "TestRateLimitedAgent")
         self.assertTrue(agent.config.enable_rate_limiting)
         self.assertEqual(agent.config.requests_per_second, 2.0)
-        self.assertEqual(agent.rate_limiter_manager.enabled, RATE_LIMITER_AVAILABLE)
+        self.assertTrue(agent.rate_limiter_manager.enabled)
     
     def test_create_rate_limited_agent_with_custom_limiter(self):
         """Test creating rate-limited agent with custom rate limiter"""
@@ -1207,19 +1204,11 @@ class TestRateLimitedAgent(unittest.TestCase):
 class TestRateLimiterOptionalFeatures(unittest.TestCase):
     """Test rate limiter optional feature availability"""
     
-    def test_rate_limiter_availability(self):
-        """Test RATE_LIMITER_AVAILABLE constant"""
-        # Should be a boolean
-        self.assertIsInstance(RATE_LIMITER_AVAILABLE, bool)
-        
-        # Test import success/failure
-        try:
-            from langchain_core.rate_limiters import InMemoryRateLimiter
-            expected_available = True
-        except ImportError:
-            expected_available = False
-        
-        self.assertEqual(RATE_LIMITER_AVAILABLE, expected_available)
+    def test_rate_limiter_import(self):
+        """Test that rate limiter can be imported"""
+        # Rate limiter should be importable
+        from langchain_core.rate_limiters import InMemoryRateLimiter
+        self.assertIsNotNone(InMemoryRateLimiter)
     
     def test_rate_limiter_graceful_degradation(self):
         """Test graceful degradation when rate limiter is not available"""
