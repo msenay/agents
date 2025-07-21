@@ -44,22 +44,25 @@ class CoderConfig:
     MAX_TOKENS = 4000
 
 
-class LangGraphTemplateInput(BaseModel):
-    """Input schema for LangGraph template generation"""
+class AgentGeneratorInput(BaseModel):
+    """Input schema for agent generation"""
     template_type: str = Field(description="Type: simple, with_tools, multi_agent")
     agent_name: str = Field(description="Name for the agent")
     purpose: str = Field(description="What the agent should do")
     tools_needed: List[str] = Field(default=[], description="List of tools if needed")
 
 
-class LangGraphTemplateTool(BaseTool):
-    """Elite tool for generating complete LangGraph agent templates"""
+class CleanAgentGeneratorTool(BaseTool):
+    """Clean tool that uses prompts instead of string templates"""
     
-    name: str = "langgraph_generator"
-    description: str = """Generate production-ready LangGraph agents with Azure OpenAI.
-    Types: simple (basic agent), with_tools (agent with custom tools), multi_agent (supervisor system)
-    Always includes proper Azure OpenAI configuration and error handling."""
-    args_schema: type[BaseModel] = LangGraphTemplateInput
+    name: str = "clean_agent_generator"
+    description: str = """Generate LangGraph agents using intelligent prompts.
+    Much cleaner than string templates - lets the LLM generate proper code."""
+    args_schema: type[BaseModel] = AgentGeneratorInput
+    
+    def __init__(self, llm):
+        super().__init__()
+        self.llm = llm
     
     def _run(self, template_type: str, agent_name: str, purpose: str, tools_needed: List[str] = []) -> str:
         """Generate elite LangGraph template based on type"""
@@ -329,7 +332,7 @@ class EliteCoderAgent:
         
         # Add specialized Elite Coder tools
         elite_tools = [
-            LangGraphTemplateTool()
+            CleanAgentGeneratorTool(self.llm)
         ]
         
         # Add memory tool if memory manager is available
@@ -452,7 +455,7 @@ Include Core Agent memory integration and proper task routing."""
             print(f"🎯 Generating elite {template_type} agent: {agent_name}")
             
             # Generate the agent code
-            template_tool = LangGraphTemplateTool()
+            template_tool = CleanAgentGeneratorTool(self.llm)
             agent_code = template_tool._run(template_type, agent_name, purpose, tools_needed)
             
             # Save to Core Agent memory with intelligent tags
