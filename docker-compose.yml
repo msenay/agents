@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # Redis Service
+  redis:
+    image: redis/redis-stack:latest
+    container_name: core_agent_redis
+    ports:
+      - "6379:6379"
+      - "8001:8001"  # RedisInsight web UI
+    environment:
+      - REDIS_ARGS=--requirepass redis_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - core_agent_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Service
+  postgres:
+    image: postgres:15-alpine
+    container_name: core_agent_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=core_agent_db
+      - POSTGRES_USER=core_agent_user
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - core_agent_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U core_agent_user -d core_agent_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MongoDB Service
+  mongodb:
+    image: mongo:7.0
+    container_name: core_agent_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=mongo_password
+      - MONGO_INITDB_DATABASE=core_agent_db
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - core_agent_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Core Agent Application
+  core_agent_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: core_agent_app
+    ports:
+      - "8000:8000"
+    environment:
+      # Database Connection Strings
+      - REDIS_URL=redis://:redis_password@redis:6379/0
+      - POSTGRES_URL=postgresql://core_agent_user:postgres_password@postgres:5432/core_agent_db
+      - MONGODB_URL=mongodb://admin:mongo_password@mongodb:27017/core_agent_db?authSource=admin
+      
+      # Application Settings
+      - PYTHONPATH=/app
+      - ENVIRONMENT=development
+      - LOG_LEVEL=INFO
+      
+      # LangChain/OpenAI (add your API keys)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your_openai_key_here}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY:-your_langchain_key_here}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      
+    volumes:
+      - .:/app
+      - /app/venv  # Anonymous volume for virtual environment
+    working_dir: /app
+    command: >
+      sh -c "
+        echo 'Starting Core Agent Application...' &&
+        python -m pytest tests/ -v --tb=short || echo 'Tests completed with some failures' &&
+        echo 'Starting application server...' &&
+        python -m core.app
+      "
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - core_agent_network
+    restart: unless-stopped
+
+  # Test Runner Service
+  test_runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: core_agent_tests
+    environment:
+      - REDIS_URL=redis://:redis_password@redis:6379/1  # Different DB for tests
+      - POSTGRES_URL=postgresql://core_agent_user:postgres_password@postgres:5432/core_agent_test_db
+      - MONGODB_URL=mongodb://admin:mongo_password@mongodb:27017/core_agent_test_db?authSource=admin
+      - PYTHONPATH=/app
+      - ENVIRONMENT=test
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      sh -c "
+        echo 'Running comprehensive tests...' &&
+        python -m pytest core/test_core/ -v --tb=short &&
+        echo 'All tests completed!'
+      "
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - core_agent_network
+    profiles:
+      - test
+
+volumes:
+  redis_data:
+  postgres_data:
+  mongodb_data:
+
+networks:
+  core_agent_network:
+    driver: bridge
