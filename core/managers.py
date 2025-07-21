@@ -298,13 +298,32 @@ class MemoryManager:
             logger.error(f"Failed to initialize checkpointer: {e}")
             self.checkpointer = InMemorySaver()
 
+    def _is_semantic_search_enabled(self) -> bool:
+        """Check if semantic search is enabled using backward-compatible approach"""
+        if hasattr(self.config, 'memory_types') and "semantic" in self.config.memory_types:
+            return True
+        elif hasattr(self.config, 'enable_semantic_search') and self.config.enable_semantic_search:
+            return True
+        return False
+
+    def _get_store_type(self) -> str:
+        """Get store type using backward-compatible approach"""
+        if hasattr(self.config, 'memory_backend'):
+            return self.config.memory_backend.lower()
+        elif hasattr(self.config, 'long_term_memory_type'):
+            return self.config.long_term_memory_type.lower()
+        else:
+            return "inmemory"  # Default fallback
+
     def _initialize_store(self):
         """Initialize the store based on configuration"""
-        store_type = self.config.memory_backend.lower()
+        store_type = self._get_store_type()
 
         # Set up index configuration for semantic search
         index_config = None
-        if "semantic" in self.config.memory_types:
+        semantic_enabled = self._is_semantic_search_enabled()
+        
+        if semantic_enabled:
             try:
                 embeddings = init_embeddings(self.config.embedding_model)
                 index_config = {
@@ -316,7 +335,7 @@ class MemoryManager:
             except Exception as e:
                 logger.error(f"Failed to initialize embeddings for semantic search: {e}")
                 # If semantic search is required but embeddings fail, this is a critical error
-                if "semantic" in self.config.memory_types:
+                if semantic_enabled:
                     raise RuntimeError(f"Semantic search enabled but embeddings initialization failed: {e}")
 
         # Set up TTL configuration for Redis/MongoDB
@@ -626,7 +645,7 @@ class MemoryManager:
 
     def search_memory(self, query: str, limit: int = 5):
         """Search long-term memory with semantic similarity"""
-        if self.store and self.config.enable_semantic_search:
+        if self.store and self._is_semantic_search_enabled():
             try:
                 namespace = (self.config.memory_namespace_store,)
                 return self.store.search(namespace, query=query, limit=limit)
