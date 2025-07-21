@@ -249,10 +249,10 @@ class MemoryManager:
                     self.checkpointer = PostgresCheckpointerWrapper(self.config.postgres_url)
                     logger.info("PostgresSaver checkpointer initialized")
                 except Exception as e:
-                    # Fallback to InMemory for testing
-                    logger.warning(f"PostgreSQL connection failed, using InMemory checkpointer: {e}")
-                    self.checkpointer = InMemorySaver()
-                    logger.info("Mock PostgresSaver (InMemory) initialized for testing")
+                    # PostgreSQL connection failed - this is a critical error for production
+                    error_msg = f"PostgreSQL checkpointer connection failed: {e}. Please check PostgreSQL server and connection string."
+                    logger.error(error_msg)
+                    raise RuntimeError(error_msg)
 
             elif checkpointer_type == "mongodb":
                 if MongoDBSaver and self.config.mongodb_url:
@@ -271,15 +271,15 @@ class MemoryManager:
                         )
                         logger.info("MongoDBSaver checkpointer initialized")
                     except Exception as e:
-                        # Fallback to InMemory for testing
-                        logger.warning(f"MongoDB connection failed, using InMemory checkpointer: {e}")
-                        self.checkpointer = InMemorySaver()
-                        logger.info("Mock MongoDBSaver (InMemory) initialized for testing")
+                        # MongoDB connection failed - this is a critical error for production
+                        error_msg = f"MongoDB checkpointer connection failed: {e}. Please check MongoDB server and connection string."
+                        logger.error(error_msg)
+                        raise RuntimeError(error_msg)
                 else:
-                    # MongoDB not available, use InMemory
-                    logger.warning("MongoDB not available, using InMemory checkpointer")
-                    self.checkpointer = InMemorySaver()
-                    logger.info("Mock MongoDBSaver (InMemory) initialized for testing")
+                    # MongoDB not available
+                    error_msg = "MongoDB checkpointer enabled but MongoDBSaver not available or mongodb_url not configured."
+                    logger.error(error_msg)
+                    raise RuntimeError(error_msg)
 
             else:
                 # Check if it's a completely invalid type (for strict validation in tests)
@@ -298,182 +298,155 @@ class MemoryManager:
             logger.error(f"Failed to initialize checkpointer: {e}")
             self.checkpointer = InMemorySaver()
 
+    def _is_semantic_search_enabled(self) -> bool:
+        """Check if semantic search is enabled using backward-compatible approach"""
+        if hasattr(self.config, 'memory_types') and "semantic" in self.config.memory_types:
+            return True
+        elif hasattr(self.config, 'enable_semantic_search') and self.config.enable_semantic_search:
+            return True
+        return False
+
+    def _get_store_type(self) -> str:
+        """Get store type using backward-compatible approach"""
+        if hasattr(self.config, 'memory_backend'):
+            return self.config.memory_backend.lower()
+        elif hasattr(self.config, 'long_term_memory_type'):
+            return self.config.long_term_memory_type.lower()
+        else:
+            return "inmemory"  # Default fallback
+
     def _initialize_store(self):
-        """Initialize long-term memory store"""
-        try:
-            store_type = self.config.long_term_memory_type.lower()
+        """Initialize the store based on configuration"""
+        store_type = self._get_store_type()
 
-            # Prepare embedding configuration for semantic search
-            index_config = None
-            if self.config.enable_semantic_search:
-                try:
-                    embeddings = init_embeddings(self.config.embedding_model)
-                    index_config = {
-                        "embed": embeddings,
-                        "dims": self.config.embedding_dims,
-                        "distance_type": self.config.distance_type
-                    }
-                except Exception as e:
-                    logger.warning(f"Failed to initialize embeddings: {e}")
-
-            # TTL configuration
-            ttl_config = None
-            if self.config.enable_ttl:
-                ttl_config = {
-                    "default_ttl": self.config.default_ttl_minutes,
-                    "refresh_on_read": self.config.refresh_on_read
+        # Set up index configuration for semantic search
+        index_config = None
+        semantic_enabled = self._is_semantic_search_enabled()
+        
+        if semantic_enabled:
+            try:
+                embeddings = init_embeddings(self.config.embedding_model)
+                index_config = {
+                    "dims": self.config.embedding_dims,
+                    "embeddings": embeddings,
+                    "distance_type": self.config.distance_type
                 }
+                logger.info(f"Index configuration initialized for semantic search with {self.config.embedding_model}")
+            except Exception as e:
+                logger.error(f"Failed to initialize embeddings for semantic search: {e}")
+                # If semantic search is required but embeddings fail, this is a critical error
+                if semantic_enabled:
+                    raise RuntimeError(f"Semantic search enabled but embeddings initialization failed: {e}")
 
-            if store_type == "inmemory":
-                self.store = InMemoryStore(index=index_config) if InMemoryStore else None
-                logger.info("InMemoryStore initialized")
+        # Set up TTL configuration for Redis/MongoDB
+        ttl_config = None
+        if self.config.enable_ttl:
+            ttl_config = {
+                "default_ttl": self.config.default_ttl_minutes,
+                "refresh_on_read": self.config.refresh_on_read
+            }
 
-            elif store_type == "redis" and RedisStore and self.config.redis_url:
-                try:
-                    # Test Redis connection and modules first
-                    test_store_cm = RedisStore.from_conn_string(self.config.redis_url, index=index_config, ttl=ttl_config)
-                    with test_store_cm as test_store:
-                        # Test basic operations to ensure Redis Stack modules are available
-                        test_store.put(("test",), "init_test", {"test": True})
-                        test_store.get(("test",), "init_test")
+        if store_type == "inmemory":
+            self.store = InMemoryStore(index=index_config) if InMemoryStore else None
+            logger.info("InMemoryStore initialized")
 
-                    # If we get here, Redis is fully functional
-                    class RedisStoreWrapper:
-                        def __init__(self, conn_string, index=None, ttl=None):
-                            self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
-                            self._store = None
+        elif store_type == "redis" and RedisStore and self.config.redis_url:
+            try:
+                # Test Redis connection and modules first
+                test_store_cm = RedisStore.from_conn_string(self.config.redis_url, index=index_config, ttl=ttl_config)
+                with test_store_cm as test_store:
+                    # Test basic operations to ensure Redis Stack modules are available
+                    test_store.put(("test",), "init_test", {"test": True})
+                    test_store.get(("test",), "init_test")
 
-                        def __enter__(self):
-                            self._store = self._store_cm.__enter__()
-                            return self._store
+                # If we get here, Redis is fully functional
+                class RedisStoreWrapper:
+                    def __init__(self, conn_string, index=None, ttl=None):
+                        self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
+                        self._store = None
 
-                        def __exit__(self, *args):
-                            if self._store_cm:
-                                return self._store_cm.__exit__(*args)
+                    def __enter__(self):
+                        self._store = self._store_cm.__enter__()
+                        return self._store
 
-                        def put(self, namespace, key, value):
-                            with self._store_cm as store:
-                                return store.put(namespace, key, value)
+                    def __exit__(self, *args):
+                        if self._store_cm:
+                            return self._store_cm.__exit__(*args)
 
-                        def get(self, namespace, key):
-                            with self._store_cm as store:
-                                return store.get(namespace, key)
+                    def put(self, namespace, key, value):
+                        with self._store_cm as store:
+                            return store.put(namespace, key, value)
 
-                        def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            with self._store_cm as store:
-                                return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
+                    def get(self, namespace, key):
+                        with self._store_cm as store:
+                            return store.get(namespace, key)
 
-                    self.store = RedisStoreWrapper(
-                        self.config.redis_url,
-                        index=index_config,
-                        ttl=ttl_config
-                    )
-                    logger.info("RedisStore initialized with full functionality")
+                    def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
+                        with self._store_cm as store:
+                            return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
 
-                except Exception as e:
-                    # Fallback to mock Redis store for testing
-                    logger.warning(f"Redis not fully functional, using mock store: {e}")
+                self.store = RedisStoreWrapper(
+                    self.config.redis_url,
+                    index=index_config,
+                    ttl=ttl_config
+                )
+                logger.info("RedisStore initialized with full functionality")
 
-                    class MockRedisStore:
-                        def __init__(self):
-                            self._data = {}
+            except Exception as e:
+                # Redis connection failed - this is a critical error for production
+                error_msg = f"Redis connection failed: {e}. Please check Redis server and connection string."
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
 
-                        def put(self, namespace, key, value):
-                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                            self._data[ns_key] = type('Item', (), {'value': value})()
+        elif store_type == "postgres" and PostgresStore and self.config.postgres_url:
+            try:
+                # Test PostgreSQL connection first
+                test_store_cm = PostgresStore.from_conn_string(self.config.postgres_url, index=index_config)
+                with test_store_cm as test_store:
+                    # Test basic operations
+                    test_store.put(("test",), "init_test", {"test": True})
+                    test_store.get(("test",), "init_test")
 
-                        def get(self, namespace, key):
-                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                            return self._data.get(ns_key)
+                # If we get here, PostgreSQL is fully functional
+                class PostgresStoreWrapper:
+                    def __init__(self, conn_string, index=None):
+                        self._store_cm = PostgresStore.from_conn_string(conn_string, index=index)
 
-                        def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            # Mock search with some results
-                            prefix = ':'.join(str(x) for x in namespace)
-                            results = []
-                            for k, v in self._data.items():
-                                if k.startswith(prefix):
-                                    results.append(v)
-                                if len(results) >= limit:
-                                    break
-                            return results
+                    def put(self, namespace, key, value):
+                        with self._store_cm as store:
+                            return store.put(namespace, key, value)
 
-                    self.store = MockRedisStore()
-                    logger.info("Mock RedisStore initialized for testing")
+                    def get(self, namespace, key):
+                        with self._store_cm as store:
+                            return store.get(namespace, key)
 
-            elif store_type == "postgres" and PostgresStore and self.config.postgres_url:
-                try:
-                    # Test PostgreSQL connection first
-                    test_store_cm = PostgresStore.from_conn_string(self.config.postgres_url, index=index_config)
-                    with test_store_cm as test_store:
-                        # Test basic operations
-                        test_store.put(("test",), "init_test", {"test": True})
-                        test_store.get(("test",), "init_test")
+                    def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
+                        with self._store_cm as store:
+                            return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
 
-                    # If we get here, PostgreSQL is fully functional
-                    class PostgresStoreWrapper:
-                        def __init__(self, conn_string, index=None):
-                            self._store_cm = PostgresStore.from_conn_string(conn_string, index=index)
+                self.store = PostgresStoreWrapper(
+                    self.config.postgres_url,
+                    index=index_config
+                )
+                logger.info("PostgresStore initialized with full functionality")
+            except Exception as e:
+                # PostgreSQL connection failed - this is a critical error for production
+                error_msg = f"PostgreSQL connection failed: {e}. Please check PostgreSQL server and connection string."
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
 
-                        def put(self, namespace, key, value):
-                            with self._store_cm as store:
-                                return store.put(namespace, key, value)
+        elif store_type == "mongodb":
+            # MongoDB Store is not yet available in langgraph, use InMemoryStore as fallback
+            logger.warning("MongoDB Store is not yet available in langgraph, using InMemoryStore as fallback")
+            self.store = InMemoryStore(index=index_config) if InMemoryStore else None
 
-                        def get(self, namespace, key):
-                            with self._store_cm as store:
-                                return store.get(namespace, key)
+        else:
+            # Fallback to InMemoryStore
+            logger.info(f"Using InMemoryStore as fallback for store type: {store_type}")
+            self.store = InMemoryStore(index=index_config) if InMemoryStore else None
 
-                        def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            with self._store_cm as store:
-                                return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
-
-                    self.store = PostgresStoreWrapper(
-                        self.config.postgres_url,
-                        index=index_config
-                    )
-                    logger.info("PostgresStore initialized with full functionality")
-                except Exception as e:
-                    # Fallback to mock Postgres store for testing
-                    logger.warning(f"PostgreSQL not functional, using mock store: {e}")
-
-                    class MockPostgresStore:
-                        def __init__(self):
-                            self._data = {}
-
-                        def put(self, namespace, key, value):
-                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                            self._data[ns_key] = type('Item', (), {'value': value})()
-
-                        def get(self, namespace, key):
-                            ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                            return self._data.get(ns_key)
-
-                        def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                            # Mock search with some results
-                            prefix = ':'.join(str(x) for x in namespace)
-                            results = []
-                            for k, v in self._data.items():
-                                if k.startswith(prefix):
-                                    results.append(v)
-                                if len(results) >= limit:
-                                    break
-                            return results
-
-                    self.store = MockPostgresStore()
-                    logger.info("Mock PostgresStore initialized for testing")
-
-            elif store_type == "mongodb":
-                # MongoDB Store is not yet available in langgraph, use InMemoryStore as fallback
-                logger.warning("MongoDB Store is not yet available in langgraph, using InMemoryStore as fallback")
-                self.store = InMemoryStore(index=index_config) if InMemoryStore else None
-
-            else:
-                # Fallback to InMemoryStore
-                self.store = InMemoryStore(index=index_config) if InMemoryStore else None
-                logger.warning(f"Unsupported long-term memory type: {store_type}, using InMemoryStore")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize store: {e}")
-            self.store = InMemoryStore() if InMemoryStore else None
+        if not self.store:
+            raise RuntimeError("Failed to initialize any store type. Check your configuration and dependencies.")
 
     def _initialize_session_memory(self):
         """Initialize session-based memory for agent collaboration"""
@@ -551,84 +524,56 @@ class MemoryManager:
 
     def _initialize_summarization(self):
         """Initialize LangMem summarization"""
-        if SummarizationNode and count_tokens_approximately:
-            try:
-                self.summarization_node = SummarizationNode(
-                    token_counter=count_tokens_approximately,
-                    model=self.config.model,
-                    max_tokens=self.config.summarization_trigger_tokens,
-                    max_summary_tokens=self.config.max_summary_tokens,
-                    output_messages_key="llm_input_messages",
-                )
-                logger.info("LangMem summarization initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize summarization: {e}")
-        else:
-            # Create mock summarization for testing
-            class MockSummarizationNode:
-                def __init__(self, model, max_tokens, max_summary_tokens, **kwargs):
-                    self.model = model
-                    self.max_tokens = max_tokens
-                    self.max_summary_tokens = max_summary_tokens
-
-                def __call__(self, state):
-                    messages = state.get("messages", [])
-                    if len(messages) > 3:  # Trigger summarization
-                        summary_msg = f"Summary: Processed {len(messages)} messages about various topics."
-                        from langchain_core.messages import AIMessage
-                        return {"llm_input_messages": [AIMessage(content=summary_msg)]}
-                    return state
-
-            if self.config.enable_summarization:
-                self.summarization_node = MockSummarizationNode(
-                    model=self.config.model,
-                    max_tokens=self.config.summarization_trigger_tokens,
-                    max_summary_tokens=self.config.max_summary_tokens
-                )
-                logger.info("Mock summarization initialized for testing")
+        if not self.config.enable_summarization:
+            return
+            
+        if not SummarizationNode:
+            raise RuntimeError("Summarization enabled but SummarizationNode not available. Install langmem package.")
+            
+        if not count_tokens_approximately:
+            raise RuntimeError("Summarization enabled but token counter not available.")
+            
+        try:
+            self.summarization_node = SummarizationNode(
+                token_counter=count_tokens_approximately,
+                model=self.config.model,
+                max_tokens=self.config.summarization_trigger_tokens,
+                max_summary_tokens=self.config.max_summary_tokens,
+                output_messages_key="llm_input_messages",
+            )
+            logger.info("LangMem summarization initialized")
+        except Exception as e:
+            error_msg = f"Failed to initialize summarization: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def _initialize_memory_tools(self):
         """Initialize LangMem memory tools for agent use"""
-        if self.store:
-            try:
-                if create_manage_memory_tool:
-                    manage_tool = create_manage_memory_tool(
-                        namespace=(self.config.memory_namespace_store,)
-                    )
-                    self.memory_tools.append(manage_tool)
+        if not self.config.enable_memory_tools:
+            return
+            
+        if not self.store:
+            raise RuntimeError("Memory tools enabled but no store available. Check your memory configuration.")
+            
+        if not create_manage_memory_tool or not create_search_memory_tool:
+            raise RuntimeError("Memory tools enabled but langmem package not available. Install langmem package.")
+            
+        try:
+            manage_tool = create_manage_memory_tool(
+                namespace=(self.config.memory_namespace_store,)
+            )
+            self.memory_tools.append(manage_tool)
 
-                if create_search_memory_tool:
-                    search_tool = create_search_memory_tool(
-                        namespace=(self.config.memory_namespace_store,)
-                    )
-                    self.memory_tools.append(search_tool)
+            search_tool = create_search_memory_tool(
+                namespace=(self.config.memory_namespace_store,)
+            )
+            self.memory_tools.append(search_tool)
 
-                logger.info(f"Initialized {len(self.memory_tools)} memory tools")
-            except Exception as e:
-                logger.warning(f"Failed to initialize memory tools: {e}")
-        else:
-            # Create mock memory tools for testing
-            if self.config.enable_memory_tools and self.store:
-                from langchain_core.tools import BaseTool
-                from pydantic import BaseModel, Field
-
-                class MockManageMemoryTool(BaseTool):
-                    name: str = "manage_memory"
-                    description: str = "Mock tool for managing memories"
-
-                    def _run(self, query: str) -> str:
-                        return f"Mock: Managing memory for query: {query}"
-
-                class MockSearchMemoryTool(BaseTool):
-                    name: str = "search_memory"
-                    description: str = "Mock tool for searching memories"
-
-                    def _run(self, query: str) -> str:
-                        return f"Mock: Searching memory for query: {query}"
-
-                self.memory_tools.append(MockManageMemoryTool())
-                self.memory_tools.append(MockSearchMemoryTool())
-                logger.info(f"Initialized {len(self.memory_tools)} mock memory tools for testing")
+            logger.info(f"Initialized {len(self.memory_tools)} memory tools")
+        except Exception as e:
+            error_msg = f"Failed to initialize memory tools: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def get_checkpointer(self):
         """Get the configured checkpointer for short-term memory"""
@@ -700,7 +645,7 @@ class MemoryManager:
 
     def search_memory(self, query: str, limit: int = 5):
         """Search long-term memory with semantic similarity"""
-        if self.store and self.config.enable_semantic_search:
+        if self.store and self._is_semantic_search_enabled():
             try:
                 namespace = (self.config.memory_namespace_store,)
                 return self.store.search(namespace, query=query, limit=limit)
@@ -770,7 +715,7 @@ class MemoryManager:
         return self.retrieve_memory(key)
 
     def has_langmem_support(self) -> bool:
-        """Check if LangMem is available (including mock support)"""
+        """Check if LangMem is available"""
         return (len(self.memory_tools) > 0) or (self.summarization_node is not None)
 
     @property
@@ -1063,30 +1008,22 @@ class EvaluationManager:
     def evaluate_response(self, input_text: str, output_text: str) -> Dict[str, float]:
         """Evaluate agent response quality using basic evaluator"""
         if not self.evaluator:
-            # Return mock evaluation results for testing
-            return {
-                "accuracy": 0.8,
-                "relevance": 0.9,
-                "helpfulness": 0.7
-            }
+            raise RuntimeError("Response evaluation called but evaluator not initialized.")
 
         try:
             result = self.evaluator.evaluate(input_text, output_text)
-            # Ensure required keys exist
             if not result:
-                result = {"accuracy": 0.8, "relevance": 0.9, "helpfulness": 0.7}
+                raise RuntimeError("Evaluator returned empty result.")
             return result
         except Exception as e:
-            logger.warning(f"Basic evaluation failed: {e}")
-            return {"accuracy": 0.5, "relevance": 0.5, "helpfulness": 0.5}
+            error_msg = f"Basic evaluation failed: {e}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
 
     def evaluate_trajectory(self, outputs: List[Dict], reference_outputs: List[Dict] = None) -> Dict[str, Any]:
         """Evaluate agent trajectory against reference"""
         if not self.trajectory_evaluator:
-            return {
-                "error": "Trajectory evaluator not available",
-                "trajectory_score": 0.5  # Mock score for testing
-            }
+            raise RuntimeError("Trajectory evaluation called but trajectory evaluator not initialized.")
 
         try:
             result = self.trajectory_evaluator(

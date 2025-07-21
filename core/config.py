@@ -22,6 +22,7 @@ class AgentConfig:
     - Backend-specific configs only available when that backend is selected
     - Validation prevents impossible configurations
     - User-friendly with meaningful defaults
+    - Backward compatibility with legacy parameter names
     """
 
     # ============================================================================
@@ -136,6 +137,8 @@ class AgentConfig:
     post_model_hook: Optional[Callable] = None
     enable_subgraphs: bool = False
     subgraph_configs: Dict[str, Any] = field(default_factory=dict)
+
+
 
     def __post_init__(self):
         """Smart validation with helpful error messages"""
