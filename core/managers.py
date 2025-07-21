@@ -11,11 +11,7 @@ from langgraph.store.redis import RedisStore
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
 from langgraph.checkpoint.mongodb import MongoDBSaver
-# MongoDB Store henüz mevcut değil
-# from langgraph.store.mongodb import MongoDBStore
 from langgraph.store.memory import InMemoryStore
-
-# Direkt import'lar
 from langchain_core.messages.utils import trim_messages, count_tokens_approximately
 from langchain_core.messages import RemoveMessage
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
@@ -317,7 +313,7 @@ class MemoryManager:
 
             # Prepare embedding configuration for semantic search
             index_config = None
-            if self.config.enable_semantic_search and EMBEDDINGS_AVAILABLE:
+            if self.config.enable_semantic_search:
                 try:
                     embeddings = init_embeddings(self.config.embedding_model)
                     index_config = {
