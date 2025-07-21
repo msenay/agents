@@ -26,8 +26,6 @@ from unittest.mock import Mock, MagicMock, patch, AsyncMock
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pydantic import BaseModel, Field, ValidationError
-
 # Mock dependencies before importing core_agent
 sys.modules['langgraph.checkpoint.redis'] = MagicMock()
 sys.modules['langgraph_supervisor'] = MagicMock()
@@ -36,23 +34,23 @@ sys.modules['langchain_mcp_adapters.client'] = MagicMock()
 sys.modules['langmem'] = MagicMock()
 sys.modules['agentevals'] = MagicMock()
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from langchain_core.tools import BaseTool, tool
+from langchain_core.messages import HumanMessage
+from langchain_core.tools import BaseTool
 from langchain_core.language_models import BaseChatModel
-from langgraph.graph import StateGraph
 
 # Import core_agent after mocking dependencies
 from core.core_agent import (
     AgentConfig, CoreAgentState, CoreAgent,
     SubgraphManager, MemoryManager, SupervisorManager, 
     MCPManager, EvaluationManager, RateLimiterManager,
-    create_simple_agent, create_advanced_agent,
-    create_supervisor_agent, create_swarm_agent, create_handoff_agent,
-    create_memory_agent, create_evaluated_agent, create_human_interactive_agent,
-    create_mcp_agent, create_langmem_agent, create_rate_limited_agent,
     AGENTEVALS_AVAILABLE,
     LANGMEM_AVAILABLE, MCP_AVAILABLE, RATE_LIMITER_AVAILABLE
 )
+
+from simple_agent_creators import (create_simple_agent, create_advanced_agent,
+    create_supervisor_agent, create_swarm_agent, create_handoff_agent,
+    create_memory_agent, create_evaluated_agent, create_human_interactive_agent,
+    create_mcp_agent, create_langmem_agent, create_rate_limited_agent)
 
 
 class TestAgentConfig(unittest.TestCase):
