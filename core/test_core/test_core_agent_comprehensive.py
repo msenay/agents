@@ -104,8 +104,8 @@ class TestAgentConfig(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
-        self.mock_tool = Mock(spec=BaseTool)
+        self.mock_model = Mock()
+        self.mock_tool = Mock()
         self.mock_tool.name = "test_tool"
     
     def test_agent_config_minimal_creation(self):
@@ -316,8 +316,8 @@ class TestSubgraphManager(unittest.TestCase):
     def test_create_tool_subgraph(self):
         """Test creating a tool subgraph"""
         manager = SubgraphManager()
-        tools = [Mock(spec=BaseTool)]
-        model = Mock(spec=BaseChatModel)
+        tools = [Mock()]
+        model = Mock()
         
         # This should not raise an exception
         manager.create_tool_subgraph("tool_graph", tools, model)
@@ -330,10 +330,10 @@ class TestMemoryManager(unittest.TestCase):
         """Set up test fixtures"""
         self.config = AgentConfig(
             name="TestAgent",
-            model=Mock(spec=BaseChatModel),
-            enable_short_term_memory=True, 
-            enable_long_term_memory=True,
-            short_term_memory_type="inmemory"
+            model=Mock(),
+            enable_memory=True,
+            memory_types=["short_term", "long_term"],
+            memory_backend="inmemory"
         )
         self.manager = MemoryManager(self.config)
     
@@ -344,7 +344,7 @@ class TestMemoryManager(unittest.TestCase):
     
     def test_memory_manager_creation_disabled(self):
         """Test MemoryManager creation with memory disabled"""
-        config = AgentConfig(enable_short_term_memory=False, enable_long_term_memory=False)
+        config = AgentConfig(enable_memory=False)
         manager = MemoryManager(config)
         
         self.assertIsNone(manager.checkpointer)
@@ -374,8 +374,8 @@ class TestMemoryManager(unittest.TestCase):
     def test_initialize_redis_memory(self):
         """Test Redis memory initialization"""
         config = AgentConfig(
-            enable_short_term_memory=True,
-            short_term_memory_type="redis", 
+            enable_memory=True,
+            memory_backend="redis", 
             redis_url="redis://localhost:6379"
         )
         
@@ -545,8 +545,8 @@ class TestCoreAgent(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
-        self.mock_tool = Mock(spec=BaseTool)
+        self.mock_model = Mock()
+        self.mock_tool = Mock()
         self.mock_tool.name = "test_tool"
         
         self.config = AgentConfig(
@@ -661,8 +661,8 @@ class TestFactoryFunctions(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
-        self.mock_tool = Mock(spec=BaseTool)
+        self.mock_model = Mock()
+        self.mock_tool = Mock()
         self.mock_tool.name = "test_tool"
     
     def test_create_simple_agent(self):
@@ -830,7 +830,7 @@ class TestErrorHandling(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model = Mock()
     
     def test_agent_config_invalid_params(self):
         """Test AgentConfig with invalid parameters"""
@@ -863,9 +863,8 @@ class TestErrorHandling(unittest.TestCase):
         config = AgentConfig(
             name="TestAgent",
             model=self.mock_model,
-            enable_short_term_memory=True, 
-            enable_long_term_memory=True,
-            short_term_memory_type="redis",
+            enable_memory=True,
+            memory_backend="redis",
             redis_url="invalid://url"
         )
         
@@ -903,7 +902,7 @@ class TestOptionalFeatures(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model = Mock()
     
     def test_redis_availability(self):
         """Test Redis availability detection"""
@@ -927,8 +926,8 @@ class TestOptionalFeatures(unittest.TestCase):
             enable_rate_limiting=True,
             enable_mcp=True,
             enable_evaluation=True,
-            enable_long_term_memory=True,
-            enable_short_term_memory=True
+            enable_memory=True,
+            memory_types=["short_term", "long_term"]
         )
         
         # All features should be configurable through AgentConfig
@@ -944,7 +943,7 @@ class TestAsyncOperations(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model = Mock()
         self.config = AgentConfig(model=self.mock_model)
         self.agent = CoreAgent(self.config)
     
@@ -986,7 +985,7 @@ class TestMultiAgentOperations(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model = Mock()
     
     def test_supervisor_coordination(self):
         """Test supervisor agent coordination"""
@@ -1032,13 +1031,13 @@ class TestPerformanceAndMemory(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model = Mock()
     
     def test_large_message_handling(self):
         """Test handling of large message contexts"""
         config = AgentConfig(
             model=self.mock_model,
-            enable_short_term_memory=True,
+            enable_memory=True,
             enable_message_trimming=True,
             max_tokens=1000
         )
@@ -1054,7 +1053,7 @@ class TestPerformanceAndMemory(unittest.TestCase):
     
     def test_many_tools_handling(self):
         """Test handling of many tools"""
-        tools = [Mock(spec=BaseTool) for _ in range(100)]
+        tools = [Mock() for _ in range(100)]
         for i, tool in enumerate(tools):
             tool.name = f"tool_{i}"
         
@@ -1071,7 +1070,7 @@ class TestPerformanceAndMemory(unittest.TestCase):
         """Test memory cleanup operations"""
         config = AgentConfig(
             model=self.mock_model,
-            enable_short_term_memory=True,
+            enable_memory=True,
             enable_ttl=True,
             default_ttl_minutes=1
         )
@@ -1090,7 +1089,7 @@ class TestRateLimiterManager(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model = Mock()
     
     def test_rate_limiter_manager_creation_disabled(self):
         """Test RateLimiterManager creation when disabled"""
@@ -1182,7 +1181,7 @@ class TestRateLimitedAgent(unittest.TestCase):
     
     def setUp(self):
         """Set up test fixtures"""
-        self.mock_model = Mock(spec=BaseChatModel)
+        self.mock_model = Mock()
         self.mock_model.model_name = "test-model"
     
     def test_create_rate_limited_agent(self):

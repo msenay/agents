@@ -15,15 +15,46 @@ from langgraph.store.memory import InMemoryStore
 from langchain_core.messages.utils import trim_messages, count_tokens_approximately
 from langchain_core.messages import RemoveMessage
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
-from langmem import create_manage_memory_tool, create_search_memory_tool
-from langmem.short_term import SummarizationNode
-from langchain.embeddings import init_embeddings
+# Optional LangMem dependencies
+try:
+    from langmem import create_manage_memory_tool, create_search_memory_tool
+    from langmem.short_term import SummarizationNode
+except ImportError:
+    create_manage_memory_tool = None
+    create_search_memory_tool = None
+    SummarizationNode = None
+
+try:
+    from langchain.embeddings import init_embeddings
+except ImportError:
+    init_embeddings = None
 from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
-from langgraph_supervisor import create_supervisor
-from langgraph_swarm import create_swarm
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from agentevals.trajectory.match import create_trajectory_match_evaluator
-from agentevals.trajectory.llm import (create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
+# Optional dependencies - import with try/catch
+try:
+    from langgraph_supervisor import create_supervisor
+except ImportError:
+    create_supervisor = None
+
+try:
+    from langgraph_swarm import create_swarm
+except ImportError:
+    create_swarm = None
+
+try:
+    from langchain_mcp_adapters.client import MultiServerMCPClient
+except ImportError:
+    MultiServerMCPClient = None
+
+try:
+    from agentevals.trajectory.match import create_trajectory_match_evaluator
+except ImportError:
+    create_trajectory_match_evaluator = None
+
+try:
+    from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE
+except ImportError:
+    create_trajectory_llm_as_judge = None
+    TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
 
 from langchain_core.tools import BaseTool, tool, InjectedToolCallId
 from langchain_core.language_models import BaseChatModel
@@ -83,22 +114,14 @@ class RateLimiterManager:
         if not self.enabled_status:
             return True
 
-        try:
-            return self.rate_limiter.acquire(blocking=blocking)
-        except Exception as e:
-            logger.warning(f"Rate limiter acquire failed: {e}")
-            return True  # Fall back to allowing the request
+        return self.rate_limiter.acquire(blocking=blocking)
 
     async def aacquire_token(self, blocking: bool = True) -> bool:
         """Async version of acquire_token"""
         if not self.enabled_status:
             return True
 
-        try:
-            return await self.rate_limiter.aacquire(blocking=blocking)
-        except Exception as e:
-            logger.warning(f"Rate limiter aacquire failed: {e}")
-            return True  # Fall back to allowing the request
+        return await self.rate_limiter.aacquire(blocking=blocking)
 
 
 class SubgraphManager:
@@ -1054,29 +1077,20 @@ class EvaluationManager:
 
     def _initialize_evaluators(self):
         """Initialize AgentEvals evaluators"""
-        try:
-            # Basic AgentEvaluator if available
-            if AgentEvaluator:
-                self.evaluator = AgentEvaluator(metrics=self.config.evaluation_metrics)
-                logger.info("Basic AgentEvaluator initialized")
+        # Trajectory match evaluator
+        if create_trajectory_match_evaluator:
+            self.trajectory_evaluator = create_trajectory_match_evaluator(
+                trajectory_match_mode="superset"
+            )
+            logger.info("Trajectory match evaluator initialized")
 
-            # Trajectory match evaluator
-            if create_trajectory_match_evaluator:
-                self.trajectory_evaluator = create_trajectory_match_evaluator(
-                    trajectory_match_mode="superset"
-                )
-                logger.info("Trajectory match evaluator initialized")
-
-            # LLM-as-a-judge evaluator
-            if create_trajectory_llm_as_judge and self.config.model:
-                self.llm_judge_evaluator = create_trajectory_llm_as_judge(
-                    prompt=TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE,
-                    model=self.config.model
-                )
-                logger.info("LLM-as-a-judge evaluator initialized")
-
-        except Exception as e:
-            logger.warning(f"Failed to initialize evaluators: {e}")
+        # LLM-as-a-judge evaluator
+        if create_trajectory_llm_as_judge and self.config.model:
+            self.llm_judge_evaluator = create_trajectory_llm_as_judge(
+                prompt=TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE,
+                model=self.config.model
+            )
+            logger.info("LLM-as-a-judge evaluator initialized")
 
     def evaluate_response(self, input_text: str, output_text: str) -> Dict[str, float]:
         """Evaluate agent response quality using basic evaluator"""
