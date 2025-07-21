@@ -22,9 +22,9 @@ Author: CoreAgent Team
 Version: 1.0.0
 """
 
-from core_agent import AgentConfig
+from core.core_agent import AgentConfig
 from langchain_openai import ChatOpenAI
-from typing import Optional, Dict, Any
+from typing import Dict
 
 
 # =============================================================================

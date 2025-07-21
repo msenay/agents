@@ -6,7 +6,7 @@ Pre-built, optimized AgentConfig presets for complete software development workf
 
 ```python
 from pre_built_configs import CODER_AGENT_CONFIG, ORCHESTRATOR_AGENT_CONFIG
-from core_agent import CoreAgent
+from core.core_agent import CoreAgent
 from langchain_openai import ChatOpenAI
 
 # Create a coder agent
@@ -206,7 +206,7 @@ workflow = [
 
 ```python
 from pre_built_configs import *
-from core_agent import CoreAgent
+from core.core_agent import CoreAgent
 from langchain_openai import ChatOpenAI
 
 # Configure individual agents
@@ -281,9 +281,10 @@ result = orchestrator.invoke("Implement user authentication feature with tests")
 ## 🛠️ Configuration Patterns
 
 ### Pattern 1: Single Agent Usage
+
 ```python
 from pre_built_configs import CODER_AGENT_CONFIG
-from core_agent import CoreAgent
+from core.core_agent import CoreAgent
 
 config = CODER_AGENT_CONFIG
 config.model = your_model
@@ -406,9 +407,10 @@ config.enable_rate_limiting = False
 ## 📚 Real-World Examples
 
 ### Example 1: Automated Feature Development
+
 ```python
 from pre_built_configs import *
-from core_agent import CoreAgent
+from core.core_agent import CoreAgent
 
 # Step 1: Generate feature code
 coder = CoreAgent(CODER_AGENT_CONFIG)
@@ -423,7 +425,7 @@ Implement a REST API endpoint for user registration with:
 """)
 
 # Step 2: Generate tests
-tester = CoreAgent(UNIT_TESTER_AGENT_CONFIG)  
+tester = CoreAgent(UNIT_TESTER_AGENT_CONFIG)
 tester.config.model = your_model
 
 test_result = tester.invoke(f"""

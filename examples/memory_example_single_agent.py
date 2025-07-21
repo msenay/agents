@@ -29,9 +29,7 @@ Usage:
 import os
 import sys
 import time
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from datetime import datetime
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -41,7 +39,7 @@ os.environ["OPENAI_API_VERSION"] = "2023-12-01-preview"
 os.environ["AZURE_OPENAI_ENDPOINT"] = "https://oai-202-fbeta-dev.openai.azure.com/"
 os.environ["OPENAI_API_KEY"] = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4"
 
-from core_agent import (
+from core.core_agent import (
     AgentConfig, CoreAgent, 
     REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE,
     RATE_LIMITER_AVAILABLE, LANGMEM_AVAILABLE

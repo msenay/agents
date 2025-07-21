@@ -15,7 +15,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pre_built_configs import *
-from core_agent import CoreAgent
+from core.core_agent import CoreAgent
 
 
 class MockChatModel:

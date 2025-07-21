@@ -18,10 +18,9 @@ Memory enabled for coder and unit test agents for context retention.
 
 import os
 import asyncio
-import json
 import subprocess
 import tempfile
-from typing import List, Dict, Any, Optional
+from typing import List
 from pydantic import BaseModel, Field
 
 # Set Azure OpenAI environment variables
@@ -31,7 +30,7 @@ os.environ["OPENAI_API_KEY"] = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca7
 
 from langchain_openai import AzureChatOpenAI
 from langchain_core.tools import tool
-from core_agent import CoreAgent, AgentConfig, create_supervisor_agent, create_handoff_agent, create_swarm_agent
+from core.core_agent import CoreAgent, AgentConfig, create_supervisor_agent, create_handoff_agent, create_swarm_agent
 
 
 # Structured output models

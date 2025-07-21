@@ -19,11 +19,9 @@ Usage:
     )
 """
 
-import os
 import sys
 import tempfile
 import subprocess
-import traceback
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass
@@ -35,7 +33,7 @@ from pre_built_configs import (
     CODE_REVIEWER_AGENT_CONFIG,
     ORCHESTRATOR_AGENT_CONFIG
 )
-from core_agent import CoreAgent
+from core.core_agent import CoreAgent
 from langchain_openai import ChatOpenAI
 
 

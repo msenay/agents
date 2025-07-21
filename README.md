@@ -31,7 +31,7 @@ pip install redis pymongo psycopg2-binary langmem agentevals
 ### Basic Usage
 
 ```python
-from core_agent import create_simple_agent
+from core.core_agent import create_simple_agent
 from langchain_openai import ChatOpenAI
 
 # Create a simple agent
@@ -46,25 +46,25 @@ print(result['messages'][-1].content)
 ### Advanced Configuration
 
 ```python
-from core_agent import CoreAgent, AgentConfig
+from core.core_agent import CoreAgent, AgentConfig
 
 # Full-featured agent with all options
 config = AgentConfig(
     name="AdvancedCoder",
     model=ChatOpenAI(model="gpt-4"),
     system_prompt="You are an expert Python developer.",
-    
+
     # Memory configuration
     enable_short_term_memory=True,
     enable_long_term_memory=True,
     short_term_memory_type="redis",
     redis_url="redis://localhost:6379",
-    
+
     # Advanced features
     enable_evaluation=True,
     enable_human_feedback=True,
     enable_streaming=True,
-    
+
     # Multi-agent features
     enable_supervisor=True,
     enable_memory_tools=True
@@ -210,14 +210,14 @@ agent.invoke("What do you know about me?")
 
 ```python
 # Multiple agents share memory within a session
-from core_agent import create_session_agent
+from core.core_agent import create_session_agent
 
 # All agents working on the same project
 session_id = "project_alpha_v1"
 
 coder_agent = create_session_agent(
     model=model,
-    name="CoderAgent", 
+    name="CoderAgent",
     session_id=session_id,  # Same session
     enable_shared_memory=True
 )
@@ -231,7 +231,7 @@ reviewer_agent = create_session_agent(
 
 tester_agent = create_session_agent(
     model=model,
-    name="TesterAgent", 
+    name="TesterAgent",
     session_id=session_id,  # Same session - shares memory
     enable_shared_memory=True
 )
@@ -396,7 +396,7 @@ CoreAgent provides **13+ factory functions** for different use cases:
 ### Basic Agents
 
 ```python
-from core_agent import *
+from core.core_agent import *
 
 # Simple agent (minimal configuration)
 agent = create_simple_agent(model)
@@ -503,7 +503,7 @@ CoreAgent supports **3 proven multi-agent patterns**, each designed for differen
 **Real-world analogy:** Like a software development team with a project manager who assigns tasks to developers, testers, and designers.
 
 ```python
-from core_agent import create_supervisor_agent
+from core.core_agent import create_supervisor_agent
 
 # Create specialized team members
 coder = CoreAgent(AgentConfig(
@@ -514,7 +514,7 @@ coder = CoreAgent(AgentConfig(
 ))
 
 tester = CoreAgent(AgentConfig(
-    name="TesterAgent", 
+    name="TesterAgent",
     model=model,
     system_prompt="You create comprehensive unit tests and find edge cases.",
     enable_short_term_memory=True
@@ -531,8 +531,8 @@ code_reviewer = CoreAgent(AgentConfig(
 supervisor = create_supervisor_agent(
     model=model,
     agents={
-        "coder": coder, 
-        "tester": tester, 
+        "coder": coder,
+        "tester": tester,
         "reviewer": code_reviewer
     }
 )
@@ -567,7 +567,7 @@ result = supervisor.invoke(
 **Real-world analogy:** Like a consulting firm where experts automatically route questions to the right specialist based on the topic.
 
 ```python
-from core_agent import create_swarm_agent
+from core.core_agent import create_swarm_agent
 
 # Create domain experts
 frontend_expert = CoreAgent(AgentConfig(
@@ -581,7 +581,7 @@ frontend_expert = CoreAgent(AgentConfig(
 ))
 
 backend_expert = CoreAgent(AgentConfig(
-    name="BackendExpert", 
+    name="BackendExpert",
     system_prompt="""You are a Python/FastAPI/Database expert. You handle:
     - API development
     - Database design
@@ -639,7 +639,7 @@ result = swarm.invoke("Create a user management system with React frontend, Fast
 **Real-world analogy:** Like a manufacturing assembly line where each worker completes their part and passes it to the next station.
 
 ```python
-from core_agent import create_handoff_agent
+from core.core_agent import create_handoff_agent
 
 # Create assembly line workers
 coder = CoreAgent(AgentConfig(
@@ -653,7 +653,7 @@ tester = CoreAgent(AgentConfig(
 ))
 
 reviewer = CoreAgent(AgentConfig(
-    name="ReviewerAgent", 
+    name="ReviewerAgent",
     system_prompt="You review code and tests. When approved, use handoff_to_deployer."
 ))
 
@@ -713,7 +713,7 @@ result = handoff_system.invoke(
 Here's a complete example of a **collaborative coding team** with shared memory:
 
 ```python
-from core_agent import create_coding_session_agents
+from core.core_agent import create_coding_session_agents
 from langchain_openai import ChatOpenAI
 
 # Create model
@@ -727,7 +727,7 @@ coding_team = create_coding_session_agents(
 )
 
 # Team includes: coder, tester, reviewer, executor
-coder = coding_team["coder"] 
+coder = coding_team["coder"]
 tester = coding_team["tester"]
 reviewer = coding_team["reviewer"]
 executor = coding_team["executor"]
@@ -902,7 +902,7 @@ print(f"""
 
 ```python
 # Test different agent configurations to find the best setup
-from core_agent import ABTestEvaluator
+from core.core_agent import ABTestEvaluator
 
 # Configuration A: Basic agent
 agent_a = create_evaluated_agent(
@@ -929,7 +929,7 @@ test_questions = [
 
 results = test_evaluator.compare_agents(
     agent_a=agent_a,
-    agent_b=agent_b, 
+    agent_b=agent_b,
     test_questions=test_questions,
     metrics=["accuracy", "helpfulness", "response_time"]
 )
@@ -1212,14 +1212,14 @@ agent = create_rate_limited_agent(
 
 ```python
 # Process many items while respecting rate limits
-from core_agent import create_rate_limited_agent
+from core.core_agent import create_rate_limited_agent
 from langchain_openai import ChatOpenAI
 
 # Create rate-limited agent for batch processing
 agent = create_rate_limited_agent(
     model=ChatOpenAI(model="gpt-4"),
     requests_per_second=2.0,  # Stay well under OpenAI limits
-    max_bucket_size=5.0,      # Allow small bursts
+    max_bucket_size=5.0,  # Allow small bursts
     name="BatchProcessor"
 )
 
@@ -1386,12 +1386,13 @@ config = AgentConfig(
 ```python
 # Unit testing agents
 import unittest
-from core_agent import create_simple_agent
+from core.core_agent import create_simple_agent
+
 
 class TestMyAgent(unittest.TestCase):
     def setUp(self):
         self.agent = create_simple_agent(ChatOpenAI())
-    
+
     def test_code_generation(self):
         result = self.agent.invoke("Create a hello world function")
         self.assertIn("def", result['messages'][-1].content)

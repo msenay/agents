@@ -28,7 +28,7 @@ from datetime import datetime
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core_agent import (
+from core.core_agent import (
     AgentConfig, CoreAgent, 
     REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE,
     RATE_LIMITER_AVAILABLE

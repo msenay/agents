@@ -9,8 +9,8 @@ pymongo>=4.0.0
 psycopg2-binary>=2.9.0
 
 # Optional advanced features
-langmem>=0.1.0
-agentevals>=0.1.0
+langmem
+agentevals
 
 # Testing dependencies
 pytest>=7.0.0

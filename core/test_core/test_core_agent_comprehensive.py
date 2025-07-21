@@ -19,13 +19,9 @@ This test suite covers every aspect of the CoreAgent framework:
 
 import unittest
 import asyncio
-import tempfile
-import json
 import os
 import sys
 from unittest.mock import Mock, MagicMock, patch, AsyncMock
-from typing import List, Dict, Any, Optional
-from dataclasses import asdict
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -46,7 +42,7 @@ from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph
 
 # Import core_agent after mocking dependencies
-from core_agent import (
+from core.core_agent import (
     AgentConfig, CoreAgentState, CoreAgent,
     SubgraphManager, MemoryManager, SupervisorManager, 
     MCPManager, EvaluationManager, RateLimiterManager,
@@ -54,7 +50,7 @@ from core_agent import (
     create_supervisor_agent, create_swarm_agent, create_handoff_agent,
     create_memory_agent, create_evaluated_agent, create_human_interactive_agent,
     create_mcp_agent, create_langmem_agent, create_rate_limited_agent,
-    REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE, AGENTEVALS_AVAILABLE, 
+    AGENTEVALS_AVAILABLE,
     LANGMEM_AVAILABLE, MCP_AVAILABLE, RATE_LIMITER_AVAILABLE
 )
 
