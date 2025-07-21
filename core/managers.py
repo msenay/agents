@@ -23,7 +23,7 @@ from langgraph_supervisor import create_supervisor
 from langgraph_swarm import create_swarm
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from agentevals.trajectory.match import create_trajectory_match_evaluator
-from agentevals.trajectory.llm import (create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
+from agentevals.trajectory.llm import create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE
 
 from langchain_core.tools import BaseTool, tool, InjectedToolCallId
 from langchain_core.language_models import BaseChatModel
@@ -83,22 +83,14 @@ class RateLimiterManager:
         if not self.enabled_status:
             return True
 
-        try:
-            return self.rate_limiter.acquire(blocking=blocking)
-        except Exception as e:
-            logger.warning(f"Rate limiter acquire failed: {e}")
-            return True  # Fall back to allowing the request
+        return self.rate_limiter.acquire(blocking=blocking)
 
     async def aacquire_token(self, blocking: bool = True) -> bool:
         """Async version of acquire_token"""
         if not self.enabled_status:
             return True
 
-        try:
-            return await self.rate_limiter.aacquire(blocking=blocking)
-        except Exception as e:
-            logger.warning(f"Rate limiter aacquire failed: {e}")
-            return True  # Fall back to allowing the request
+        return await self.rate_limiter.aacquire(blocking=blocking)
 
 
 class SubgraphManager:
@@ -816,9 +808,9 @@ class SupervisorManager:
         # Test compatibility properties
         self.enabled = config.enable_supervisor or config.enable_swarm or config.enable_handoff
 
-        if config.enable_supervisor and create_supervisor:
+        if config.enable_supervisor:
             self._initialize_supervisor()
-        elif config.enable_swarm and create_swarm:
+        elif config.enable_swarm:
             self._initialize_swarm()
         elif config.enable_handoff:
             self._initialize_handoff()
@@ -840,7 +832,7 @@ class SupervisorManager:
     def _initialize_swarm(self):
         """Initialize the swarm graph"""
         try:
-            if self.config.agents and create_swarm:
+            if self.config.agents:
                 agents_list = list(self.config.agents.values())
                 self.swarm_graph = create_swarm(
                     agents=agents_list,
@@ -1054,29 +1046,19 @@ class EvaluationManager:
 
     def _initialize_evaluators(self):
         """Initialize AgentEvals evaluators"""
-        try:
-            # Basic AgentEvaluator if available
-            if AgentEvaluator:
-                self.evaluator = AgentEvaluator(metrics=self.config.evaluation_metrics)
-                logger.info("Basic AgentEvaluator initialized")
+        # Trajectory match evaluator
+        self.trajectory_evaluator = create_trajectory_match_evaluator(
+            trajectory_match_mode="superset"
+        )
+        logger.info("Trajectory match evaluator initialized")
 
-            # Trajectory match evaluator
-            if create_trajectory_match_evaluator:
-                self.trajectory_evaluator = create_trajectory_match_evaluator(
-                    trajectory_match_mode="superset"
-                )
-                logger.info("Trajectory match evaluator initialized")
-
-            # LLM-as-a-judge evaluator
-            if create_trajectory_llm_as_judge and self.config.model:
-                self.llm_judge_evaluator = create_trajectory_llm_as_judge(
-                    prompt=TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE,
-                    model=self.config.model
-                )
-                logger.info("LLM-as-a-judge evaluator initialized")
-
-        except Exception as e:
-            logger.warning(f"Failed to initialize evaluators: {e}")
+        # LLM-as-a-judge evaluator
+        if self.config.model:
+            self.llm_judge_evaluator = create_trajectory_llm_as_judge(
+                prompt=TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE,
+                model=self.config.model
+            )
+            logger.info("LLM-as-a-judge evaluator initialized")
 
     def evaluate_response(self, input_text: str, output_text: str) -> Dict[str, float]:
         """Evaluate agent response quality using basic evaluator"""

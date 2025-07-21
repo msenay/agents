@@ -13,6 +13,9 @@ psycopg2-binary>=2.9.0
 # Optional advanced features
 langmem
 agentevals
+langgraph-supervisor
+langgraph-swarm
+langchain-mcp-adapters
 
 # Testing dependencies
 pytest>=7.0.0

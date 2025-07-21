@@ -83,9 +83,8 @@ def create_rate_limited_agent(
         tools=tools or [],
 
         # Memory configuration (optional)
-        enable_short_term_memory=enable_memory,
-        short_term_memory_type="inmemory" if enable_memory else "inmemory",
-        enable_long_term_memory=False,
+        enable_memory=enable_memory,
+        memory_backend="inmemory" if enable_memory else "inmemory",
 
         # Rate limiting configuration
         enable_rate_limiting=True,
