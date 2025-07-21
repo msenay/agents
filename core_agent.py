@@ -13,7 +13,7 @@ This core agent provides a foundation for creating specialized agents with:
 9. Streaming support
 """
 
-from typing import Optional, List, Dict, Any, Callable, Union, Type
+from typing import Optional, List, Dict, Any, Callable, Union, Type, Annotated
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 import asyncio
@@ -23,83 +23,123 @@ from pathlib import Path
 
 # Core LangGraph imports
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver, InMemorySaver
-from langgraph.prebuilt import create_react_agent, ToolNode
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent, ToolNode, InjectedState
 from langgraph.types import Command
 
-# LangGraph memory and store imports
-try:
-    from langgraph.checkpoint.redis import RedisSaver
-    from langgraph.store.redis import RedisStore
-    REDIS_AVAILABLE = True
-except ImportError:
-    RedisSaver = None
-    RedisStore = None
-    REDIS_AVAILABLE = False
-    
-try:
-    from langgraph.checkpoint.postgres import PostgresSaver
-    from langgraph.store.postgres import PostgresStore
-    POSTGRES_AVAILABLE = True
-except ImportError:
-    PostgresSaver = None
-    PostgresStore = None
-    POSTGRES_AVAILABLE = False
+# LangChain imports
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, RemoveMessage
+from langchain_core.tools import BaseTool, tool, InjectedToolCallId
+from langchain_core.language_models import BaseChatModel
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable
+from pydantic import BaseModel, Field
 
-try:
-    from langgraph.checkpoint.mongodb import MongoDBSaver
-    from langgraph.store.mongodb import MongoDBStore
-    MONGODB_AVAILABLE = True
-except ImportError:
-    MongoDBSaver = None
-    MongoDBStore = None
-    MONGODB_AVAILABLE = False
-
-try:
-    from langgraph.store.memory import InMemoryStore
-except ImportError:
-    InMemoryStore = None
-
-# Message management imports
+# Message utilities
 try:
     from langchain_core.messages.utils import trim_messages, count_tokens_approximately
-    from langchain_core.messages import RemoveMessage
-    from langgraph.graph.message import REMOVE_ALL_MESSAGES
     MESSAGE_UTILS_AVAILABLE = True
 except ImportError:
     trim_messages = None
     count_tokens_approximately = None
-    RemoveMessage = None
-    REMOVE_ALL_MESSAGES = None
     MESSAGE_UTILS_AVAILABLE = False
 
-# LangMem imports for advanced memory management
+# Message constants
+try:
+    from langgraph.graph.message import REMOVE_ALL_MESSAGES
+except ImportError:
+    REMOVE_ALL_MESSAGES = None
+
+# Optional imports - These will be imported conditionally
+# to avoid breaking the system if not installed
+
+# Memory backend imports
+try:
+    from langgraph.checkpoint.postgres import PostgresSaver
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    PostgresSaver = None
+    POSTGRES_AVAILABLE = False
+
+try:
+    from langgraph.checkpoint.redis import RedisSaver
+    REDIS_AVAILABLE = True
+except ImportError:
+    RedisSaver = None
+    REDIS_AVAILABLE = False
+
+try:
+    from langgraph.checkpoint.mongodb import MongoDBSaver
+    MONGODB_AVAILABLE = True
+except ImportError:
+    MongoDBSaver = None
+    MONGODB_AVAILABLE = False
+
+# Store backend imports
+try:
+    from langgraph.store.memory import InMemoryStore
+    INMEMORY_STORE_AVAILABLE = True
+except ImportError:
+    InMemoryStore = None
+    INMEMORY_STORE_AVAILABLE = False
+
+try:
+    from langgraph.store.postgres import PostgresStore
+    POSTGRES_STORE_AVAILABLE = True
+except ImportError:
+    PostgresStore = None
+    POSTGRES_STORE_AVAILABLE = False
+
+try:
+    from langgraph.store.redis import RedisStore
+    REDIS_STORE_AVAILABLE = True
+except ImportError:
+    RedisStore = None
+    REDIS_STORE_AVAILABLE = False
+
+try:
+    from langgraph.store.mongodb import MongoDBStore
+    MONGODB_STORE_AVAILABLE = True
+except ImportError:
+    MongoDBStore = None
+    MONGODB_STORE_AVAILABLE = False
+
+# Advanced memory management
 try:
     from langmem import create_manage_memory_tool, create_search_memory_tool
-    from langmem.short_term import SummarizationNode, RunningSummary
+    from langmem.short_term import SummarizationNode
     LANGMEM_AVAILABLE = True
 except ImportError:
     create_manage_memory_tool = None
     create_search_memory_tool = None
     SummarizationNode = None
-    RunningSummary = None
     LANGMEM_AVAILABLE = False
 
-# Embeddings for semantic search
+# Embeddings
 try:
-    from langchain.embeddings import init_embeddings
+    from langchain_core.embeddings import init_embeddings
     EMBEDDINGS_AVAILABLE = True
 except ImportError:
     init_embeddings = None
     EMBEDDINGS_AVAILABLE = False
 
-# LangGraph ecosystem imports
+# Multi-agent patterns
 try:
-    from langgraph_supervisor import create_supervisor
+    from langgraph.prebuilt import create_supervisor
+    SUPERVISOR_AVAILABLE = True
 except ImportError:
     create_supervisor = None
+    SUPERVISOR_AVAILABLE = False
 
-# Rate limiter imports
+try:
+    from langgraph.prebuilt import create_swarm, create_handoff_tool
+    SWARM_AVAILABLE = True
+except ImportError:
+    create_swarm = None
+    create_handoff_tool = None
+    SWARM_AVAILABLE = False
+
+# Rate limiting
 try:
     from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
     RATE_LIMITER_AVAILABLE = True
@@ -108,19 +148,15 @@ except ImportError:
     BaseRateLimiter = None
     RATE_LIMITER_AVAILABLE = False
 
+# MCP Server
 try:
-    from langgraph_swarm import create_swarm, create_handoff_tool as swarm_handoff_tool
-except ImportError:
-    create_swarm = None
-    swarm_handoff_tool = None
-
-try:
-    from langchain_mcp_adapters.client import MultiServerMCPClient
+    from langchain_mcp import MultiServerMCPClient
     MCP_AVAILABLE = True
 except ImportError:
     MultiServerMCPClient = None
     MCP_AVAILABLE = False
 
+# Agent evaluation
 try:
     from agentevals import AgentEvaluator
     from agentevals.trajectory.match import create_trajectory_match_evaluator
@@ -135,18 +171,6 @@ except ImportError:
     create_trajectory_llm_as_judge = None
     TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
     AGENTEVALS_AVAILABLE = False
-
-# LangChain imports
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.tools import BaseTool, tool, InjectedToolCallId
-from langchain_core.language_models import BaseChatModel
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import Runnable
-from pydantic import BaseModel, Field
-from langgraph.prebuilt import InjectedState
-from langgraph.types import Command
-from typing import Annotated
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1146,7 +1170,15 @@ class MemoryManager:
                 return state
                 
             if remove_all:
-                return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES)]}
+                if REMOVE_ALL_MESSAGES:
+                    return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES)]}
+                else:
+                    # Fallback: Remove all messages by id
+                    remove_msgs = []
+                    for msg in messages:
+                        if hasattr(msg, 'id'):
+                            remove_msgs.append(RemoveMessage(id=msg.id))
+                    return {"messages": remove_msgs}
             elif messages_to_remove:
                 remove_msgs = []
                 for msg in messages:
@@ -1337,9 +1369,9 @@ class SupervisorManager:
         # Test compatibility properties
         self.enabled = config.enable_supervisor or config.enable_swarm or config.enable_handoff
         
-        if config.enable_supervisor and create_supervisor:
+        if config.enable_supervisor and SUPERVISOR_AVAILABLE:
             self._initialize_supervisor()
-        elif config.enable_swarm and create_swarm:
+        elif config.enable_swarm and SWARM_AVAILABLE:
             self._initialize_swarm()
         elif config.enable_handoff:
             self._initialize_handoff()
@@ -1361,7 +1393,7 @@ class SupervisorManager:
     def _initialize_swarm(self):
         """Initialize the swarm graph"""
         try:
-            if self.config.agents and create_swarm:
+            if self.config.agents and SWARM_AVAILABLE:
                 agents_list = list(self.config.agents.values())
                 self.swarm_graph = create_swarm(
                     agents=agents_list,
@@ -3064,8 +3096,8 @@ if __name__ == "__main__":
     print("CoreAgent Framework initialized")
     print("Available packages:")
     print("- langgraph-prebuilt: ✓")
-    print("- langgraph-supervisor:", "✓" if create_supervisor else "✗")
-    print("- langgraph-swarm:", "✓" if create_swarm else "✗")
+    print("- langgraph-supervisor:", "✓" if SUPERVISOR_AVAILABLE else "✗")
+    print("- langgraph-swarm:", "✓" if SWARM_AVAILABLE else "✗")
     print("- langchain-mcp-adapters:", "✓" if MCP_AVAILABLE else "✗")
     print("- langmem:", "✓" if LANGMEM_AVAILABLE else "✗")
     print("- agentevals:", "✓" if AGENTEVALS_AVAILABLE else "✗")
