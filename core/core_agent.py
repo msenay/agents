@@ -23,7 +23,10 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, AIMessage
 
 from core.config import AgentConfig
-from core.managers import SubgraphManager, MemoryManager, SupervisorManager, MCPManager, EvaluationManager, RateLimiterManager
+from core.managers import (
+    SubgraphManager, MemoryManager, SupervisorManager, 
+    MCPManager, EvaluationManager, RateLimiterManager
+)
 from core.model import CoreAgentState
 
 # Configure logging
@@ -381,7 +384,6 @@ class CoreAgent:
         """Get memory configuration summary"""
         return {
             "memory_type": self.config.memory_type,
-            "langmem_available": LANGMEM_AVAILABLE,
             "langmem_configured": self.has_langmem_support(),
             "summarization_enabled": self.config.langmem_enable_summarization,
             "max_tokens": self.config.langmem_max_tokens,

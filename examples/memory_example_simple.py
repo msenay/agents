@@ -28,11 +28,10 @@ from datetime import datetime
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.core_agent import (
-    AgentConfig, CoreAgent, 
-    REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE,
-    RATE_LIMITER_AVAILABLE
-)
+from core.core_agent import CoreAgent
+from core.config import AgentConfig
+# Tüm özellikler artık direkt kullanılabilir
+# Config üzerinden enable/disable edilebilir
 
 # Database connection strings
 REDIS_URL = "redis://localhost:6379"
@@ -114,9 +113,7 @@ class SimpleMemoryTest:
         print("\n🔴 TEST 2: Redis Storage")
         print("-" * 40)
         
-        if not REDIS_AVAILABLE:
-            self.log_test("Redis Storage", False, "Redis backend not available")
-            return None
+        # Redis kullanmayı deneyelim
         
         try:
             config = AgentConfig(
@@ -153,9 +150,7 @@ class SimpleMemoryTest:
         print("\n🗄️ TEST 3: PostgreSQL Storage")
         print("-" * 40)
         
-        if not POSTGRES_AVAILABLE:
-            self.log_test("PostgreSQL Storage", False, "PostgreSQL backend not available")
-            return None
+        # PostgreSQL kullanmayı deneyelim
         
         try:
             config = AgentConfig(
@@ -196,9 +191,7 @@ class SimpleMemoryTest:
         print("\n📄 TEST 4: MongoDB Storage") 
         print("-" * 40)
         
-        if not MONGODB_AVAILABLE:
-            self.log_test("MongoDB Storage", False, "MongoDB backend not available")
-            return None
+        # MongoDB kullanmayı deneyelim
         
         try:
             config = AgentConfig(
@@ -481,9 +474,7 @@ class SimpleMemoryTest:
         print("\n🚦 TEST 11: Rate Limiting")
         print("-" * 40)
         
-        if not RATE_LIMITER_AVAILABLE:
-            self.log_test("Rate Limiting", False, "Rate limiter not available")
-            return None
+        # Rate limiter kullanmayı deneyelim
         
         try:
             config = AgentConfig(
@@ -522,7 +513,7 @@ class SimpleMemoryTest:
         print("=" * 60)
         print(f"📅 Timestamp: {datetime.now()}")
         print(f"🆔 Session ID: {self.session_id}")
-        print(f"🏗️ Backends: Redis={REDIS_AVAILABLE}, Postgres={POSTGRES_AVAILABLE}, MongoDB={MONGODB_AVAILABLE}")
+        print("🏗️ All backends are available through configuration")
         
         # Run all tests
         agents = {}

@@ -11,22 +11,23 @@ from langgraph.store.redis import RedisStore
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
 from langgraph.checkpoint.mongodb import MongoDBSaver
-from langgraph.store.mongodb import MongoDBStore
+# MongoDB Store henüz mevcut değil
+# from langgraph.store.mongodb import MongoDBStore
 from langgraph.store.memory import InMemoryStore
+
+# Direkt import'lar
 from langchain_core.messages.utils import trim_messages, count_tokens_approximately
 from langchain_core.messages import RemoveMessage
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langmem import create_manage_memory_tool, create_search_memory_tool
 from langmem.short_term import SummarizationNode
 from langchain.embeddings import init_embeddings
-from langgraph_supervisor import create_supervisor
 from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
+from langgraph_supervisor import create_supervisor
 from langgraph_swarm import create_swarm
-
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from agentevals import AgentEvaluator
 from agentevals.trajectory.match import create_trajectory_match_evaluator
-from agentevals.trajectory.llm import (create_trajectory_llm_as_judge,TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
+from agentevals.trajectory.llm import (create_trajectory_llm_as_judge, TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
 
 from langchain_core.tools import BaseTool, tool, InjectedToolCallId
 from langchain_core.language_models import BaseChatModel
@@ -45,7 +46,7 @@ class RateLimiterManager:
 
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.enabled = config.enable_rate_limiting and RATE_LIMITER_AVAILABLE
+        self.enabled = config.enable_rate_limiting
         self.rate_limiter: Optional[BaseRateLimiter] = None
 
         if self.enabled:
@@ -473,50 +474,9 @@ class MemoryManager:
                     logger.info("Mock PostgresStore initialized for testing")
 
             elif store_type == "mongodb":
-                if MongoDBStore and self.config.mongodb_url:
-                    try:
-                        # Test MongoDB connection first
-                        test_store_cm = MongoDBStore.from_conn_string(
-                            self.config.mongodb_url,
-                            index=index_config,
-                            ttl=ttl_config
-                        )
-                        with test_store_cm as test_store:
-                            # Test basic operations
-                            test_store.put(("test",), "init_test", {"test": True})
-                            test_store.get(("test",), "init_test")
-
-                        # If we get here, MongoDB is fully functional
-                        class MongoDBStoreWrapper:
-                            def __init__(self, conn_string, index=None, ttl=None):
-                                self._store_cm = MongoDBStore.from_conn_string(conn_string, index=index, ttl=ttl)
-
-                            def put(self, namespace, key, value):
-                                with self._store_cm as store:
-                                    return store.put(namespace, key, value)
-
-                            def get(self, namespace, key):
-                                with self._store_cm as store:
-                                    return store.get(namespace, key)
-
-                            def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                                with self._store_cm as store:
-                                    return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
-
-                        self.store = MongoDBStoreWrapper(
-                            self.config.mongodb_url,
-                            index=index_config,
-                            ttl=ttl_config
-                        )
-                        logger.info("MongoDBStore initialized with full functionality")
-                    except Exception as e:
-                        # Fallback to mock MongoDB store
-                        logger.warning(f"MongoDB not functional, using mock store: {e}")
-                        self._create_mock_mongodb_store()
-                else:
-                    # MongoDB not available, use mock
-                    logger.warning("MongoDB not available, using mock store")
-                    self._create_mock_mongodb_store()
+                # MongoDB Store is not yet available in langgraph, use InMemoryStore as fallback
+                logger.warning("MongoDB Store is not yet available in langgraph, using InMemoryStore as fallback")
+                self.store = InMemoryStore(index=index_config) if InMemoryStore else None
 
             else:
                 # Fallback to InMemoryStore
@@ -577,7 +537,7 @@ class MemoryManager:
 
     def _initialize_message_trimmer(self):
         """Initialize message trimming functionality"""
-        if MESSAGE_UTILS_AVAILABLE and trim_messages and count_tokens_approximately:
+        if trim_messages and count_tokens_approximately:
             def message_trimmer_hook(state):
                 """Hook for trimming messages before LLM call"""
                 messages = state.get("messages", [])
@@ -603,7 +563,7 @@ class MemoryManager:
 
     def _initialize_summarization(self):
         """Initialize LangMem summarization"""
-        if LANGMEM_AVAILABLE and SummarizationNode and count_tokens_approximately:
+        if SummarizationNode and count_tokens_approximately:
             try:
                 self.summarization_node = SummarizationNode(
                     token_counter=count_tokens_approximately,
@@ -641,7 +601,7 @@ class MemoryManager:
 
     def _initialize_memory_tools(self):
         """Initialize LangMem memory tools for agent use"""
-        if LANGMEM_AVAILABLE and self.store:
+        if self.store:
             try:
                 if create_manage_memory_tool:
                     manage_tool = create_manage_memory_tool(
@@ -704,7 +664,7 @@ class MemoryManager:
 
     def delete_messages_hook(self, messages_to_remove: List[str] = None, remove_all: bool = False):
         """Create a hook to delete specific messages or all messages"""
-        if not MESSAGE_UTILS_AVAILABLE or not RemoveMessage:
+        if not RemoveMessage:
             return None
 
         def delete_hook(state):
@@ -823,7 +783,7 @@ class MemoryManager:
 
     def has_langmem_support(self) -> bool:
         """Check if LangMem is available (including mock support)"""
-        return LANGMEM_AVAILABLE or (len(self.memory_tools) > 0) or (self.summarization_node is not None)
+        return (len(self.memory_tools) > 0) or (self.summarization_node is not None)
 
     @property
     def short_term_memory(self):
@@ -843,52 +803,7 @@ class MemoryManager:
         except Exception:
             return False
 
-    def _create_mock_mongodb_store(self):
-        """Create mock MongoDB store for testing"""
 
-        class MockMongoDBStore:
-            def __init__(self):
-                self._data = {}
-                self._ttl_data = {}  # Store TTL info
-                import time
-                self._time = time
-
-            def put(self, namespace, key, value):
-                ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                self._data[ns_key] = type('Item', (), {'value': value})()
-                # Mock TTL expiration
-                if hasattr(self, '_ttl_enabled'):
-                    self._ttl_data[ns_key] = self._time.time() + 60  # 1 minute TTL
-
-            def get(self, namespace, key):
-                ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                # Check TTL expiration
-                if ns_key in self._ttl_data:
-                    if self._time.time() > self._ttl_data[ns_key]:
-                        del self._data[ns_key]
-                        del self._ttl_data[ns_key]
-                        return None
-                return self._data.get(ns_key)
-
-            def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                # Mock search with some results
-                prefix = ':'.join(str(x) for x in namespace)
-                results = []
-                for k, v in self._data.items():
-                    if k.startswith(prefix):
-                        # Check TTL expiration
-                        if k in self._ttl_data and self._time.time() > self._ttl_data[k]:
-                            continue
-                        results.append(v)
-                        if len(results) >= limit:
-                            break
-                return results[offset:offset + limit]
-
-        mock_store = MockMongoDBStore()
-        if self.config.enable_ttl:
-            mock_store._ttl_enabled = True
-        self.store = mock_store
-        logger.info("Mock MongoDBStore initialized for testing")
 
 
 class SupervisorManager:
@@ -1082,7 +997,7 @@ class MCPManager:
         # Test compatibility properties
         self.enabled = config.enable_mcp
 
-        if config.enable_mcp and MCP_AVAILABLE:
+        if config.enable_mcp:
             self._initialize_mcp_client()
 
     def _initialize_mcp_client(self):
@@ -1116,7 +1031,7 @@ class MCPManager:
         """Add a new MCP server configuration"""
         self.config.mcp_servers[name] = config
         self.servers[name] = config  # For test compatibility
-        if self.config.enable_mcp and MCP_AVAILABLE:
+        if self.config.enable_mcp:
             self._initialize_mcp_client()
 
 
@@ -1138,7 +1053,7 @@ class EvaluationManager:
         else:
             self.metrics = []  # Empty if evaluation disabled
 
-        if config.enable_evaluation and AGENTEVALS_AVAILABLE:
+        if config.enable_evaluation:
             self._initialize_evaluators()
 
     def _initialize_evaluators(self):
@@ -1233,7 +1148,7 @@ class EvaluationManager:
         return {
             "enabled": self.enabled,
             "available_metrics": self.metrics,
-            "agentevals_available": AGENTEVALS_AVAILABLE,
+            "evaluation_enabled": self.config.enable_evaluation,
             "basic_evaluator": self.evaluator is not None,
             "trajectory_evaluator": self.trajectory_evaluator is not None,
             "llm_judge_evaluator": self.llm_judge_evaluator is not None
