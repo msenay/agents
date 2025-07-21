@@ -23,6 +23,14 @@ from langchain_core.tools import BaseTool
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
+# Import all tools
+from core_agents.tools import (
+    create_all_coder_tools,
+    get_tools_by_category,
+    suggest_tools_for_task,
+    create_agent_generator_tool
+)
+
 
 class CoderConfig:
     """Coder Agent Configuration"""
@@ -39,78 +47,7 @@ class CoderConfig:
     MAX_TOKENS = 4000
 
 
-class AgentGeneratorInput(BaseModel):
-    """Input schema for agent generation"""
-    template_type: str = Field(description="Type: simple, with_tools, multi_agent")
-    agent_name: str = Field(description="Name for the agent")
-    purpose: str = Field(description="What the agent should do")
-    tools_needed: List[str] = Field(default=[], description="List of tools if needed")
-    use_our_core: bool = Field(default=False, description="Whether to use Core Agent infrastructure")
-
-
-def create_agent_generator_tool(model):
-    """Factory function to create AgentGeneratorTool with model"""
-    
-    class AgentGeneratorTool(BaseTool):
-        """Tool for generating agent code"""
-        name: str = "agent_generator"
-        description: str = "Generate LangGraph agent code based on specifications"
-        args_schema: type[BaseModel] = AgentGeneratorInput
-        
-        def _run(self, template_type: str, agent_name: str, purpose: str, 
-                 tools_needed: List[str] = None, use_our_core: bool = False) -> str:
-            """Generate agent code based on template type"""
-            
-            if tools_needed is None:
-                tools_needed = []
-            
-            # Different prompts based on whether to use Core Agent
-            if use_our_core:
-                prompt = f"""Generate a complete LangGraph agent that uses our Core Agent infrastructure:
-            
-Type: {template_type}
-Name: {agent_name}
-Purpose: {purpose}
-Tools: {tools_needed if tools_needed else 'None'}
-
-Requirements for Core Agent based implementation:
-1. Import and inherit from CoreAgent at /workspace/core/core_agent.py
-2. Use AgentConfig from /workspace/core/config.py
-3. Leverage Core Agent's built-in features (memory, tools, etc.)
-4. Create a proper __init__ method that calls super().__init__(config)
-5. Include all necessary imports
-6. Add a demo function
-7. Use proper error handling and logging
-
-Generate the complete Python code:"""
-            else:
-                prompt = f"""Generate a complete standalone LangGraph agent:
-            
-Type: {template_type}
-Name: {agent_name}  
-Purpose: {purpose}
-Tools: {tools_needed if tools_needed else 'None'}
-
-Requirements for standalone implementation:
-1. Use standard LangGraph patterns (StateGraph, add_node, add_edge)
-2. Define proper agent state with TypedDict
-3. Create clean node functions for each step
-4. Add proper tool integration if needed
-5. Include all necessary imports (langchain, langgraph, etc.)
-6. Create a working example/demo at the end
-7. Make it self-contained and ready to run
-
-For {template_type} type:
-{"- Simple: Basic agent with state management and clear workflow" if template_type == "simple" else ""}
-{"- With Tools: Include tool node, proper tool calling and result handling" if template_type == "with_tools" else ""}
-{"- Multi-agent: Create supervisor pattern with multiple sub-agents coordinating" if template_type == "multi_agent" else ""}
-
-Generate the complete Python code:"""
-            
-            response = model.invoke([HumanMessage(content=prompt)])
-            return response.content
-    
-    return AgentGeneratorTool()
+# AgentGeneratorInput and create_agent_generator_tool are now imported from tools.py
 
 
 class CoderAgent(CoreAgent):
@@ -132,8 +69,9 @@ class CoderAgent(CoreAgent):
             max_tokens=CoderConfig.MAX_TOKENS
         )
         
-        # Create tools
-        tools = [create_agent_generator_tool(model)]
+        # Create ALL tools for maximum capability
+        # The LLM will decide which tools to use based on the task
+        tools = create_all_coder_tools(model)
         
         # Create configuration
         config = AgentConfig(
@@ -150,12 +88,14 @@ class CoderAgent(CoreAgent):
         # Initialize parent CoreAgent
         super().__init__(config)
         
-        print(f"✅ Coder Agent initialized")
-        print(f"🔧 Available tools: {[tool.name for tool in self.config.tools]}")
+        print(f"✅ Coder Agent initialized with {len(tools)} tools")
+        print(f"🔧 Available tools:")
+        for tool in self.config.tools:
+            print(f"   - {tool.name}: {tool.description}")
     
     def _get_system_prompt(self) -> str:
         """System prompt for the Coder Agent"""
-        return """You are an expert Coder Agent specialized in creating LangGraph agents.
+        return """You are an expert Coder Agent with a comprehensive toolkit for creating, analyzing, and deploying LangGraph agents.
 
 Your expertise includes:
 - Creating standalone LangGraph agents with proper state management
@@ -164,12 +104,20 @@ Your expertise includes:
 - Using Core Agent infrastructure when requested
 - Writing clean, maintainable, production-ready code
 
-Key capabilities:
-1. STANDALONE AGENTS (default): Create pure LangGraph agents with StateGraph, nodes, edges
-2. CORE AGENT BASED: Use our Core Agent framework when use_our_core=True
-3. SIMPLE AGENTS: Basic workflow with state management
-4. WITH TOOLS: Proper tool integration, tool node, and result handling
-5. MULTI-AGENT: Supervisor pattern with agent coordination
+Your available tools include:
+1. GENERATION: agent_generator, generate_rag_agent - Create various types of agents
+2. ANALYSIS: analyze_agent_code, validate_agent, optimize_agent - Improve existing code
+3. DOCUMENTATION: generate_agent_docs - Create comprehensive documentation
+4. TESTING: generate_unit_tests - Create test suites
+5. DEPLOYMENT: dockerize_agent, convert_to_api - Deploy agents
+6. ENHANCEMENT: add_monitoring, format_code - Enhance code quality
+
+When given a task:
+- Use the appropriate tools to complete the full workflow
+- For example: generate → validate → optimize → test → document → deploy
+- Chain tools together for comprehensive solutions
+- Always validate generated code before returning
+- Add tests and documentation when appropriate
 
 Best practices you follow:
 - Always include ALL necessary imports
@@ -180,7 +128,7 @@ Best practices you follow:
 - Make code immediately executable
 - Follow LangGraph best practices
 
-You generate complete, working, production-ready code."""
+You intelligently select and use the right tools to deliver complete, production-ready solutions."""
     
     def generate_agent(self, template_type: str, agent_name: str, purpose: str, 
                       tools_needed: List[str] = None, use_our_core: bool = False) -> Dict[str, Any]:
