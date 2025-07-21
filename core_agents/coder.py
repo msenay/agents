@@ -115,7 +115,9 @@ class CoderAgent(CoreAgent):
             model=model,
             tools=tools,
             system_prompt=self._get_system_prompt(),
-            enable_memory=False,  # Simplified - no memory for now
+            enable_memory=True,  # Enable memory
+            memory_backend="inmemory",  # Use InMemory backend
+            memory_types=["short_term", "long_term"],  # Enable both memory types
             max_tokens=CoderConfig.MAX_TOKENS
         )
         
