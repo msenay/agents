@@ -23,20 +23,67 @@ import os
 import sys
 from unittest.mock import Mock, MagicMock, patch, AsyncMock
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add workspace directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-# Mock dependencies before importing core_agent
-sys.modules['langgraph.checkpoint.redis'] = MagicMock()
-sys.modules['langgraph_supervisor'] = MagicMock()
-sys.modules['langgraph_swarm'] = MagicMock()
-sys.modules['langchain_mcp_adapters.client'] = MagicMock()
-sys.modules['langmem'] = MagicMock()
-sys.modules['agentevals'] = MagicMock()
+# Mock all dependencies before importing core_agent
+mock_modules = [
+    'langchain_core',
+    'langchain_core.messages',
+    'langchain_core.messages.utils',
+    'langchain_core.rate_limiters',
+    'langchain_core.tools',
+    'langchain_core.language_models',
+    'langgraph',
+    'langgraph.graph',
+    'langgraph.checkpoint',
+    'langgraph.checkpoint.memory',
+    'langgraph.checkpoint.redis',
+    'langgraph.checkpoint.postgres',
+    'langgraph.checkpoint.mongodb',
+    'langgraph.store',
+    'langgraph.store.memory',
+    'langgraph.store.redis',
+    'langgraph.store.postgres',
+    'langgraph.prebuilt',
+    'langgraph.types',
+    'langgraph.graph.message',
+    'langchain',
+    'langchain.embeddings',
+    'langmem',
+    'langmem.short_term',
+    'langgraph_supervisor',
+    'langgraph_swarm',
+    'langchain_mcp_adapters',
+    'langchain_mcp_adapters.client',
+    'agentevals',
+    'agentevals.trajectory',
+    'agentevals.trajectory.match',
+    'agentevals.trajectory.llm'
+]
 
-from langchain_core.messages import HumanMessage
-from langchain_core.tools import BaseTool
-from langchain_core.language_models import BaseChatModel
+for module in mock_modules:
+    if module not in sys.modules:
+        sys.modules[module] = MagicMock()
+
+# Configure specific mocks
+mock_base_message = MagicMock()
+sys.modules['langchain_core.messages'].BaseMessage = mock_base_message
+
+mock_human_message = MagicMock()
+mock_human_message.return_value = MagicMock()
+sys.modules['langchain_core.messages'].HumanMessage = mock_human_message
+
+mock_base_tool = MagicMock()
+sys.modules['langchain_core.tools'].BaseTool = mock_base_tool
+
+mock_base_chat_model = MagicMock()
+sys.modules['langchain_core.language_models'].BaseChatModel = mock_base_chat_model
+
+# Import after mocking
+HumanMessage = mock_human_message
+BaseTool = mock_base_tool
+BaseChatModel = mock_base_chat_model
 
 # Import core_agent after mocking dependencies
 from core.core_agent import CoreAgentState, CoreAgent
