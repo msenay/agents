@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict, Any
 
 import logging
+import os
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
@@ -11,22 +12,90 @@ from langgraph.store.redis import RedisStore
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
 from langgraph.checkpoint.mongodb import MongoDBSaver
-from langgraph.store.mongodb import MongoDBStore
+# MongoDB Store henüz mevcut değil
+# from langgraph.store.mongodb import MongoDBStore
 from langgraph.store.memory import InMemoryStore
-from langchain_core.messages.utils import trim_messages, count_tokens_approximately
-from langchain_core.messages import RemoveMessage
-from langgraph.graph.message import REMOVE_ALL_MESSAGES
-from langmem import create_manage_memory_tool, create_search_memory_tool
-from langmem.short_term import SummarizationNode
+
+# Availability flags from environment
+LANGMEM_AVAILABLE = os.getenv("LANGMEM_AVAILABLE", "true").lower() == "true"
+AGENTEVALS_AVAILABLE = os.getenv("AGENTEVALS_AVAILABLE", "true").lower() == "true"
+MCP_AVAILABLE = os.getenv("MCP_AVAILABLE", "true").lower() == "true"
+RATE_LIMITER_AVAILABLE = os.getenv("RATE_LIMITER_AVAILABLE", "true").lower() == "true"
+MESSAGE_UTILS_AVAILABLE = os.getenv("MESSAGE_UTILS_AVAILABLE", "true").lower() == "true"
+REDIS_AVAILABLE = os.getenv("REDIS_AVAILABLE", "true").lower() == "true"
+POSTGRES_AVAILABLE = os.getenv("POSTGRES_AVAILABLE", "true").lower() == "true"
+MONGODB_AVAILABLE = os.getenv("MONGODB_AVAILABLE", "true").lower() == "true"
+
+# Try to import optional dependencies
+if MESSAGE_UTILS_AVAILABLE:
+    try:
+        from langchain_core.messages.utils import trim_messages, count_tokens_approximately
+        from langchain_core.messages import RemoveMessage
+        from langgraph.graph.message import REMOVE_ALL_MESSAGES
+    except ImportError:
+        MESSAGE_UTILS_AVAILABLE = False
+        trim_messages = None
+        count_tokens_approximately = None
+        RemoveMessage = None
+        REMOVE_ALL_MESSAGES = None
+else:
+    trim_messages = None
+    count_tokens_approximately = None
+    RemoveMessage = None
+    REMOVE_ALL_MESSAGES = None
+
+if LANGMEM_AVAILABLE:
+    try:
+        from langmem import create_manage_memory_tool, create_search_memory_tool
+        from langmem.short_term import SummarizationNode
+    except ImportError:
+        LANGMEM_AVAILABLE = False
+        create_manage_memory_tool = None
+        create_search_memory_tool = None
+        SummarizationNode = None
+else:
+    create_manage_memory_tool = None
+    create_search_memory_tool = None
+    SummarizationNode = None
+
 from langchain.embeddings import init_embeddings
+
+if RATE_LIMITER_AVAILABLE:
+    try:
+        from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
+    except ImportError:
+        RATE_LIMITER_AVAILABLE = False
+        InMemoryRateLimiter = None
+        BaseRateLimiter = None
+else:
+    InMemoryRateLimiter = None
+    BaseRateLimiter = None
+
 from langgraph_supervisor import create_supervisor
-from langchain_core.rate_limiters import InMemoryRateLimiter, BaseRateLimiter
 from langgraph_swarm import create_swarm
 
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from agentevals import AgentEvaluator
-from agentevals.trajectory.match import create_trajectory_match_evaluator
-from agentevals.trajectory.llm import (create_trajectory_llm_as_judge,TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
+if MCP_AVAILABLE:
+    try:
+        from langchain_mcp_adapters.client import MultiServerMCPClient
+    except ImportError:
+        MCP_AVAILABLE = False
+        MultiServerMCPClient = None
+else:
+    MultiServerMCPClient = None
+
+if AGENTEVALS_AVAILABLE:
+    try:
+        from agentevals.trajectory.match import create_trajectory_match_evaluator
+        from agentevals.trajectory.llm import (create_trajectory_llm_as_judge,TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE)
+    except ImportError:
+        AGENTEVALS_AVAILABLE = False
+        create_trajectory_match_evaluator = None
+        create_trajectory_llm_as_judge = None
+        TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
+else:
+    create_trajectory_match_evaluator = None
+    create_trajectory_llm_as_judge = None
+    TRAJECTORY_ACCURACY_PROMPT_WITH_REFERENCE = None
 
 from langchain_core.tools import BaseTool, tool, InjectedToolCallId
 from langchain_core.language_models import BaseChatModel
@@ -473,50 +542,9 @@ class MemoryManager:
                     logger.info("Mock PostgresStore initialized for testing")
 
             elif store_type == "mongodb":
-                if MongoDBStore and self.config.mongodb_url:
-                    try:
-                        # Test MongoDB connection first
-                        test_store_cm = MongoDBStore.from_conn_string(
-                            self.config.mongodb_url,
-                            index=index_config,
-                            ttl=ttl_config
-                        )
-                        with test_store_cm as test_store:
-                            # Test basic operations
-                            test_store.put(("test",), "init_test", {"test": True})
-                            test_store.get(("test",), "init_test")
-
-                        # If we get here, MongoDB is fully functional
-                        class MongoDBStoreWrapper:
-                            def __init__(self, conn_string, index=None, ttl=None):
-                                self._store_cm = MongoDBStore.from_conn_string(conn_string, index=index, ttl=ttl)
-
-                            def put(self, namespace, key, value):
-                                with self._store_cm as store:
-                                    return store.put(namespace, key, value)
-
-                            def get(self, namespace, key):
-                                with self._store_cm as store:
-                                    return store.get(namespace, key)
-
-                            def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                                with self._store_cm as store:
-                                    return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
-
-                        self.store = MongoDBStoreWrapper(
-                            self.config.mongodb_url,
-                            index=index_config,
-                            ttl=ttl_config
-                        )
-                        logger.info("MongoDBStore initialized with full functionality")
-                    except Exception as e:
-                        # Fallback to mock MongoDB store
-                        logger.warning(f"MongoDB not functional, using mock store: {e}")
-                        self._create_mock_mongodb_store()
-                else:
-                    # MongoDB not available, use mock
-                    logger.warning("MongoDB not available, using mock store")
-                    self._create_mock_mongodb_store()
+                # MongoDB Store is not yet available in langgraph, use InMemoryStore as fallback
+                logger.warning("MongoDB Store is not yet available in langgraph, using InMemoryStore as fallback")
+                self.store = InMemoryStore(index=index_config) if InMemoryStore else None
 
             else:
                 # Fallback to InMemoryStore
@@ -843,52 +871,7 @@ class MemoryManager:
         except Exception:
             return False
 
-    def _create_mock_mongodb_store(self):
-        """Create mock MongoDB store for testing"""
 
-        class MockMongoDBStore:
-            def __init__(self):
-                self._data = {}
-                self._ttl_data = {}  # Store TTL info
-                import time
-                self._time = time
-
-            def put(self, namespace, key, value):
-                ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                self._data[ns_key] = type('Item', (), {'value': value})()
-                # Mock TTL expiration
-                if hasattr(self, '_ttl_enabled'):
-                    self._ttl_data[ns_key] = self._time.time() + 60  # 1 minute TTL
-
-            def get(self, namespace, key):
-                ns_key = f"{':'.join(str(x) for x in namespace)}:{key}"
-                # Check TTL expiration
-                if ns_key in self._ttl_data:
-                    if self._time.time() > self._ttl_data[ns_key]:
-                        del self._data[ns_key]
-                        del self._ttl_data[ns_key]
-                        return None
-                return self._data.get(ns_key)
-
-            def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                # Mock search with some results
-                prefix = ':'.join(str(x) for x in namespace)
-                results = []
-                for k, v in self._data.items():
-                    if k.startswith(prefix):
-                        # Check TTL expiration
-                        if k in self._ttl_data and self._time.time() > self._ttl_data[k]:
-                            continue
-                        results.append(v)
-                        if len(results) >= limit:
-                            break
-                return results[offset:offset + limit]
-
-        mock_store = MockMongoDBStore()
-        if self.config.enable_ttl:
-            mock_store._ttl_enabled = True
-        self.store = mock_store
-        logger.info("Mock MongoDBStore initialized for testing")
 
 
 class SupervisorManager:

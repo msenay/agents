@@ -39,12 +39,13 @@ from langchain_core.tools import BaseTool
 from langchain_core.language_models import BaseChatModel
 
 # Import core_agent after mocking dependencies
-from core.core_agent import (
-    AgentConfig, CoreAgentState, CoreAgent,
+from core.core_agent import CoreAgentState, CoreAgent
+from core.config import AgentConfig
+from core.managers import (
     SubgraphManager, MemoryManager, SupervisorManager, 
     MCPManager, EvaluationManager, RateLimiterManager,
-    AGENTEVALS_AVAILABLE,
-    LANGMEM_AVAILABLE, MCP_AVAILABLE, RATE_LIMITER_AVAILABLE
+    AGENTEVALS_AVAILABLE, LANGMEM_AVAILABLE, MCP_AVAILABLE, 
+    RATE_LIMITER_AVAILABLE, MESSAGE_UTILS_AVAILABLE
 )
 
 from simple_agent_creators import (create_simple_agent, create_advanced_agent,

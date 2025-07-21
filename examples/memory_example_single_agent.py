@@ -39,8 +39,9 @@ os.environ["OPENAI_API_VERSION"] = "2023-12-01-preview"
 os.environ["AZURE_OPENAI_ENDPOINT"] = "https://oai-202-fbeta-dev.openai.azure.com/"
 os.environ["OPENAI_API_KEY"] = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4"
 
-from core.core_agent import (
-    AgentConfig, CoreAgent, 
+from core.core_agent import CoreAgent
+from core.config import AgentConfig
+from core.managers import (
     REDIS_AVAILABLE, POSTGRES_AVAILABLE, MONGODB_AVAILABLE,
     RATE_LIMITER_AVAILABLE, LANGMEM_AVAILABLE
 )
