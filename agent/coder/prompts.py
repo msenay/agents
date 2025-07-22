@@ -1,11 +1,8 @@
-SIMPLE_AGENT_PROMPT = """Generate a complete standalone LangGraph agent:
-
-Name: {agent_name}  
-Purpose: {purpose}
+SIMPLE_AGENT_PROMPT = """Generate a complete standalone LangGraph agent based on the specifications provided.
 
 Create a SIMPLE agent with:
 1. Clean StateGraph implementation
-2. TypedDict for state definition
+2. TypedDict for state definition  
 3. Clear node functions for each step
 4. Proper edge connections
 5. Compiled graph with entry/exit points
@@ -16,15 +13,9 @@ Requirements:
 - Use minimal dependencies
 - Clear, readable code
 - Proper error handling
-- Follow LangGraph best practices
+- Follow LangGraph best practices"""
 
-Generate ONLY the Python code, no explanations."""
-
-WITH_TOOLS_AGENT_PROMPT = """Generate a complete LangGraph agent with tools:
-
-Name: {agent_name}
-Purpose: {purpose}
-Tools Required: {tools_needed}
+WITH_TOOLS_AGENT_PROMPT = """Generate a complete LangGraph agent with tools based on the specifications provided.
 
 Create an agent WITH TOOLS that includes:
 1. StateGraph with proper state management
@@ -40,19 +31,13 @@ Requirements:
 - Implement proper tool calling logic
 - Handle tool errors gracefully
 - Include tool result processing
-- Follow LangGraph tool patterns
+- Follow LangGraph tool patterns"""
 
-Generate ONLY the Python code, no explanations."""
-
-MULTI_AGENT_PROMPT = """Generate a complete multi-agent system:
-
-Name: {agent_name}
-Purpose: {purpose}
-Sub-agents needed: {tools_needed}
+MULTI_AGENT_PROMPT = """Generate a complete multi-agent system based on the specifications provided.
 
 Create a MULTI-AGENT system with:
 1. Supervisor agent that coordinates tasks
-2. Multiple worker agents (based on tools_needed)
+2. Multiple worker agents (as specified)
 3. Proper delegation logic
 4. State management across agents
 5. Result aggregation
@@ -64,14 +49,9 @@ Requirements:
 - Use supervisor pattern
 - Clear agent responsibilities
 - Proper communication between agents
-- Scalable architecture
+- Scalable architecture"""
 
-Generate ONLY the Python code, no explanations."""
-
-CORE_AGENT_SIMPLE_PROMPT = """Generate a LangGraph agent using Core Agent infrastructure:
-
-Name: {agent_name}
-Purpose: {purpose}
+CORE_AGENT_SIMPLE_PROMPT = """Generate a LangGraph agent using Core Agent infrastructure based on the specifications.
 
 Create a SIMPLE Core Agent based implementation:
 1. Import CoreAgent from /workspace/core/core_agent.py
@@ -85,15 +65,9 @@ Create a SIMPLE Core Agent based implementation:
 Requirements:
 - Leverage Core Agent's built-in features
 - Use appropriate configuration options
-- Follow Core Agent patterns
+- Follow Core Agent patterns"""
 
-Generate ONLY the Python code, no explanations."""
-
-CORE_AGENT_WITH_TOOLS_PROMPT = """Generate a Core Agent with tools:
-
-Name: {agent_name}
-Purpose: {purpose}
-Tools: {tools_needed}
+CORE_AGENT_WITH_TOOLS_PROMPT = """Generate a Core Agent with tools based on the specifications.
 
 Create a Core Agent WITH TOOLS:
 1. Import necessary Core Agent components
@@ -107,42 +81,30 @@ Create a Core Agent WITH TOOLS:
 Requirements:
 - Use Core Agent tool integration
 - Configure tools properly
-- Enable appropriate features
-
-Generate ONLY the Python code, no explanations."""
+- Enable appropriate features"""
 
 
-SYSTEM_PROMPT = """You are an expert Coder Agent specialized in generating high-quality LangGraph agents.
+SYSTEM_PROMPT = """You are an expert Coder Agent specialized in generating high-quality agent code from specifications.
 
-Your capabilities:
-1. Generate agents using agent_generator tool:
-   - simple: Basic LangGraph agents with state management
-   - with_tools: Agents with tool integration and routing
-   - multi_agent: Supervisor-based multi-agent systems
-   
-2. Optimize code using optimize_agent tool:
-   - Improve performance
-   - Add error handling
-   - Enhance code structure
-   
-3. Format code using format_code tool:
-   - Clean imports
-   - Consistent style
-   - Proper documentation
+Your role is to:
+1. Analyze agent specifications (like a recipe) and extract key requirements
+2. Generate complete, working agent code based on those specifications
+3. Ensure the code follows best practices and includes proper error handling
 
-When generating agents:
-- For 'simple': Create clean StateGraph with clear workflow
-- For 'with_tools': Include proper tool node and routing logic
-- For 'multi_agent': Implement supervisor pattern with worker agents
+You have three tools at your disposal:
+- agent_generator: Generate agent code from specifications
+- optimize_agent: Optimize the generated code
+- format_code: Format the code properly
 
-You can choose to use Core Agent infrastructure (use_our_core=True) or 
-create standalone LangGraph implementations (use_our_core=False).
+When you receive specifications:
+1. Identify the agent name, purpose, and key requirements
+2. Determine the appropriate agent type (simple, with_tools, multi_agent)
+3. Decide whether to use Core Agent infrastructure or standalone
+4. Generate optimized and well-formatted code
 
-Always:
-- Generate complete, runnable code
-- Include all necessary imports
-- Add example usage
-- Follow best practices
-- Optimize and format the final code
+Default behavior:
+- Generate simple agents unless tools or multi-agent is explicitly needed
+- Generate standalone agents unless Core Agent is explicitly requested
+- Always optimize and format the generated code
 
-Focus on generating high-quality, production-ready agent code."""
+Focus on producing production-ready, well-documented agent code that exactly matches the specifications provided."""

@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 """
-Coder Agent - Specialized Agent for Code Generation
-==================================================
+Coder Agent - Agent Code Generator from Specifications
+======================================================
 
-A focused agent that generates high-quality LangGraph agents using only essential tools:
-- agent_generator: Creates agent code (simple, with_tools, multi_agent)
-- optimize_agent: Optimizes generated code
-- format_code: Ensures clean formatting
+CoderAgent receives agent specifications (like a recipe) and generates complete agent code.
 
-Supports both standalone LangGraph and Core Agent based implementations.
+Key Features:
+- Accepts detailed agent specifications/requirements
+- Generates standalone agents by default
+- Optional: Generate agents using Core Agent infrastructure (use_our_core=True)
+- Supports: simple agents, agents with tools, multi-agent systems
+
+The agent uses its LLM to intelligently convert specifications into working code.
 """
 
 import os
 import sys
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-
-from agent.coder.prompts import CORE_AGENT_SIMPLE_PROMPT, CORE_AGENT_WITH_TOOLS_PROMPT, MULTI_AGENT_PROMPT, SIMPLE_AGENT_PROMPT, WITH_TOOLS_AGENT_PROMPT, SYSTEM_PROMPT
+from pydantic import BaseModel, Field
 
 # Add workspace to path for imports
 sys.path.insert(0, '/workspace')
@@ -26,21 +28,25 @@ from core.core_agent import CoreAgent
 from core.config import AgentConfig
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage
-
-# We need to create our own simplified tools since we're removing the complex tools.py
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field
-from typing import List
+
+# Import prompts
+from agent.coder.prompts import (
+    SIMPLE_AGENT_PROMPT,
+    WITH_TOOLS_AGENT_PROMPT,
+    MULTI_AGENT_PROMPT,
+    CORE_AGENT_SIMPLE_PROMPT,
+    CORE_AGENT_WITH_TOOLS_PROMPT,
+    SYSTEM_PROMPT
+)
 
 
 # Tool Input Schemas
-class AgentGeneratorInput(BaseModel):
-    """Input schema for agent generation"""
-    template_type: str = Field(description="Type: simple, with_tools, multi_agent")
-    agent_name: str = Field(description="Name for the agent")
-    purpose: str = Field(description="What the agent should do")
-    tools_needed: List[str] = Field(default=[], description="List of tools if needed")
-    use_our_core: bool = Field(default=False, description="Whether to use Core Agent infrastructure")
+class AgentSpecInput(BaseModel):
+    """Input schema for agent generation from specifications"""
+    agent_spec: str = Field(description="Detailed agent specifications/requirements (like a recipe)")
+    agent_type: str = Field(default="simple", description="Type: simple, with_tools, multi_agent")
+    use_our_core: bool = Field(default=False, description="Use Core Agent infrastructure (default: False)")
 
 
 class CodeInput(BaseModel):
@@ -48,43 +54,66 @@ class CodeInput(BaseModel):
     code: str = Field(description="Python code to process")
 
 
+class CoderConfig:
+    """Coder Agent Configuration"""
+    
+    # Azure OpenAI Configuration
+    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "https://oai-202-fbeta-dev.openai.azure.com/")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4")
+    OPENAI_API_VERSION = "2023-12-01-preview"
+    GPT4_MODEL_NAME = "gpt-4"
+    GPT4_DEPLOYMENT_NAME = "gpt4"
+    
+    # Model Parameters
+    TEMPERATURE = 0.1  # Low temperature for consistent code generation
+    MAX_TOKENS = 4000
+
+
 def create_agent_generator_tool(model):
-    """Create tool for generating agent code"""
+    """Create tool for generating agent code from specifications"""
     
     class AgentGeneratorTool(BaseTool):
         name: str = "agent_generator"
-        description: str = "Generate LangGraph agent code based on specifications"
-        args_schema: type[BaseModel] = AgentGeneratorInput
+        description: str = "Generate agent code from detailed specifications"
+        args_schema: type[BaseModel] = AgentSpecInput
         
-        def _run(self, template_type: str, agent_name: str, purpose: str, 
-                 tools_needed: List[str] = None, use_our_core: bool = False) -> str:
-            if tools_needed is None:
-                tools_needed = []
+        def _run(self, agent_spec: str, agent_type: str = "simple", use_our_core: bool = False) -> str:
+            """Generate agent code based on specifications"""
             
-            # Select appropriate prompt
+            # Select appropriate prompt based on type and core usage
             if use_our_core:
-                if template_type == "simple":
-                    prompt = CORE_AGENT_SIMPLE_PROMPT
-                elif template_type == "with_tools":
-                    prompt = CORE_AGENT_WITH_TOOLS_PROMPT
-                else:
-                    prompt = MULTI_AGENT_PROMPT
+                if agent_type == "simple":
+                    base_prompt = CORE_AGENT_SIMPLE_PROMPT
+                elif agent_type == "with_tools":
+                    base_prompt = CORE_AGENT_WITH_TOOLS_PROMPT
+                else:  # multi_agent
+                    base_prompt = MULTI_AGENT_PROMPT
             else:
-                if template_type == "simple":
-                    prompt = SIMPLE_AGENT_PROMPT
-                elif template_type == "with_tools":
-                    prompt = WITH_TOOLS_AGENT_PROMPT
-                else:
-                    prompt = MULTI_AGENT_PROMPT
+                if agent_type == "simple":
+                    base_prompt = SIMPLE_AGENT_PROMPT
+                elif agent_type == "with_tools":
+                    base_prompt = WITH_TOOLS_AGENT_PROMPT
+                else:  # multi_agent
+                    base_prompt = MULTI_AGENT_PROMPT
             
-            # Format prompt
-            formatted_prompt = prompt.format(
-                agent_name=agent_name,
-                purpose=purpose,
-                tools_needed=tools_needed if tools_needed else "None"
-            )
+            # Create the full prompt with specifications
+            full_prompt = f"""{base_prompt}
+
+SPECIFICATIONS:
+==============
+{agent_spec}
+
+Based on these specifications, generate complete, working agent code.
+Make sure to:
+1. Extract the agent name, purpose, and requirements from the specifications
+2. Implement all requested functionality
+3. Include proper error handling
+4. Add comprehensive documentation
+5. Provide usage examples
+
+Generate ONLY the Python code, no explanations."""
             
-            response = model.invoke([HumanMessage(content=formatted_prompt)])
+            response = model.invoke([HumanMessage(content=full_prompt)])
             return response.content
     
     return AgentGeneratorTool()
@@ -153,34 +182,23 @@ Return the formatted code."""
     return FormatCodeTool()
 
 
-class CoderConfig:
-    """Coder Agent Configuration"""
-    
-    # Azure OpenAI Configuration
-    AZURE_OPENAI_ENDPOINT = "https://oai-202-fbeta-dev.openai.azure.com/"
-    OPENAI_API_KEY = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4"
-    OPENAI_API_VERSION = "2023-12-01-preview"
-    GPT4_MODEL_NAME = "gpt-4"
-    GPT4_DEPLOYMENT_NAME = "gpt4"
-    
-    # Model Parameters
-    TEMPERATURE = 0.1  # Low temperature for consistent code generation
-    MAX_TOKENS = 4000
-
-
 class CoderAgent(CoreAgent):
     """
-    Specialized agent for generating high-quality LangGraph agents
+    Specialized agent for generating agent code from specifications
     
-    Focuses on code generation with three essential tools:
-    - agent_generator: Creates agents (simple, with_tools, multi_agent)
-    - optimize_agent: Improves code quality and performance
-    - format_code: Ensures clean, readable formatting
+    The CoderAgent receives detailed specifications (like a recipe) and generates
+    complete, working agent code. It can create:
+    - Simple agents (default)
+    - Agents with tools
+    - Multi-agent systems
+    
+    By default, it generates standalone LangGraph agents, but can also generate
+    agents using the Core Agent infrastructure when requested.
     """
     
     def __init__(self, session_id: str = None):
         """
-        Initialize Coder Agent with essential code generation tools
+        Initialize Coder Agent
         
         Args:
             session_id: Unique session identifier (auto-generated if not provided)
@@ -199,9 +217,9 @@ class CoderAgent(CoreAgent):
             max_tokens=CoderConfig.MAX_TOKENS
         )
         
-        # Create only essential tools for code generation
+        # Create tools
         tools = [
-            create_agent_generator_tool(model),  # Main code generation
+            create_agent_generator_tool(model),  # Main code generation from specs
             create_optimize_agent_tool(model),   # Code optimization
             create_format_code_tool(model)       # Code formatting
         ]
@@ -211,7 +229,7 @@ class CoderAgent(CoreAgent):
             name="CoderAgent",
             model=model,
             tools=tools,
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=self._get_system_prompt(),
             enable_memory=True,  # Remember successful patterns
             memory_backend="inmemory",
             memory_types=["short_term", "long_term"],
@@ -221,28 +239,25 @@ class CoderAgent(CoreAgent):
         # Initialize parent CoreAgent
         super().__init__(config)
         
-        print(f"✅ Coder Agent initialized with {len(tools)} essential tools")
+        print(f"✅ Coder Agent initialized - Ready to generate agents from specifications!")
         print(f"🔧 Available tools: {[tool.name for tool in self.config.tools]}")
-
     
-    def generate_agent(self, template_type: str, agent_name: str, purpose: str, 
-                      tools_needed: List[str] = None, use_our_core: bool = False) -> Dict[str, Any]:
+    def _get_system_prompt(self) -> str:
+        """Get the system prompt for the agent"""
+        return SYSTEM_PROMPT
+    
+    def generate_from_spec(self, spec: str, agent_type: str = "simple", use_our_core: bool = False) -> Dict[str, Any]:
         """
-        Generate an agent based on requirements
+        Generate agent code from specifications
         
         Args:
-            template_type: Type of agent (simple, with_tools, multi_agent)
-            agent_name: Name for the generated agent
-            purpose: What the agent should do
-            tools_needed: List of tools if needed
+            spec: Detailed agent specifications (like a recipe)
+            agent_type: Type of agent to generate (simple, with_tools, multi_agent)
             use_our_core: Whether to use Core Agent infrastructure (default: False)
         
         Returns:
             Dict with success status, generated code, and metadata
         """
-        
-        if tools_needed is None:
-            tools_needed = []
         
         try:
             # Get the agent generator tool
@@ -259,9 +274,10 @@ class CoderAgent(CoreAgent):
                     "code": ""
                 }
             
-            # Generate the agent code
-            print(f"🎯 Generating {template_type} agent: {agent_name} (Core Agent: {use_our_core})")
-            agent_code = generator_tool._run(template_type, agent_name, purpose, tools_needed, use_our_core)
+            # Generate the agent code from specifications
+            print(f"🎯 Generating {agent_type} agent from specifications...")
+            print(f"📋 Core Agent: {use_our_core}")
+            agent_code = generator_tool._run(spec, agent_type, use_our_core)
             
             # Optimize the generated code
             print("🔧 Optimizing generated code...")
@@ -279,12 +295,10 @@ class CoderAgent(CoreAgent):
             
             return {
                 "success": True,
-                "agent_name": agent_name,
-                "template_type": template_type,
-                "purpose": purpose,
-                "tools": tools_needed,
+                "agent_type": agent_type,
                 "use_our_core": use_our_core,
-                "code": agent_code
+                "code": agent_code,
+                "spec": spec
             }
             
         except Exception as e:
@@ -298,13 +312,13 @@ class CoderAgent(CoreAgent):
         """
         Chat interface for interactive agent generation
         
-        The agent will use its tools intelligently based on the request:
-        - Generates code if asked to create an agent
-        - Optimizes code if provided with existing code
-        - Formats code when needed
+        The agent will analyze the message and:
+        - Extract specifications if provided
+        - Determine the appropriate agent type
+        - Generate optimized code
         
         Args:
-            message: User's request
+            message: User's request or specifications
             
         Returns:
             Response from the agent
