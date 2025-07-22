@@ -117,6 +117,7 @@ workspace/
 - Automatic fixture and mock generation
 - Edge case identification
 - Coverage analysis
+- [Full Documentation](agent/tester/README_tester.md)
 
 ### ⚙️ ExecutorAgent
 **Purpose:** Safely execute code and run tests
@@ -209,6 +210,7 @@ python core/test_core/test_core_agent_comprehensive.py
 
 - [Core Agent Framework Documentation](core/README.md)
 - [CoderAgent Documentation](agent/coder/README_coder.md)
+- [TesterAgent Documentation](agent/tester/README_tester.md)
 - [ExecutorAgent Documentation](agent/executor/README_executor.md)
 - [Configuration Guide](core/README.md#configuration-examples)
 - [Multi-Agent Patterns](core/README.md#multi-agent-system-configuration)
