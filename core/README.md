@@ -473,6 +473,34 @@ print(f"Std: {data.std():.2f}")
 - Test execution with coverage reports
 - Error handling and recovery
 
+### 🎭 **OrchestratorAgent**
+Coordinates multiple agents for complete development workflows.
+
+```python
+from agent.orchestrator import OrchestratorAgent
+
+# Initialize with supervisor pattern (default)
+orchestrator = OrchestratorAgent()
+
+# Orchestrate a complete workflow
+result = orchestrator.orchestrate(
+    "Create a REST API with authentication and tests",
+    workflow_type="full_development"
+)
+
+# Or use different coordination patterns
+orchestrator_swarm = OrchestratorAgent(coordination_pattern="swarm")  # Parallel
+orchestrator_pipeline = OrchestratorAgent(coordination_pattern="pipeline")  # Sequential
+orchestrator_adaptive = OrchestratorAgent(coordination_pattern="adaptive")  # Auto-select
+```
+
+**Key Features:**
+- 4 coordination patterns (Supervisor, Swarm, Pipeline, Adaptive)
+- Manages CoderAgent, TesterAgent, and ExecutorAgent in harmony
+- Built-in workflow templates
+- Quality control between steps
+- Progress monitoring and reporting
+
 ## 🏗️ Architecture
 
 ### Core Components

@@ -44,6 +44,15 @@ export OPENAI_API_KEY="your-api-key"
 #### Option 1: Use Pre-built Agents
 
 ```python
+# Complete Orchestration (Recommended)
+from agent.orchestrator import OrchestratorAgent
+orchestrator = OrchestratorAgent()
+result = orchestrator.orchestrate(
+    "Create a data processing module with tests",
+    workflow_type="full_development"
+)
+
+# Or use individual agents:
 # Code Generation
 from agent.coder import CoderAgent
 coder = CoderAgent()
@@ -127,6 +136,15 @@ workspace/
 - Test execution with reports
 - Error handling and recovery
 - [Full Documentation](agent/executor/README_executor.md)
+
+### 🎭 OrchestratorAgent
+**Purpose:** Coordinate multiple agents in harmony
+
+- 4 coordination patterns (Supervisor, Swarm, Pipeline, Adaptive)
+- Orchestrates Coder, Tester, and Executor agents
+- Workflow templates for common tasks
+- Real-time progress monitoring
+- [Full Documentation](agent/orchestrator/README_orchestrator.md)
 
 ## 🐳 Docker Deployment
 
@@ -212,11 +230,13 @@ python core/test_core/test_core_agent_comprehensive.py
 - [CoderAgent Documentation](agent/coder/README_coder.md)
 - [TesterAgent Documentation](agent/tester/README_tester.md)
 - [ExecutorAgent Documentation](agent/executor/README_executor.md)
+- [OrchestratorAgent Documentation](agent/orchestrator/README_orchestrator.md)
 - [Configuration Guide](core/README.md#configuration-examples)
 - [Multi-Agent Patterns](core/README.md#multi-agent-system-configuration)
 
 ## 🚀 Example: Complete Development Workflow
 
+### Option 1: Manual Coordination
 ```python
 from agent.coder import CoderAgent
 from agent.tester import TesterAgent
@@ -238,6 +258,23 @@ executor = ExecutorAgent()
 test_results = executor.chat(f"Run these tests:\n{tests}")
 
 print("✅ Agent created, tested, and validated!")
+```
+
+### Option 2: Automated Orchestration (Recommended)
+```python
+from agent.orchestrator import OrchestratorAgent
+
+# Let the orchestrator handle everything
+orchestrator = OrchestratorAgent()
+
+result = orchestrator.orchestrate(
+    "Create a web scraping agent that monitors product prices "
+    "and sends alerts when prices drop",
+    workflow_type="full_development"
+)
+
+print("✅ Complete workflow executed automatically!")
+print(result["report"])
 ```
 
 ## 🤝 Contributing
