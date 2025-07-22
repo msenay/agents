@@ -5,8 +5,15 @@ Demonstrates the OrchestratorAgent's ability to coordinate CoderAgent, TesterAge
 and ExecutorAgent in harmony for complete development workflows.
 """
 
-import asyncio
+import os
 from typing import Dict, Any
+
+# Check environment variables before importing
+if not os.getenv("OPENAI_API_KEY"):
+    print("⚠️  Warning: OPENAI_API_KEY not set in environment")
+    print("The demo may not work without proper API credentials")
+    print("Please set: export OPENAI_API_KEY='your-api-key'")
+
 from agent.orchestrator import OrchestratorAgent
 
 
@@ -321,6 +328,19 @@ def main():
     print("="*60)
     print("\nThis demo showcases the OrchestratorAgent's ability to coordinate")
     print("multiple agents (Coder, Tester, Executor) in harmony.\n")
+    
+    # Check dependencies
+    try:
+        from agent.orchestrator import OrchestratorAgent
+        from agent.coder import CoderAgent
+        from agent.tester import TesterAgent
+        from agent.executor import ExecutorAgent
+        print("✅ All agent modules loaded successfully")
+    except ImportError as e:
+        print(f"❌ Error: Missing dependencies - {e}")
+        print("\nPlease ensure all requirements are installed:")
+        print("pip install -r requirements.txt")
+        return
     
     demos = [
         ("Full Development Workflow", demo_full_development_workflow),
