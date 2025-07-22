@@ -9,8 +9,7 @@ Demonstrates the capabilities of CoderAgent with various examples.
 import sys
 sys.path.insert(0, '/workspace')
 
-from core_agents.coder import CoderAgent
-
+from agent.coder.coder import CoderAgent
 
 def demo_simple_agent():
     """Demo: Generate a simple standalone agent"""

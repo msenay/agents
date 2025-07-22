@@ -1,7 +1,3 @@
-# ============================================================================
-# AGENT GENERATION PROMPTS
-# ============================================================================
-
 SIMPLE_AGENT_PROMPT = """Generate a complete standalone LangGraph agent:
 
 Name: {agent_name}  
@@ -115,46 +111,38 @@ Requirements:
 
 Generate ONLY the Python code, no explanations."""
 
-def create_agent_generator_tool(model):
-    """Factory function to create AgentGeneratorTool with model"""
-    
-    class AgentGeneratorTool(BaseTool):
-        """Tool for generating agent code"""
-        name: str = "agent_generator"
-        description: str = "Generate LangGraph agent code based on specifications"
-        args_schema: type[BaseModel] = AgentGeneratorInput
-        
-        def _run(self, template_type: str, agent_name: str, purpose: str, 
-                 tools_needed: List[str] = None, use_our_core: bool = False) -> str:
-            """Generate agent code based on template type"""
-            
-            if tools_needed is None:
-                tools_needed = []
-            
-            # Select appropriate prompt based on type and core usage
-            if use_our_core:
-                if template_type == "simple":
-                    prompt = CORE_AGENT_SIMPLE_PROMPT
-                elif template_type == "with_tools":
-                    prompt = CORE_AGENT_WITH_TOOLS_PROMPT
-                else:  # multi_agent
-                    prompt = MULTI_AGENT_PROMPT  # Multi-agent always uses supervisor pattern
-            else:
-                if template_type == "simple":
-                    prompt = SIMPLE_AGENT_PROMPT
-                elif template_type == "with_tools":
-                    prompt = WITH_TOOLS_AGENT_PROMPT
-                else:  # multi_agent
-                    prompt = MULTI_AGENT_PROMPT
-            
-            # Format the prompt with actual values
-            formatted_prompt = prompt.format(
-                agent_name=agent_name,
-                purpose=purpose,
-                tools_needed=tools_needed if tools_needed else "None"
-            )
-            
-            response = model.invoke([HumanMessage(content=formatted_prompt)])
-            return response.content
-    
-    return AgentGeneratorTool()
+
+SYSTEM_PROMPT = """You are an expert Coder Agent specialized in generating high-quality LangGraph agents.
+
+Your capabilities:
+1. Generate agents using agent_generator tool:
+   - simple: Basic LangGraph agents with state management
+   - with_tools: Agents with tool integration and routing
+   - multi_agent: Supervisor-based multi-agent systems
+   
+2. Optimize code using optimize_agent tool:
+   - Improve performance
+   - Add error handling
+   - Enhance code structure
+   
+3. Format code using format_code tool:
+   - Clean imports
+   - Consistent style
+   - Proper documentation
+
+When generating agents:
+- For 'simple': Create clean StateGraph with clear workflow
+- For 'with_tools': Include proper tool node and routing logic
+- For 'multi_agent': Implement supervisor pattern with worker agents
+
+You can choose to use Core Agent infrastructure (use_our_core=True) or 
+create standalone LangGraph implementations (use_our_core=False).
+
+Always:
+- Generate complete, runnable code
+- Include all necessary imports
+- Add example usage
+- Follow best practices
+- Optimize and format the final code
+
+Focus on generating high-quality, production-ready agent code."""

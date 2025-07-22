@@ -1,35 +1,22 @@
 #!/usr/bin/env python3
 """
-Coder Agent - Advanced AI Agent Generator with Comprehensive Toolkit
-===================================================================
+Coder Agent - Specialized Agent for Code Generation
+==================================================
 
-An intelligent agent that generates, analyzes, optimizes, tests, and deploys LangGraph agents.
+A focused agent that generates high-quality LangGraph agents using only essential tools:
+- agent_generator: Creates agent code (simple, with_tools, multi_agent)
+- optimize_agent: Optimizes generated code
+- format_code: Ensures clean formatting
 
-Features:
-- 12 specialized tools for complete agent development lifecycle
-- Supports both standalone LangGraph and Core Agent based implementations  
-- Intelligent tool selection and chaining for complex workflows
-- Memory integration for learning from past generations
-- Production-ready code generation with validation and optimization
-
-Agent Types:
-- Simple: Basic agents with state management
-- With Tools: Agents with custom tool integration
-- Multi-Agent: Supervisor-based multi-agent systems
-
-Available Tools:
-- Generation: agent_generator, generate_rag_agent
-- Analysis: analyze_agent_code, validate_agent, optimize_agent
-- Documentation: generate_agent_docs
-- Testing: generate_unit_tests
-- Deployment: dockerize_agent, convert_to_api
-- Enhancement: add_monitoring, format_code
-- Templates: save_agent_template
+Supports both standalone LangGraph and Core Agent based implementations.
 """
 
+import os
 import sys
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from datetime import datetime
+
+from agent.coder.prompts import CORE_AGENT_SIMPLE_PROMPT, CORE_AGENT_WITH_TOOLS_PROMPT, MULTI_AGENT_PROMPT, SIMPLE_AGENT_PROMPT, WITH_TOOLS_AGENT_PROMPT, SYSTEM_PROMPT
 
 # Add workspace to path for imports
 sys.path.insert(0, '/workspace')
@@ -40,10 +27,130 @@ from core.config import AgentConfig
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage
 
-# Import all tools
-from agent.coder.tools import (
-    create_all_coder_tools
-)
+# We need to create our own simplified tools since we're removing the complex tools.py
+from langchain_core.tools import BaseTool
+from pydantic import BaseModel, Field
+from typing import List
+
+
+# Tool Input Schemas
+class AgentGeneratorInput(BaseModel):
+    """Input schema for agent generation"""
+    template_type: str = Field(description="Type: simple, with_tools, multi_agent")
+    agent_name: str = Field(description="Name for the agent")
+    purpose: str = Field(description="What the agent should do")
+    tools_needed: List[str] = Field(default=[], description="List of tools if needed")
+    use_our_core: bool = Field(default=False, description="Whether to use Core Agent infrastructure")
+
+
+class CodeInput(BaseModel):
+    """Input schema for code operations"""
+    code: str = Field(description="Python code to process")
+
+
+def create_agent_generator_tool(model):
+    """Create tool for generating agent code"""
+    
+    class AgentGeneratorTool(BaseTool):
+        name: str = "agent_generator"
+        description: str = "Generate LangGraph agent code based on specifications"
+        args_schema: type[BaseModel] = AgentGeneratorInput
+        
+        def _run(self, template_type: str, agent_name: str, purpose: str, 
+                 tools_needed: List[str] = None, use_our_core: bool = False) -> str:
+            if tools_needed is None:
+                tools_needed = []
+            
+            # Select appropriate prompt
+            if use_our_core:
+                if template_type == "simple":
+                    prompt = CORE_AGENT_SIMPLE_PROMPT
+                elif template_type == "with_tools":
+                    prompt = CORE_AGENT_WITH_TOOLS_PROMPT
+                else:
+                    prompt = MULTI_AGENT_PROMPT
+            else:
+                if template_type == "simple":
+                    prompt = SIMPLE_AGENT_PROMPT
+                elif template_type == "with_tools":
+                    prompt = WITH_TOOLS_AGENT_PROMPT
+                else:
+                    prompt = MULTI_AGENT_PROMPT
+            
+            # Format prompt
+            formatted_prompt = prompt.format(
+                agent_name=agent_name,
+                purpose=purpose,
+                tools_needed=tools_needed if tools_needed else "None"
+            )
+            
+            response = model.invoke([HumanMessage(content=formatted_prompt)])
+            return response.content
+    
+    return AgentGeneratorTool()
+
+
+def create_optimize_agent_tool(model):
+    """Create tool for optimizing agent code"""
+    
+    class OptimizeAgentTool(BaseTool):
+        name: str = "optimize_agent"
+        description: str = "Optimize agent code for performance and best practices"
+        args_schema: type[BaseModel] = CodeInput
+        
+        def _run(self, code: str) -> str:
+            prompt = f"""Optimize this agent code:
+
+```python
+{code}
+```
+
+Optimization areas:
+1. Performance improvements
+2. Memory efficiency
+3. Better error handling
+4. Code simplification
+5. Design pattern improvements
+6. Add missing docstrings
+7. Improve type hints
+
+Return the optimized code. Keep all functionality intact."""
+            
+            response = model.invoke([HumanMessage(content=prompt)])
+            return response.content
+    
+    return OptimizeAgentTool()
+
+
+def create_format_code_tool(model):
+    """Create tool for formatting code"""
+    
+    class FormatCodeTool(BaseTool):
+        name: str = "format_code"
+        description: str = "Format code with Black/isort standards"
+        args_schema: type[BaseModel] = CodeInput
+        
+        def _run(self, code: str) -> str:
+            prompt = f"""Format and clean up this code:
+
+```python
+{code}
+```
+
+Apply:
+1. Black formatting standards
+2. isort import ordering
+3. Remove unused imports
+4. Fix line lengths
+5. Consistent naming conventions
+6. Proper spacing
+
+Return the formatted code."""
+            
+            response = model.invoke([HumanMessage(content=prompt)])
+            return response.content
+    
+    return FormatCodeTool()
 
 
 class CoderConfig:
@@ -57,30 +164,23 @@ class CoderConfig:
     GPT4_DEPLOYMENT_NAME = "gpt4"
     
     # Model Parameters
-    TEMPERATURE = 0.1
+    TEMPERATURE = 0.1  # Low temperature for consistent code generation
     MAX_TOKENS = 4000
-
-
-# AgentGeneratorInput and create_agent_generator_tool are now imported from tools.py
 
 
 class CoderAgent(CoreAgent):
     """
-    Advanced AI Agent Generator with Comprehensive Development Toolkit
+    Specialized agent for generating high-quality LangGraph agents
     
-    A powerful agent that handles the complete agent development lifecycle:
-    - Generates standalone LangGraph or Core Agent based implementations
-    - Analyzes and optimizes existing agent code
-    - Creates tests, documentation, and deployment configurations
-    - Intelligently chains tools for complex workflows
-    
-    Equipped with 12 specialized tools that the LLM can intelligently
-    select and combine based on the task requirements.
+    Focuses on code generation with three essential tools:
+    - agent_generator: Creates agents (simple, with_tools, multi_agent)
+    - optimize_agent: Improves code quality and performance
+    - format_code: Ensures clean, readable formatting
     """
     
     def __init__(self, session_id: str = None):
         """
-        Initialize Coder Agent with all development tools
+        Initialize Coder Agent with essential code generation tools
         
         Args:
             session_id: Unique session identifier (auto-generated if not provided)
@@ -99,82 +199,43 @@ class CoderAgent(CoreAgent):
             max_tokens=CoderConfig.MAX_TOKENS
         )
         
-        # Create ALL tools for maximum capability
-        # The LLM will decide which tools to use based on the task
-        tools = create_all_coder_tools(model)
+        # Create only essential tools for code generation
+        tools = [
+            create_agent_generator_tool(model),  # Main code generation
+            create_optimize_agent_tool(model),   # Code optimization
+            create_format_code_tool(model)       # Code formatting
+        ]
         
         # Create configuration
         config = AgentConfig(
             name="CoderAgent",
             model=model,
             tools=tools,
-            system_prompt=self._get_system_prompt(),
-            enable_memory=True,  # Enable memory
-            memory_backend="inmemory",  # Use InMemory backend
-            memory_types=["short_term", "long_term"],  # Enable both memory types
+            system_prompt=SYSTEM_PROMPT,
+            enable_memory=True,  # Remember successful patterns
+            memory_backend="inmemory",
+            memory_types=["short_term", "long_term"],
             max_tokens=CoderConfig.MAX_TOKENS
         )
         
         # Initialize parent CoreAgent
         super().__init__(config)
         
-        print(f"✅ Coder Agent initialized with {len(tools)} tools")
-        print(f"🔧 Available tools:")
-        for tool in self.config.tools:
-            print(f"   - {tool.name}: {tool.description}")
-    
-    def _get_system_prompt(self) -> str:
-        """
-        Generate comprehensive system prompt with tool awareness
-        
-        Returns:
-            System prompt that guides the LLM in tool selection and usage
-        """
-        return """You are an expert Coder Agent with a comprehensive toolkit for creating, analyzing, and deploying LangGraph agents.
+        print(f"✅ Coder Agent initialized with {len(tools)} essential tools")
+        print(f"🔧 Available tools: {[tool.name for tool in self.config.tools]}")
 
-Your expertise includes:
-- Creating standalone LangGraph agents with proper state management
-- Building agents with custom tools and tool integration
-- Designing multi-agent systems with supervisor patterns
-- Using Core Agent infrastructure when requested
-- Writing clean, maintainable, production-ready code
-
-Your available tools include:
-1. GENERATION: agent_generator, generate_rag_agent - Create various types of agents
-2. ANALYSIS: analyze_agent_code, validate_agent, optimize_agent - Improve existing code
-3. DOCUMENTATION: generate_agent_docs - Create comprehensive documentation
-4. TESTING: generate_unit_tests - Create test suites
-5. DEPLOYMENT: dockerize_agent, convert_to_api - Deploy agents
-6. ENHANCEMENT: add_monitoring, format_code - Enhance code quality
-
-When given a task:
-- Use the appropriate tools to complete the full workflow
-- For example: generate → validate → optimize → test → document → deploy
-- Chain tools together for comprehensive solutions
-- Always validate generated code before returning
-- Add tests and documentation when appropriate
-
-Best practices you follow:
-- Always include ALL necessary imports
-- Add proper error handling and logging
-- Create working demo/example code
-- Use TypedDict for state definitions
-- Add clear documentation and comments
-- Make code immediately executable
-- Follow LangGraph best practices
-
-You intelligently select and use the right tools to deliver complete, production-ready solutions."""
     
     def generate_agent(self, template_type: str, agent_name: str, purpose: str, 
                       tools_needed: List[str] = None, use_our_core: bool = False) -> Dict[str, Any]:
-        """Generate an agent based on requirements
+        """
+        Generate an agent based on requirements
         
         Args:
             template_type: Type of agent (simple, with_tools, multi_agent)
             agent_name: Name for the generated agent
             purpose: What the agent should do
             tools_needed: List of tools if needed
-            use_our_core: Whether to use Core Agent infrastructure (default: False for standalone)
+            use_our_core: Whether to use Core Agent infrastructure (default: False)
         
         Returns:
             Dict with success status, generated code, and metadata
@@ -202,12 +263,27 @@ You intelligently select and use the right tools to deliver complete, production
             print(f"🎯 Generating {template_type} agent: {agent_name} (Core Agent: {use_our_core})")
             agent_code = generator_tool._run(template_type, agent_name, purpose, tools_needed, use_our_core)
             
+            # Optimize the generated code
+            print("🔧 Optimizing generated code...")
+            optimize_tool = next((t for t in self.config.tools if t.name == "optimize_agent"), None)
+            if optimize_tool:
+                agent_code = optimize_tool._run(agent_code)
+            
+            # Format the code
+            print("✨ Formatting code...")
+            format_tool = next((t for t in self.config.tools if t.name == "format_code"), None)
+            if format_tool:
+                agent_code = format_tool._run(agent_code)
+            
+            print("✅ Agent generation complete!")
+            
             return {
                 "success": True,
                 "agent_name": agent_name,
                 "template_type": template_type,
                 "purpose": purpose,
                 "tools": tools_needed,
+                "use_our_core": use_our_core,
                 "code": agent_code
             }
             
@@ -219,7 +295,20 @@ You intelligently select and use the right tools to deliver complete, production
             }
     
     def chat(self, message: str) -> str:
-        """Chat with the Coder Agent using Core Agent's invoke method"""
+        """
+        Chat interface for interactive agent generation
+        
+        The agent will use its tools intelligently based on the request:
+        - Generates code if asked to create an agent
+        - Optimizes code if provided with existing code
+        - Formats code when needed
+        
+        Args:
+            message: User's request
+            
+        Returns:
+            Response from the agent
+        """
         try:
             # Use Core Agent's invoke method
             result = self.invoke({"messages": [HumanMessage(content=message)]})
@@ -235,98 +324,3 @@ You intelligently select and use the right tools to deliver complete, production
             
         except Exception as e:
             return f"Error in chat: {str(e)}"
-
-
-def demo_coder_agent():
-    """
-    Comprehensive demonstration of Coder Agent capabilities
-    
-    Showcases:
-    - Simple standalone agent generation
-    - Core Agent based implementation with tools
-    - Multi-agent system creation
-    - Interactive chat functionality
-    - Custom agent generation from natural language
-    
-    All 12 tools are available for the LLM to use intelligently.
-    """
-    print("🚀 CODER AGENT DEMO - The Ultimate Agent Generator")
-    print("=" * 80)
-    
-    try:
-        # Create coder agent
-        agent = CoderAgent()
-        
-        # Example 1: Generate a simple standalone agent
-        print("\n📝 Example 1: Generating a simple STANDALONE agent")
-        result = agent.generate_agent(
-            template_type="simple",
-            agent_name="DataAnalyzer",
-            purpose="Analyze and summarize data from various sources",
-            use_our_core=False  # Standalone LangGraph agent
-        )
-        
-        if result["success"]:
-            print(f"✅ Generated: {result['agent_name']} (Standalone)")
-            print(f"📄 Code preview: {result['code'][:200]}...")
-        else:
-            print(f"❌ Error: {result['error']}")
-        
-        # Example 2: Generate agent with tools using Core Agent
-        print("\n📝 Example 2: Generating agent with tools using CORE AGENT")
-        result = agent.generate_agent(
-            template_type="with_tools",
-            agent_name="WebSearcher", 
-            purpose="Search and extract information from the web",
-            tools_needed=["web_search", "web_scraper", "summarizer"],
-            use_our_core=True  # Use Core Agent infrastructure
-        )
-        
-        if result["success"]:
-            print(f"✅ Generated: {result['agent_name']} with tools: {result['tools']} (Core Agent)")
-        else:
-            print(f"❌ Error: {result['error']}")
-        
-        # Example 3: Multi-agent system
-        print("\n📝 Example 3: Generating a MULTI-AGENT system")
-        result = agent.generate_agent(
-            template_type="multi_agent",
-            agent_name="ResearchTeam",
-            purpose="Coordinate multiple agents for comprehensive research tasks",
-            tools_needed=["researcher", "analyst", "writer"],
-            use_our_core=False  # Standalone for flexibility
-        )
-        
-        if result["success"]:
-            print(f"✅ Generated: {result['agent_name']} multi-agent system")
-        else:
-            print(f"❌ Error: {result['error']}")
-        
-        # Example 4: Test chat functionality
-        print("\n💬 Example 4: Chat with Coder Agent")
-        response = agent.chat("What are the key differences between standalone and Core Agent based implementations?")
-        print(f"Response: {response[:400]}...")
-        
-        # Example 5: Generate with specific requirements
-        print("\n📝 Example 5: Custom agent with specific requirements")
-        response = agent.chat(
-            "Create a simple agent called 'EmailProcessor' that can read, classify, and respond to emails. "
-            "Make it standalone with proper error handling."
-        )
-        print(f"Generated code preview: {response[:300]}...")
-        
-        print("\n" + "=" * 80)
-        print("✅ Coder Agent demo completed successfully!")
-        print("\n💡 Tips:")
-        print("- Use 'use_our_core=True' to leverage Core Agent infrastructure")
-        print("- Use 'use_our_core=False' (default) for standalone LangGraph agents")
-        print("- The agent can generate simple, with_tools, and multi_agent systems")
-        
-    except Exception as e:
-        print(f"❌ Demo failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    demo_coder_agent()
