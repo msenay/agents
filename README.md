@@ -1,561 +1,553 @@
-# 🤖 Core Agent Framework - Kusursuz LangGraph Foundation
+# 🤖 Core Agent Framework
 
-> **Tamamen LangGraph tabanlı, sıfır try-catch import'lu, kusursuz agent framework'ü**
+> **Enterprise-grade LangGraph-based agent framework for building sophisticated AI systems**
 
-## 🎉 **FINAL: TÜM SORUNLAR ÇÖZÜLDÜ!**
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Latest-green.svg)](https://langchain-ai.github.io/langgraph/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-### ✅ **Yapılan Mükemmelleştirmeler**
+## 📋 Table of Contents
 
-#### 🔥 **1. Import Sistemini Tamamen Temizledik**
-- ❌ **Hiç try-except import yok** - Tüm dependency'ler garantili
-- ✅ **Düz import'lar** - `from langgraph_supervisor import create_supervisor`
-- ✅ **Tüm paketler yüklü** - requirements.txt %100 complete
-- ✅ **Clean code** - Hiç None check'i yok import seviyesinde
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Quick Start](#quick-start)
+- [Creating Agents](#creating-agents)
+- [Configuration Examples](#configuration-examples)
+- [Architecture](#architecture)
+- [Advanced Features](#advanced-features)
+- [Best Practices](#best-practices)
+- [Testing](#testing)
 
-#### 🧪 **2. Test Infrastructure Kusursuzlaştırıldı**
-- ❌ **Hiç mock kullanmıyoruz** - Gerçek functionality test ediliyor
-- ✅ **18 test geçiyor** - %100 success rate
-- ✅ **Real dependencies** - Actual LangGraph, LangChain kullanılıyor
-- ✅ **Comprehensive coverage** - Tüm manager'lar ve core functionality
+## 🎯 Overview
 
-#### 🏗️ **3. Architecture Mükemmelleştirildi**
-- ✅ **AgentEvaluator kaldırıldı** - Mevcut olmayan sınıf usage'ı temizlendi
-- ✅ **Managers temizlendi** - Sadece gerekli dependency check'ler kaldı
-- ✅ **Core agent sağlam** - Hiç try-catch import yok
-- ✅ **Config validation** - Invalid parameter'lar exception throw ediyor
+The **Core Agent Framework** is a production-ready foundation for building AI agents with LangGraph. It provides a comprehensive set of features including memory management, multi-agent coordination, tool integration, and evaluation capabilities - all with a clean, extensible architecture.
 
-### 📦 **Yüklü Paketler**
-```bash
-# Core Dependencies (Guaranteed)
-langgraph>=0.2.0
-langchain-core>=0.3.0
-langgraph-supervisor        # ✅ Yüklü
-langgraph-swarm            # ✅ Yüklü  
-langchain-mcp-adapters     # ✅ Yüklü
-langmem                    # ✅ Yüklü
-agentevals                 # ✅ Yüklü
-```
+### Why Core Agent Framework?
 
-### 🧪 **Test Sonuçları**
+- **🏗️ Built on LangGraph** - Leverages the power of graph-based agent workflows
+- **🧩 Modular Design** - Enable only the features you need
+- **🚀 Production Ready** - Battle-tested with comprehensive test coverage
+- **⚡ High Performance** - Optimized for speed with built-in rate limiting
+- **🔧 Extensible** - Easy to add custom tools, memory backends, and patterns
+- **📊 Observable** - Built-in monitoring, evaluation, and debugging tools
 
-```bash
-=== Core Agent Comprehensive Test Suite ===
-Testing real functionality without mocks...
+## ✨ Key Features
 
-✅ TestAgentConfig - 3/3 tests passed
-✅ TestMemoryManager - 2/2 tests passed  
-✅ TestRateLimiterManager - 3/3 tests passed
-✅ TestCoreAgent - 3/3 tests passed
-✅ TestSubgraphManager - 1/1 tests passed
-✅ TestMCPManager - 1/1 tests passed
-✅ TestEvaluationManager - 2/2 tests passed
-✅ TestErrorHandling - 2/2 tests passed
-✅ TestOptionalFeatures - 1/1 tests passed
+### Core Capabilities
+- **State Management** - Robust conversation state handling
+- **Tool Integration** - Seamless integration with LangChain tools
+- **Memory Systems** - Multiple backends (Redis, PostgreSQL, MongoDB)
+- **Multi-Agent Patterns** - Supervisor, Swarm, and Handoff patterns
+- **Evaluation Framework** - Built-in performance evaluation
+- **MCP Support** - Model Context Protocol integration
+- **Rate Limiting** - Protect against API limits
+- **Streaming** - Real-time response streaming
 
-🎉 18/18 tests passed (100% success rate)
-🚀 No mocking - real functionality tested
-✅ All imports working perfectly
-```
+### Memory Features
+- **Short-term Memory** - Conversation context
+- **Long-term Memory** - Persistent knowledge storage
+- **Session Memory** - Shared memory between agents
+- **Semantic Memory** - Vector-based similarity search
+- **TTL Support** - Automatic memory expiration
 
-### 💻 **Kullanım Örnekleri**
+## 🚀 Quick Start
 
-#### Basit Agent
-```python
-from core.config import AgentConfig
-from core.core_agent import CoreAgent
-
-config = AgentConfig(name="MyAgent")
-agent = CoreAgent(config)
-status = agent.get_status()
-```
-
-#### Memory Enabled Agent
-```python
-config = AgentConfig(
-    name="MemoryAgent",
-    enable_memory=True,
-    memory_backend="inmemory"
-)
-agent = CoreAgent(config)
-```
-
-#### Rate Limited Agent
-```python
-config = AgentConfig(
-    name="RateLimitedAgent", 
-    enable_rate_limiting=True,
-    requests_per_second=5.0
-)
-agent = CoreAgent(config)
-```
-
-### 🏃‍♂️ **Hızlı Test**
+### Installation
 
 ```bash
-cd core/test_core
-python3 test_simple.py          # Temel import/functionality
-python3 test_core_agent_comprehensive.py  # Full test suite
-python3 test_real_example.py     # Real-world scenarios
+# Clone the repository
+git clone <repository-url>
+cd workspace
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-### 🌟 **Framework Özellikleri**
+### Basic Usage
 
-- **🔥 Zero Try-Catch Imports** - Clean, guaranteed dependencies
-- **🧪 100% Test Coverage** - Real functionality testing
-- **🏗️ LangGraph Native** - Built on solid foundation  
-- **⚡ Production Ready** - No mock dependencies
-- **🛠️ Extensible** - Easy to build upon
-- **📝 Well Documented** - Clear examples and tests
-
----
-
-# 🧠 Core Agent Framework - Complete Feature Guide
-
-## 📋 Overview
-
-The **Core Agent Framework** is a comprehensive, production-ready agent foundation built on LangGraph with modular capabilities. It provides a rich set of features for building sophisticated AI agents with memory, multi-agent coordination, evaluation, and more.
-
-## 🏗️ Core Architecture
-
-### CoreAgent Class
-The main `CoreAgent` class serves as the central coordinator that manages:
-- **State Management**: Handles conversation state and context
-- **Graph Compilation**: Builds and compiles LangGraph workflows  
-- **Feature Management**: Coordinates optional features through managers
-- **Memory Integration**: Provides seamless memory capabilities
-- **Tool Integration**: Manages and executes agent tools
-
-### Key Components
-```python
-from core import CoreAgent, AgentConfig
-
-# Initialize with configuration
-config = AgentConfig(name="MyAgent", model=llm, tools=tools)
-agent = CoreAgent(config)
-
-# Core capabilities
-response = agent.invoke("Hello!")
-status = agent.get_status()
-memory = agent.retrieve_memory("key")
-```
-
-## ⚙️ Configuration System
-
-### AgentConfig Parameters
-
-#### 🔧 **Core Identity & Behavior**
-```python
-AgentConfig(
-    name="MyAgent",                    # Agent unique identifier
-    model=chat_model,                  # LangChain chat model instance
-    system_prompt="You are...",        # Agent role definition
-    tools=[tool1, tool2],              # Available tools list
-    description="Agent description"     # Human-readable description
-)
-```
-
-#### 🧠 **Memory System**
-```python
-# Enable Memory
-enable_memory=True                     # Master memory switch
-
-# Memory Types (choose multiple)
-memory_types=["short_term", "long_term", "session", "semantic"]
-
-# Backend Selection
-memory_backend="redis"                 # Options: "inmemory", "redis", "postgres", "mongodb"
-
-# Database Connections (backend-specific)
-redis_url="redis://localhost:6379"    # For Redis backend
-postgres_url="postgresql://..."       # For PostgreSQL backend  
-mongodb_url="mongodb://..."           # For MongoDB backend
-
-# Memory Features
-session_id="unique_session"           # Session identifier
-memory_namespace="production"         # Memory isolation namespace
-embedding_model="openai:text-embedding-3-small"  # For semantic search
-embedding_dims=1536                   # Vector dimensions
-
-# TTL Support (Redis/MongoDB only)
-enable_ttl=True                       # Auto-expiration
-default_ttl_minutes=1440              # 24 hours TTL
-refresh_on_read=True                  # Refresh TTL on access
-```
-
-**Memory Types Explained:**
-- **`short_term`**: Conversation context within session
-- **`long_term`**: Persistent knowledge across sessions  
-- **`session`**: Shared memory between agents in same session
-- **`semantic`**: Vector-based semantic search capabilities
-
-**Memory Backends:**
-- **`inmemory`**: Fast, non-persistent (development/testing)
-- **`redis`**: High-performance, persistent with TTL support
-- **`postgres`**: Relational database with full SQL capabilities
-- **`mongodb`**: Document database with flexible schema
-
-#### 📨 **Context Management**
-```python
-# Message Trimming
-enable_message_trimming=True          # Auto-trim conversation history
-max_tokens=4000                       # Token limit for trimming
-trim_strategy="last"                  # "first" or "last" messages to keep
-start_on="human"                      # Message type to start trimming
-end_on=["human", "tool"]              # Message types to end on
-
-# AI Summarization (requires enable_memory=True)
-enable_summarization=True             # Auto-summarize old conversations
-max_summary_tokens=128                # Summary length limit
-summarization_trigger_tokens=2000     # When to trigger summarization
-
-# Memory Tools (requires long_term memory)
-enable_memory_tools=True              # Add memory management tools
-memory_namespace_store="memories"     # Storage namespace for tools
-```
-
-#### 🔗 **External Integrations**
-```python
-# MCP (Model Context Protocol) Integration
-enable_mcp=True                       # Enable MCP server connections
-mcp_servers={                         # MCP server configurations
-    "filesystem": {
-        "command": "npx",
-        "args": ["@modelcontextprotocol/server-filesystem", "/path"]
-    }
-}
-```
-
-#### 👥 **Multi-Agent Patterns** (Choose One)
-```python
-# Supervisor Pattern
-enable_supervisor=True                # Hierarchical coordination
-agents={"worker1": agent1, "worker2": agent2}
-
-# Swarm Pattern  
-enable_swarm=True                     # Peer-to-peer collaboration
-
-# Handoff Pattern
-enable_handoff=True                   # Sequential agent handoffs
-handoff_agents=["agent1", "agent2"]   # Agent handoff chain
-default_active_agent="agent1"         # Starting agent
-```
-
-#### 🛡️ **Performance & Safety**
-```python
-# Rate Limiting
-enable_rate_limiting=True             # Prevent API rate limits
-requests_per_second=2.0               # Maximum requests per second
-check_every_n_seconds=0.1             # Rate check frequency
-max_bucket_size=10.0                  # Token bucket size
-custom_rate_limiter=my_limiter        # Custom rate limiter instance
-
-# Human Oversight
-enable_human_feedback=True            # Human-in-the-loop
-interrupt_before=["sensitive_action"] # Interrupt before these nodes
-interrupt_after=["tool_call"]         # Interrupt after these nodes
-
-# Evaluation
-enable_evaluation=True                # Enable response evaluation
-evaluation_metrics=["accuracy", "relevance", "safety"]
-```
-
-#### 🔧 **Extensibility**
-```python
-# Response Format
-response_format=MyPydanticModel       # Structured response schema
-
-# Streaming
-enable_streaming=True                 # Enable response streaming
-
-# Hooks
-pre_model_hook=preprocess_function    # Before model inference
-post_model_hook=postprocess_function  # After model inference
-
-# Subgraphs
-enable_subgraphs=True                 # Enable modular subgraphs
-subgraph_configs={"module": config}   # Subgraph configurations
-```
-
-## 🎯 Core Features
-
-### 1. **Memory Management**
-```python
-# Store and retrieve memories
-agent.store_memory("user_preference", "prefers Python")
-preference = agent.retrieve_memory("user_preference")
-
-# Session-based memory
-config = AgentConfig(
-    enable_memory=True,
-    memory_types=["session"],
-    session_id="user_123",
-    memory_backend="redis"
-)
-```
-
-### 2. **Tool Integration**
-```python
-from core.tools import PythonExecutorTool, FileWriterTool
-
-tools = [PythonExecutorTool(), FileWriterTool()]
-config = AgentConfig(tools=tools)
-agent = CoreAgent(config)
-```
-
-### 3. **Multi-Agent Coordination**
-```python
-# Supervisor pattern
-supervisor_config = AgentConfig(
-    enable_supervisor=True,
-    agents={"coder": coding_agent, "reviewer": review_agent}
-)
-
-# Coordinate tasks
-result = agent.coordinate_task("Write and review Python code")
-```
-
-### 4. **Evaluation & Monitoring**
-```python
-# Enable evaluation
-config = AgentConfig(
-    enable_evaluation=True,
-    evaluation_metrics=["accuracy", "relevance"]
-)
-
-# Evaluate responses
-scores = agent.evaluate_last_response()
-trajectory_eval = agent.evaluate_trajectory(outputs, references)
-```
-
-### 5. **MCP Integration**
-```python
-# Add MCP servers
-config = AgentConfig(
-    enable_mcp=True,
-    mcp_servers={
-        "filesystem": {"command": "npx", "args": ["@modelcontextprotocol/server-filesystem", "/workspace"]}
-    }
-)
-
-# Get MCP tools
-mcp_tools = await agent.get_mcp_tools()
-```
-
-### 6. **Subgraph Management**
-```python
-# Add reusable subgraphs
-agent.add_subgraph("preprocessing", preprocessing_graph)
-subgraph = agent.get_subgraph("preprocessing")
-```
-
-### 7. **Streaming Support**
-```python
-# Stream responses
-for chunk in agent.stream("Tell me about AI"):
-    print(chunk)
-
-# Async streaming
-async for chunk in agent.astream("Explain quantum computing"):
-    print(chunk)
-```
-
-## 🔧 Manager Components
-
-### MemoryManager
-- **Purpose**: Manages all memory operations and backends
-- **Features**: Short-term/long-term memory, session management, TTL support
-- **Backends**: InMemory, Redis, PostgreSQL, MongoDB
-
-### RateLimiterManager  
-- **Purpose**: Prevents API rate limiting with token bucket algorithm
-- **Features**: Configurable rates, custom limiters, blocking/non-blocking
-- **Use Cases**: OpenAI API protection, cost control
-
-### SubgraphManager
-- **Purpose**: Manages reusable graph components
-- **Features**: Registration, retrieval, composition
-- **Benefits**: Modularity, reusability, maintainability
-
-### SupervisorManager
-- **Purpose**: Coordinates multiple agents hierarchically
-- **Features**: Task delegation, agent selection, result aggregation
-- **Patterns**: Supervisor, swarm, handoff
-
-### MCPManager
-- **Purpose**: Integrates Model Context Protocol servers
-- **Features**: Tool discovery, server management, adapter integration
-- **Benefits**: External system integration, tool ecosystem
-
-### EvaluationManager
-- **Purpose**: Evaluates agent performance using AgentEvals
-- **Features**: Trajectory matching, LLM-as-judge, custom metrics
-- **Metrics**: Accuracy, relevance, safety, custom evaluations
-
-## 📊 Usage Examples
-
-### Complete Production Agent
 ```python
 from core import CoreAgent, AgentConfig
 from langchain_openai import ChatOpenAI
 
-# Production configuration
+# Create a simple agent
 config = AgentConfig(
-    name="ProductionAssistant",
-    model=ChatOpenAI(model="gpt-4", temperature=0.1),
-    tools=[PythonExecutorTool(), FileWriterTool()],
-    
-    # Memory
+    name="Assistant",
+    model=ChatOpenAI(model="gpt-4"),
+    system_prompt="You are a helpful AI assistant."
+)
+
+agent = CoreAgent(config)
+response = agent.invoke("Hello! How can you help me?")
+print(response)
+```
+
+## 🛠️ Creating Agents
+
+### Step 1: Define Your Agent's Purpose
+
+Every agent should have a clear, well-defined purpose:
+
+```python
+from core import AgentConfig
+
+# Define agent configuration
+config = AgentConfig(
+    name="DataAnalyst",
+    description="Analyzes data and provides insights",
+    system_prompt="""You are an expert data analyst. 
+    You help users understand their data through analysis, 
+    visualization recommendations, and insights."""
+)
+```
+
+### Step 2: Add Tools
+
+Equip your agent with the tools it needs:
+
+```python
+from core.tools import PythonExecutorTool, FileReaderTool
+
+config = AgentConfig(
+    name="DataAnalyst",
+    tools=[
+        PythonExecutorTool(),    # Execute Python code
+        FileReaderTool(),        # Read data files
+    ]
+)
+```
+
+### Step 3: Configure Memory (Optional)
+
+Add memory for context retention:
+
+```python
+config = AgentConfig(
+    name="DataAnalyst",
     enable_memory=True,
-    memory_types=["short_term", "long_term", "semantic"],
+    memory_types=["short_term", "long_term"],
     memory_backend="redis",
-    redis_url="redis://localhost:6379",
+    redis_url="redis://localhost:6379"
+)
+```
+
+### Step 4: Initialize and Use
+
+```python
+from core import CoreAgent
+
+# Create the agent
+agent = CoreAgent(config)
+
+# Use the agent
+response = agent.invoke("Analyze the sales data from last quarter")
+print(response)
+
+# Check agent status
+status = agent.get_status()
+print(f"Agent: {status['name']} - Features: {status['features']}")
+```
+
+## 📊 Configuration Examples
+
+### 🧑‍💻 Coder Agent Configuration
+
+A specialized agent for code generation and analysis:
+
+```python
+from core import CoreAgent, AgentConfig
+from langchain_openai import AzureChatOpenAI
+from core.tools import PythonExecutorTool, FileWriterTool
+
+coder_config = AgentConfig(
+    name="CoderAgent",
+    description="Expert software developer specializing in Python",
+    
+    # Model configuration
+    model=AzureChatOpenAI(
+        deployment_name="gpt-4",
+        temperature=0.1,  # Low temperature for consistent code
+        max_tokens=4000
+    ),
+    
+    # System prompt
+    system_prompt="""You are an expert software developer.
+    You write clean, efficient, and well-documented code.
+    You follow best practices and design patterns.
+    You always include error handling and tests.""",
+    
+    # Tools
+    tools=[
+        PythonExecutorTool(),
+        FileWriterTool(),
+    ],
+    
+    # Memory configuration
+    enable_memory=True,
+    memory_types=["short_term", "long_term"],
+    memory_backend="redis",
+    session_id="coding_session",
     
     # Performance
     enable_rate_limiting=True,
     requests_per_second=5.0,
     
-    # Evaluation
-    enable_evaluation=True,
-    evaluation_metrics=["accuracy", "relevance"],
-    
     # Features
-    enable_streaming=True,
-    enable_memory_tools=True,
     enable_message_trimming=True,
-    max_tokens=8000
+    max_tokens=8000,
+    enable_streaming=True
 )
 
-# Initialize agent
-agent = CoreAgent(config)
-
-# Use agent
-response = agent.invoke("Create a Python function to calculate fibonacci")
-print(response)
-
-# Check status
-status = agent.get_status()
-print(f"Agent status: {status}")
+coder = CoreAgent(coder_config)
 ```
 
-### Multi-Agent System
+### 🧪 Unit Tester Agent Configuration
+
+An agent specialized in writing and executing tests:
+
+```python
+unittester_config = AgentConfig(
+    name="UnitTesterAgent",
+    description="Expert in test-driven development and quality assurance",
+    
+    # Model configuration
+    model=ChatOpenAI(
+        model="gpt-4",
+        temperature=0.2,  # Slightly higher for creative test cases
+    ),
+    
+    # System prompt
+    system_prompt="""You are a testing expert specializing in:
+    - Writing comprehensive unit tests
+    - Creating test fixtures and mocks
+    - Identifying edge cases
+    - Ensuring high code coverage
+    - Using pytest best practices
+    Always write tests that are maintainable and clear.""",
+    
+    # Tools
+    tools=[
+        PythonExecutorTool(sandbox_mode=True),  # Safe execution
+        FileReaderTool(),
+        FileWriterTool(),
+    ],
+    
+    # Memory for test patterns
+    enable_memory=True,
+    memory_types=["long_term"],  # Remember successful test patterns
+    memory_backend="postgres",
+    postgres_url="postgresql://localhost/testdb",
+    
+    # Evaluation
+    enable_evaluation=True,
+    evaluation_metrics=["test_coverage", "test_quality"],
+    
+    # Safety
+    enable_human_feedback=True,
+    interrupt_before=["file_write"]  # Review before writing test files
+)
+
+tester = CoreAgent(unittester_config)
+```
+
+### ⚙️ Executor Agent Configuration
+
+An agent for safely executing and monitoring code:
+
+```python
+executor_config = AgentConfig(
+    name="ExecutorAgent",
+    description="Safe code execution and monitoring specialist",
+    
+    # Model configuration
+    model=ChatOpenAI(
+        model="gpt-3.5-turbo",  # Faster model for execution tasks
+        temperature=0.0,  # Deterministic execution
+    ),
+    
+    # System prompt
+    system_prompt="""You are a code execution specialist.
+    Your responsibilities:
+    - Safely execute user code
+    - Monitor resource usage
+    - Capture and report outputs
+    - Handle errors gracefully
+    - Enforce security constraints
+    Never execute unsafe or malicious code.""",
+    
+    # Tools with restrictions
+    tools=[
+        PythonExecutorTool(
+            sandbox_mode=True,
+            timeout=30,  # 30 second timeout
+            memory_limit="512MB",
+            allowed_modules=["numpy", "pandas", "matplotlib"]
+        ),
+    ],
+    
+    # Minimal memory (execution focused)
+    enable_memory=True,
+    memory_types=["short_term"],
+    memory_backend="inmemory",
+    
+    # Strict rate limiting
+    enable_rate_limiting=True,
+    requests_per_second=1.0,  # Prevent abuse
+    
+    # Monitoring
+    enable_evaluation=True,
+    evaluation_metrics=["execution_safety", "resource_usage"],
+    
+    # Human oversight for sensitive operations
+    enable_human_feedback=True,
+    interrupt_before=["code_execution"],
+    interrupt_after=["error_detection"]
+)
+
+executor = CoreAgent(executor_config)
+```
+
+### 🤝 Multi-Agent System Configuration
+
+Combining multiple agents into a coordinated system:
+
 ```python
 # Create specialized agents
-coder_config = AgentConfig(name="Coder", model=llm, tools=[PythonExecutorTool()])
-reviewer_config = AgentConfig(name="Reviewer", model=llm, tools=[])
-
-coder_agent = CoreAgent(coder_config)
-reviewer_agent = CoreAgent(reviewer_config)
+coder = CoreAgent(coder_config)
+tester = CoreAgent(unittester_config)
+executor = CoreAgent(executor_config)
 
 # Supervisor configuration
 supervisor_config = AgentConfig(
-    name="Supervisor",
-    model=llm,
+    name="DevelopmentSupervisor",
+    description="Coordinates the software development workflow",
+    
+    model=ChatOpenAI(model="gpt-4", temperature=0.3),
+    
+    system_prompt="""You coordinate a development team consisting of:
+    - Coder: Writes implementation code
+    - Tester: Creates and runs tests
+    - Executor: Safely executes and validates code
+    
+    Delegate tasks appropriately and ensure quality.""",
+    
+    # Enable supervisor pattern
     enable_supervisor=True,
-    agents={"coder": coder_agent, "reviewer": reviewer_agent}
+    agents={
+        "coder": coder,
+        "tester": tester,
+        "executor": executor
+    },
+    
+    # Workflow memory
+    enable_memory=True,
+    memory_types=["session", "long_term"],
+    memory_backend="redis",
+    session_id="dev_workflow",
+    
+    # Monitoring
+    enable_evaluation=True,
+    evaluation_metrics=["task_completion", "code_quality"]
 )
 
 supervisor = CoreAgent(supervisor_config)
-result = supervisor.coordinate_task("Write and review a sorting algorithm")
-```
 
-## 🚀 Advanced Features
-
-### Custom Hooks
-```python
-def preprocess_messages(state):
-    """Custom preprocessing"""
-    # Add custom logic
-    return state
-
-def postprocess_response(state):
-    """Custom postprocessing"""  
-    # Add custom logic
-    return state
-
-config = AgentConfig(
-    pre_model_hook=preprocess_messages,
-    post_model_hook=postprocess_response
+# Use the system
+result = supervisor.coordinate_task(
+    "Create a Python function to calculate fibonacci numbers with tests"
 )
 ```
 
-### Memory Namespaces
-```python
-# Isolated memory spaces
-agent.store_memory("user_data", "sensitive", namespace="user_123")
-agent.store_memory("system_data", "config", namespace="system")
+## 🏗️ Architecture
 
-user_data = agent.retrieve_memory("user_data", namespace="user_123")
+### Core Components
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     CoreAgent                           │
+├─────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │    State     │  │    Graph     │  │   Manager    │ │
+│  │  Management  │  │  Compiler    │  │ Coordinator  │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+├─────────────────────────────────────────────────────────┤
+│                      Managers                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Memory     │  │   Rate       │  │  Supervisor  │ │
+│  │   Manager    │  │  Limiter     │  │   Manager    │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │     MCP      │  │  Subgraph    │  │ Evaluation   │ │
+│  │   Manager    │  │   Manager    │  │   Manager    │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Graph Visualization
+### Manager Responsibilities
+
+- **MemoryManager**: Handles all memory operations across different backends
+- **RateLimiterManager**: Prevents API rate limit violations
+- **SupervisorManager**: Coordinates multi-agent workflows
+- **MCPManager**: Integrates Model Context Protocol servers
+- **SubgraphManager**: Manages reusable graph components
+- **EvaluationManager**: Evaluates agent performance
+
+## 🚀 Advanced Features
+
+### Custom Tools
+
+Create specialized tools for your agents:
+
 ```python
-# Generate graph visualization
-graph_png = agent.get_graph_visualization()
-with open("agent_graph.png", "wb") as f:
-    f.write(graph_png)
+from langchain_core.tools import BaseTool
+from pydantic import BaseModel, Field
+
+class DataAnalysisTool(BaseTool):
+    name = "analyze_data"
+    description = "Performs statistical analysis on datasets"
+    
+    class InputSchema(BaseModel):
+        data_path: str = Field(description="Path to data file")
+        analysis_type: str = Field(description="Type of analysis")
+    
+    args_schema = InputSchema
+    
+    def _run(self, data_path: str, analysis_type: str) -> str:
+        # Implementation here
+        return f"Analysis results for {data_path}"
+
+# Add to agent
+config.tools.append(DataAnalysisTool())
 ```
 
-## 🔍 Monitoring & Debugging
+### Memory Patterns
 
-### Status Checking
 ```python
-status = agent.get_status()
-print(f"""
-Agent: {status['name']}
-Features: {status['features']}
-Memory Type: {status['memory_type']}
-Tools: {status['tools_count']}
-Supervised Agents: {status['supervised_agents']}
-""")
+# Semantic memory for similarity search
+config = AgentConfig(
+    enable_memory=True,
+    memory_types=["semantic"],
+    embedding_model="openai:text-embedding-3-small",
+    memory_backend="postgres",  # Supports vector operations
+)
+
+# TTL-based memory for temporary data
+config = AgentConfig(
+    enable_memory=True,
+    memory_backend="redis",
+    enable_ttl=True,
+    default_ttl_minutes=60,  # Expire after 1 hour
+)
 ```
 
-### Memory Summary
-```python
-memory_info = agent.get_memory_summary()
-print(f"Memory backend: {memory_info['memory_type']}")
-print(f"LangMem support: {memory_info['langmem_configured']}")
-```
+### Evaluation and Monitoring
 
-### Evaluation Status  
 ```python
-evaluator_status = agent.get_evaluator_status()
-print(f"Available evaluators: {evaluator_status}")
+# Enable comprehensive evaluation
+config = AgentConfig(
+    enable_evaluation=True,
+    evaluation_metrics=["accuracy", "relevance", "safety", "performance"],
+    custom_evaluators=[MyCustomEvaluator()],
+)
+
+# Get evaluation results
+agent = CoreAgent(config)
+response = agent.invoke("Generate a sorting algorithm")
+scores = agent.evaluate_last_response()
+print(f"Evaluation scores: {scores}")
 ```
 
 ## 💡 Best Practices
 
-1. **Memory Configuration**: Choose appropriate backend for your use case
-2. **Rate Limiting**: Always enable for production API usage
-3. **Tool Security**: Validate tool inputs and outputs
-4. **Error Handling**: Use proper error handling in custom hooks
-5. **Testing**: Test agent configurations thoroughly before deployment
-6. **Monitoring**: Implement proper logging and monitoring
-7. **Performance**: Use streaming for long responses
-8. **Security**: Implement proper access controls for sensitive operations
+### 1. **Agent Design**
+- Keep agents focused on a single responsibility
+- Use clear, specific system prompts
+- Choose appropriate models for the task
 
-## 🛠️ Development & Testing
+### 2. **Memory Management**
+- Use `inmemory` for development, Redis/PostgreSQL for production
+- Enable TTL for temporary data to prevent memory bloat
+- Use semantic memory for knowledge-based agents
 
-Run comprehensive tests:
+### 3. **Tool Safety**
+- Always use sandbox mode for code execution tools
+- Implement timeouts and resource limits
+- Validate tool inputs and outputs
+
+### 4. **Performance**
+- Enable rate limiting for all production agents
+- Use streaming for long responses
+- Implement message trimming for long conversations
+
+### 5. **Multi-Agent Systems**
+- Use supervisor pattern for complex workflows
+- Keep inter-agent communication clear and structured
+- Monitor agent coordination with evaluation metrics
+
+### 6. **Testing**
+- Test each agent configuration thoroughly
+- Use mock tools for unit testing
+- Implement integration tests for multi-agent systems
+
+## 🧪 Testing
+
+### Run Tests
+
 ```bash
 # Run all tests
-python -m unittest discover -s core/test_core -p "test_*.py"
+python -m pytest core/test_core/
 
-# Run specific tests
+# Run specific test suite
 python core/test_core/test_core_agent_comprehensive.py
-python core/test_core/test_integration.py
-python integration_test_final.py
+
+# Run with coverage
+python -m pytest --cov=core core/test_core/
 ```
 
-The Core Agent Framework provides a solid foundation for building production-ready AI agents with all the features you need for sophisticated AI applications.
+### Test Your Agents
+
+```python
+# Example test for a custom agent
+import unittest
+from core import CoreAgent, AgentConfig
+
+class TestMyAgent(unittest.TestCase):
+    def setUp(self):
+        self.config = AgentConfig(
+            name="TestAgent",
+            model=MockLLM(),  # Use mock for testing
+            tools=[MockTool()],
+        )
+        self.agent = CoreAgent(self.config)
+    
+    def test_agent_response(self):
+        response = self.agent.invoke("Test query")
+        self.assertIsNotNone(response)
+        self.assertIn("expected_content", response)
+    
+    def test_agent_status(self):
+        status = self.agent.get_status()
+        self.assertEqual(status['name'], "TestAgent")
+        self.assertEqual(status['tools_count'], 1)
+```
+
+## 📚 Documentation
+
+For more detailed documentation:
+
+- [Configuration Guide](docs/configuration.md)
+- [Memory Systems](docs/memory.md)
+- [Multi-Agent Patterns](docs/multi-agent.md)
+- [Tool Development](docs/tools.md)
+- [API Reference](docs/api.md)
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🎯 **Framework Başarıyla Mükemmelleştirildi!**
-
-✅ **Hiç try-except import yok**  
-✅ **Tüm dependency'ler garantili**  
-✅ **%100 test geçiyor**  
-✅ **Production ready**  
-✅ **Clean architecture**  
-
-**Bu framework şimdi LangGraph ile agent geliştirme için mükemmel bir foundation!** 🚀
+**Ready to build intelligent agents? Get started with the examples above!** 🚀
