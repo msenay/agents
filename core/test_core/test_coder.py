@@ -38,8 +38,8 @@ except ImportError as e:
         AZURE_OPENAI_ENDPOINT = "https://test.openai.azure.com/"
         OPENAI_API_KEY = "test_key"
         OPENAI_API_VERSION = "2023-12-01-preview"
-        GPT4_MODEL_NAME = "gpt-4"
-        GPT4_DEPLOYMENT_NAME = "gpt4"
+        GPT4_MODEL_NAME = "gpt-4o"
+        GPT4_DEPLOYMENT_NAME = "gpt4o"
         TEMPERATURE = 0.1
         MAX_TOKENS = 4000
     
@@ -251,8 +251,8 @@ class TestCoderConfig(unittest.TestCase):
     def test_azure_openai_config(self):
         """Test Azure OpenAI configuration values"""
         self.assertIn("openai.azure.com", CoderConfig.AZURE_OPENAI_ENDPOINT)
-        self.assertEqual(CoderConfig.GPT4_MODEL_NAME, "gpt-4")
-        self.assertEqual(CoderConfig.GPT4_DEPLOYMENT_NAME, "gpt4")
+        self.assertEqual(CoderConfig.GPT4_MODEL_NAME, "gpt-4o")
+        self.assertEqual(CoderConfig.GPT4_DEPLOYMENT_NAME, "gpt4o")
         self.assertEqual(CoderConfig.OPENAI_API_VERSION, "2023-12-01-preview")
         self.assertIsNotNone(CoderConfig.OPENAI_API_KEY)
         self.assertGreater(len(CoderConfig.OPENAI_API_KEY), 5)
