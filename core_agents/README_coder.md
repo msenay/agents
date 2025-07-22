@@ -1,7 +1,7 @@
-# 🚀 Elite Coder Agent - Intelligent LangGraph Agent Generator
+# 🚀 Coder Agent - Advanced AI Agent Generator with Comprehensive Toolkit
 
-> **Revolutionary AI-Powered Code Generation System**  
-> Transform your ideas into production-ready LangGraph agents using intelligent prompts instead of static templates.
+> **AI-Powered Agent Development System**  
+> Transform your ideas into production-ready LangGraph agents with a complete development toolkit.
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-Latest-green.svg)](https://langchain-ai.github.io/langgraph/)
@@ -12,55 +12,85 @@
 
 - [🎯 Overview](#-overview)
 - [✨ Key Features](#-key-features)
+- [🛠️ Available Tools](#️-available-tools)
 - [🏗️ Architecture](#️-architecture)
 - [🚀 Quick Start](#-quick-start)
 - [💡 Usage Examples](#-usage-examples)
 - [🔧 Configuration](#-configuration)
 - [📚 API Reference](#-api-reference)
-- [🧪 Testing](#-testing)
-- [🔄 Migration from Templates](#-migration-from-templates)
 - [🤝 Contributing](#-contributing)
 
 ---
 
 ## 🎯 Overview
 
-The **Elite Coder Agent** is a revolutionary AI-powered system that generates production-ready LangGraph agents using intelligent prompts instead of static string templates. Built on the Core Agent infrastructure, it provides a clean, maintainable, and highly flexible approach to agent code generation.
+The **Coder Agent** is an advanced AI-powered system that handles the complete agent development lifecycle. Equipped with 12 specialized tools, it can generate, analyze, optimize, test, document, and deploy LangGraph agents - all through intelligent tool selection and chaining.
 
-### 🔥 Why Elite Coder Agent?
+### 🔥 Why Coder Agent?
 
-| **Before (Template Hell)** | **After (Intelligence Paradise)** |
+| **Feature** | **Description** |
 |---|---|
-| ❌ 1347 lines of hardcoded templates | ✅ 561 lines of intelligent generation |
-| ❌ Static string manipulation | ✅ Dynamic AI-powered creation |
-| ❌ Rigid template structures | ✅ Flexible prompt-based approach |
-| ❌ Difficult to maintain | ✅ Clean and maintainable |
-| ❌ Limited customization | ✅ Infinite possibilities |
+| 🧠 **12 Specialized Tools** | Complete toolkit for agent development |
+| 🔗 **Intelligent Tool Chaining** | LLM automatically chains tools for complex workflows |
+| 🎯 **Dual Mode Generation** | Supports both standalone LangGraph and Core Agent based implementations |
+| 📊 **Full Lifecycle Support** | From generation to deployment in one agent |
+| 🧪 **Built-in Validation** | Automatically validates and optimizes generated code |
+| 📝 **Auto Documentation** | Generates tests, docs, and deployment configs |
 
 ---
 
 ## ✨ Key Features
 
 ### 🧠 **Intelligent Code Generation**
-- **No Templates**: Uses LLM intelligence to generate fresh code every time
+- **Flexible Generation**: Create standalone LangGraph or Core Agent based implementations
 - **Context-Aware**: Understands requirements and generates appropriate solutions
-- **Production-Ready**: Creates complete, executable LangGraph agents
+- **Production-Ready**: Creates complete, executable agents with error handling
 
 ### 🎨 **Multiple Agent Types**
-- **Simple Agents**: Basic LangGraph workflows for straightforward tasks
-- **Tool-Enabled Agents**: Agents with custom tool integration and selection logic
+- **Simple Agents**: Basic LangGraph workflows with state management
+- **Tool-Enabled Agents**: Agents with custom tool integration and tool nodes
 - **Multi-Agent Systems**: Supervisor-based systems with specialized worker agents
 
-### 🔧 **Core Agent Integration**
-- **Memory Management**: Automatic integration with Core Agent memory systems
-- **Configuration**: Smart configuration with Azure OpenAI setup
-- **Tools**: Seamless integration with Core Agent tool ecosystem
+### 🔧 **Complete Development Toolkit**
+- **Analysis & Optimization**: Analyze, validate, and optimize existing code
+- **Testing & Documentation**: Auto-generate tests and comprehensive docs
+- **Deployment Ready**: Create Docker configs, API wrappers, and more
 
 ### 📊 **Advanced Features**
-- **Error Handling**: Comprehensive error management and recovery
-- **Memory Persistence**: Saves generated agents to memory for reuse
-- **Testing Integration**: Built-in test result generation
+- **Memory Integration**: Learns from past generations
+- **Tool Intelligence**: LLM selects and chains appropriate tools
 - **Session Management**: Unique session tracking for agent instances
+- **Error Recovery**: Comprehensive error management
+
+---
+
+## 🛠️ Available Tools
+
+### 1️⃣ **Generation Tools**
+- `agent_generator` - Generate LangGraph agents based on specifications
+- `generate_rag_agent` - Create RAG agents with vector stores
+
+### 2️⃣ **Analysis Tools**
+- `analyze_agent_code` - Analyze code and provide improvements
+- `validate_agent` - Validate if code will run without errors
+- `optimize_agent` - Optimize for performance and best practices
+
+### 3️⃣ **Documentation Tools**
+- `generate_agent_docs` - Create comprehensive documentation
+
+### 4️⃣ **Testing Tools**
+- `generate_unit_tests` - Generate test suites with pytest
+
+### 5️⃣ **Deployment Tools**
+- `dockerize_agent` - Create Docker configurations
+- `convert_to_api` - Convert to FastAPI/Flask APIs
+
+### 6️⃣ **Enhancement Tools**
+- `add_monitoring` - Add Prometheus/Grafana monitoring
+- `format_code` - Format with Black/isort standards
+
+### 7️⃣ **Template Tools**
+- `save_agent_template` - Save successful agents as templates
 
 ---
 
@@ -68,50 +98,45 @@ The **Elite Coder Agent** is a revolutionary AI-powered system that generates pr
 
 ```mermaid
 graph TB
-    A[Elite Coder Agent] --> B[CleanAgentGeneratorTool]
+    A[Coder Agent] --> B[12 Specialized Tools]
     A --> C[Memory Manager]
     A --> D[Azure OpenAI LLM]
     
-    B --> E[Simple Agent Generation]
-    B --> F[Tool-Based Agent Generation]
-    B --> G[Multi-Agent System Generation]
+    B --> E[Generation Tools]
+    B --> F[Analysis Tools]
+    B --> G[Documentation Tools]
+    B --> H[Testing Tools]
+    B --> I[Deployment Tools]
+    B --> J[Enhancement Tools]
     
-    E --> H[Intelligent Prompts]
-    F --> H
-    G --> H
+    D --> K[Intelligent Tool Selection]
+    K --> L[Tool Chaining]
+    L --> M[Complete Solution]
     
-    H --> I[LLM Processing]
-    I --> J[Generated Code]
-    
-    J --> K[Memory Storage]
-    J --> L[Test Results]
-    J --> M[File Output]
-    
-    C --> K
-    D --> I
+    C --> N[Learn from Past]
+    N --> K
 ```
 
 ### 🏛️ **Core Components**
 
-#### 1. **EliteCoderAgent**
-The main orchestrator that coordinates all generation activities:
-- Session management
-- LLM initialization  
+#### 1. **CoderAgent**
+The main orchestrator that coordinates all development activities:
+- Tool management (12 tools)
+- LLM integration with tool awareness
 - Memory integration
-- Tool coordination
+- Session management
 
-#### 2. **CleanAgentGeneratorTool**
-The intelligent code generation engine:
-- Prompt-based generation
-- No static templates
-- Context-aware responses
-- Multiple agent type support
+#### 2. **Comprehensive Tool Suite**
+Each tool is specialized for specific tasks:
+- Input validation with Pydantic schemas
+- Intelligent prompting for quality output
+- Error handling and recovery
 
-#### 3. **Memory Integration**
-Seamless integration with Core Agent memory:
-- Automatic code storage
-- Session-based organization
-- Retrieval capabilities
+#### 3. **Intelligent Tool Selection**
+The LLM intelligently:
+- Selects appropriate tools for the task
+- Chains tools for complex workflows
+- Validates outputs before returning
 
 ---
 
@@ -124,28 +149,27 @@ Seamless integration with Core Agent memory:
 git clone <repository-url>
 cd workspace
 
-# Install dependencies (if available)
+# Install dependencies
 pip install -r requirements.txt
-
-# Or use the standalone mock system for testing
 ```
 
 ### 2. **Basic Setup**
 
 ```python
-from core_agents.coder import EliteCoderAgent
+from core_agents.coder import CoderAgent
 
-# Create an Elite Coder Agent
-agent = EliteCoderAgent(session_id="my_coding_session")
+# Create a Coder Agent (with all 12 tools ready)
+agent = CoderAgent(session_id="my_session")
 
 # Generate a simple agent
-result = agent.generate_complete_agent(
+result = agent.generate_agent(
     template_type="simple",
-    agent_name="MyFirstAgent", 
-    purpose="Process user queries intelligently"
+    agent_name="DataProcessor", 
+    purpose="Process and analyze data",
+    use_our_core=False  # Standalone LangGraph
 )
 
-print(result["agent_code"])
+print(result["code"])
 ```
 
 ### 3. **Configuration**
@@ -163,75 +187,93 @@ CoderConfig.GPT4_MODEL_NAME = "gpt-4"
 
 ## 💡 Usage Examples
 
-### 🎯 **Example 1: Simple Agent Generation**
+### 🎯 **Example 1: Simple Standalone Agent**
 
 ```python
-from core_agents.coder import EliteCoderAgent
+from core_agents.coder import CoderAgent
 
-# Initialize the agent
-coder = EliteCoderAgent("simple_demo")
+# Initialize with all tools
+coder = CoderAgent()
 
-# Generate a simple processing agent
-result = coder.generate_complete_agent(
+# Generate a standalone LangGraph agent
+result = coder.generate_agent(
     template_type="simple",
-    agent_name="DataProcessor",
-    purpose="Process and analyze incoming data streams",
-    requirements="Include error handling and logging"
+    agent_name="DataAnalyzer",
+    purpose="Analyze CSV files and generate reports",
+    use_our_core=False  # Pure LangGraph
 )
 
-# The generated agent is ready to use
-print("✅ Generated Agent:", result["agent_name"])
-print("📝 Code Length:", len(result["agent_code"]), "characters")
-print("💾 Saved to Memory:", result["save_result"])
+print(f"✅ Generated: {result['agent_name']}")
+print(f"📊 Type: Standalone LangGraph")
 ```
 
-### 🛠️ **Example 2: Tool-Enabled Agent**
+### 🛠️ **Example 2: Core Agent with Tools**
 
 ```python
-# Generate an agent with custom tools
-result = coder.generate_complete_agent(
+# Generate using Core Agent infrastructure
+result = coder.generate_agent(
     template_type="with_tools",
-    agent_name="AnalysisBot",
-    purpose="Analyze data using multiple tools",
-    tools_needed=["calculator", "web_search", "data_processor"]
+    agent_name="ResearchBot",
+    purpose="Research topics using multiple sources",
+    tools_needed=["web_search", "arxiv", "wikipedia"],
+    use_our_core=True  # Use Core Agent
 )
 
-# Agent will have:
-# - Tool selection logic
-# - Tool execution workflows  
-# - Response synthesis
-# - Error handling for each tool
+print(f"✅ Generated: {result['agent_name']} with Core Agent")
+print(f"🔧 Tools: {result['tools']}")
 ```
 
-### 🏢 **Example 3: Multi-Agent System**
+### 🏢 **Example 3: Complete Development Workflow**
 
 ```python
-# Generate a supervisor-based multi-agent system
-result = coder.generate_complete_agent(
-    template_type="multi_agent",
-    agent_name="ResearchTeam",
-    purpose="Conduct comprehensive research and analysis",
-    requirements="Include researcher, analyzer, creator, and reviewer agents"
+# Let the LLM handle the complete workflow
+response = coder.chat(
+    "Create a customer support agent that processes tickets, "
+    "analyzes sentiment, and routes to appropriate departments. "
+    "Validate it, optimize for performance, add tests, and dockerize it."
 )
 
-# Generated system includes:
-# - Supervisor agent for task routing
-# - Specialized worker agents
-# - Conditional workflow routing
-# - Result aggregation
+# The Coder Agent will automatically:
+# 1. Use agent_generator to create the agent
+# 2. Use validate_agent to ensure it works
+# 3. Use optimize_agent for performance
+# 4. Use generate_unit_tests for testing
+# 5. Use dockerize_agent for deployment
 ```
 
-### 🎭 **Example 4: Interactive Chat Usage**
+### 🎭 **Example 4: Analyze and Improve Existing Code**
 
 ```python
-# Use the agent interactively
-response = coder.chat("Create a simple agent for sentiment analysis")
+# Analyze existing agent code
+existing_code = """
+# Your existing agent code here
+...
+"""
 
-# The agent will:
-# 1. Understand the request
-# 2. Generate appropriate code
-# 3. Save to memory
-# 4. Provide usage examples
+response = coder.chat(f"""
+Analyze this agent code and improve it:
+
+```python
+{existing_code}
+```
+
+Focus on performance, error handling, and best practices.
+""")
+
+# The agent will use analyze_agent_code, optimize_agent, 
+# and potentially format_code tools
+```
+
+### 🚀 **Example 5: RAG Agent Generation**
+
+```python
+# Generate a RAG agent with vector store
+response = coder.chat(
+    "Create a RAG agent for our documentation that can answer "
+    "technical questions using our knowledge base"
+)
+
+# Uses generate_rag_agent tool for specialized RAG implementation
 ```
 
 ---
@@ -252,53 +294,41 @@ class CoderConfig:
     GPT4_DEPLOYMENT_NAME = "gpt4"
     
     # Generation Parameters
-    TEMPERATURE = 0.1  # Low temperature for consistent code generation
-    MAX_TOKENS = 4000  # Maximum tokens per generation
+    TEMPERATURE = 0.1  # Low for consistent code
+    MAX_TOKENS = 4000  # Sufficient for most agents
 ```
 
 ### 🔐 **Environment Variables**
 
 ```bash
-# Set these environment variables for production
 export AZURE_OPENAI_ENDPOINT="https://your-endpoint.openai.azure.com/"
 export OPENAI_API_KEY="your-api-key"
 export OPENAI_API_VERSION="2023-12-01-preview"
-```
-
-### 🎛️ **Advanced Configuration**
-
-```python
-# Custom configuration for specific use cases
-agent = EliteCoderAgent(
-    session_id="advanced_session",
-    temperature=0.2,  # Slightly more creative
-    max_tokens=6000,  # Longer generations
-    memory_ttl=3600   # 1-hour memory retention
-)
 ```
 
 ---
 
 ## 📚 API Reference
 
-### 🏗️ **EliteCoderAgent**
+### 🏗️ **CoderAgent**
 
 #### Constructor
 ```python
-EliteCoderAgent(session_id: str = None)
+CoderAgent(session_id: str = None)
 ```
-- `session_id`: Unique identifier for the coding session
+- `session_id`: Unique identifier for the session (auto-generated if not provided)
+- Initializes with all 12 tools available
 
 #### Methods
 
-##### `generate_complete_agent()`
+##### `generate_agent()`
 ```python
-def generate_complete_agent(
+def generate_agent(
     template_type: str,
     agent_name: str, 
     purpose: str,
-    requirements: str = "",
-    tools_needed: List[str] = None
+    tools_needed: List[str] = None,
+    use_our_core: bool = False
 ) -> Dict[str, Any]
 ```
 
@@ -306,20 +336,19 @@ def generate_complete_agent(
 - `template_type`: `"simple"`, `"with_tools"`, or `"multi_agent"`
 - `agent_name`: Name for the generated agent
 - `purpose`: Description of what the agent should do
-- `requirements`: Additional requirements or specifications
 - `tools_needed`: List of tools for tool-enabled agents
+- `use_our_core`: Whether to use Core Agent infrastructure (default: False)
 
 **Returns:**
 ```python
 {
-    "agent_code": str,        # Generated Python code
-    "save_result": str,       # Memory save status
-    "template_type": str,     # Type of agent generated
-    "agent_name": str,        # Name of the agent
-    "purpose": str,           # Purpose description
-    "tools": List[str],       # Tools included (if any)
-    "approach": str,          # "clean_prompt_based"
-    "success": bool           # Generation success status
+    "success": bool,
+    "agent_name": str,
+    "template_type": str,
+    "purpose": str,
+    "tools": List[str],
+    "code": str,
+    "error": str  # If success is False
 }
 ```
 
@@ -327,330 +356,151 @@ def generate_complete_agent(
 ```python
 def chat(message: str) -> str
 ```
-Interactive chat interface for agent generation.
+Interactive interface that intelligently uses available tools.
 
-### 🛠️ **CleanAgentGeneratorTool**
+### 🛠️ **Available Tools Reference**
 
-#### Constructor
-```python
-CleanAgentGeneratorTool(llm: Any)
-```
-- `llm`: Language model instance for code generation
+Each tool has its own schema and capabilities:
 
-#### Methods
-
-##### `_run()`
-```python
-def _run(
-    template_type: str,
-    agent_name: str,
-    purpose: str, 
-    requirements: str = "",
-    tools_needed: List[str] = None
-) -> str
-```
-Core generation method that produces the agent code.
-
----
-
-## 🧪 Testing
-
-### 🚀 **Running Tests**
-
-```bash
-# Run all coder tests
-cd /workspace
-PYTHONPATH=/workspace python3 core/test_core/test_coder.py
-
-# Expected output:
-# 🎉 ALL ELITE CODER AGENT UNIT TESTS PASSED!
-# ✅ Passed: 10
-# ❌ Failed: 0  
-# 💥 Errors: 0
-# 🏆 Success Rate: 100.0%
-```
-
-### 🧪 **Test Categories**
-
-#### 1. **Configuration Tests**
-- Azure OpenAI setup validation
-- Model parameter verification
-- Config immutability checks
-
-#### 2. **Tool Generation Tests**
-- Simple agent generation (LLM-based)
-- Tool-enabled agent generation  
-- Multi-agent system generation
-- Invalid input handling
-- Special character support
-
-#### 3. **Integration Tests**
-- Memory integration
-- Error handling
-- Session management
-
-### 📋 **Writing Custom Tests**
-
-```python
-import unittest
-from core_agents.coder import EliteCoderAgent
-
-class TestMyCustomFeature(unittest.TestCase):
-    def setUp(self):
-        self.agent = EliteCoderAgent("test_session")
-    
-    def test_custom_generation(self):
-        result = self.agent.generate_complete_agent(
-            template_type="simple",
-            agent_name="TestAgent",
-            purpose="Testing custom features"
-        )
-        
-        self.assertIn("agent_code", result)
-        self.assertTrue(result["success"])
-        self.assertEqual(result["approach"], "clean_prompt_based")
-```
-
----
-
-## 🔄 Migration from Templates
-
-### 📈 **Before vs After**
-
-#### **Old Template Approach** ❌
-```python
-# OLD: Hardcoded string templates
-def _generate_simple_agent(self, agent_name: str, purpose: str) -> str:
-    return f'''#!/usr/bin/env python3
-"""
-{agent_name} - Elite LangGraph Agent
-Generated by Elite Coder Agent using Core Agent Infrastructure
-Purpose: {purpose}
-"""
-# ... 200+ lines of hardcoded template code ...
-'''
-```
-
-#### **New Intelligent Approach** ✅
-```python
-# NEW: Intelligent prompt-based generation
-def _generate_simple_agent(self, agent_name: str, purpose: str, requirements: str) -> str:
-    prompt = f"""Create a complete, production-ready LangGraph agent from scratch.
-
-Requirements:
-- Agent Name: {agent_name}
-- Purpose: {purpose}
-- Requirements: {requirements}
-- Use Core Agent infrastructure
-- Include Azure OpenAI configuration
-- Add proper error handling
-
-Generate ONLY the Python code. No explanations."""
-
-    response = self.llm.invoke([HumanMessage(content=prompt)])
-    return response.content
-```
-
-### 🚚 **Migration Steps**
-
-1. **Update Imports**
-   ```python
-   # OLD
-   from core_agents.coder import LangGraphTemplateTool
-   
-   # NEW  
-   from core_agents.coder import CleanAgentGeneratorTool
-   ```
-
-2. **Update Tool Initialization**
-   ```python
-   # OLD
-   tool = LangGraphTemplateTool()
-   
-   # NEW
-   tool = CleanAgentGeneratorTool(llm)
-   ```
-
-3. **Update Generation Calls**
-   ```python
-   # OLD: Template-based
-   result = tool._run("simple", "AgentName", "Purpose")
-   
-   # NEW: Prompt-based (same interface!)
-   result = tool._run("simple", "AgentName", "Purpose", "Requirements")
-   ```
-
-### 📊 **Migration Benefits**
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Code Lines** | 1,347 | 561 | 🔻 58% reduction |
-| **Maintainability** | Low | High | 🔺 Significant |
-| **Flexibility** | Limited | Unlimited | 🔺 Infinite |
-| **Test Coverage** | 90% | 100% | 🔺 10% increase |
-| **Generation Speed** | Fast | Fast | ✅ Maintained |
-| **Code Quality** | Static | Dynamic | 🔺 AI-Enhanced |
+| Tool | Purpose | Key Features |
+|------|---------|--------------|
+| `agent_generator` | Generate agents | Standalone/Core Agent modes |
+| `analyze_agent_code` | Code analysis | Improvements, best practices |
+| `validate_agent` | Validation | Syntax, imports, logic checks |
+| `optimize_agent` | Optimization | Performance, memory, patterns |
+| `generate_agent_docs` | Documentation | README, API docs, guides |
+| `generate_unit_tests` | Testing | pytest, fixtures, coverage |
+| `dockerize_agent` | Containerization | Dockerfile, compose, configs |
+| `convert_to_api` | API wrapper | FastAPI/Flask conversion |
+| `add_monitoring` | Observability | Metrics, dashboards, alerts |
+| `generate_rag_agent` | RAG agents | Vector stores, retrieval |
+| `format_code` | Code formatting | Black, isort, cleanup |
+| `save_agent_template` | Templates | Reusable patterns |
 
 ---
 
 ## 🎯 Best Practices
 
-### 💡 **Code Generation**
+### 💡 **Tool Usage**
 
-1. **Be Specific with Requirements**
+1. **Let the LLM Decide**
+   ```python
+   # Good - let the agent choose tools
+   response = coder.chat("Create and optimize an email processing agent")
+   
+   # The LLM will automatically use appropriate tools
+   ```
+
+2. **Be Specific for Better Results**
+   ```python
+   # Good - specific requirements
+   response = coder.chat(
+       "Create a sentiment analysis agent with async support, "
+       "comprehensive error handling, and Redis caching"
+   )
+   ```
+
+3. **Chain Operations Naturally**
+   ```python
+   # Good - natural workflow description
+   response = coder.chat(
+       "Create a data pipeline agent, validate it works correctly, "
+       "optimize for processing 1M records/hour, then dockerize it"
+   )
+   ```
+
+### 🔧 **Code Generation**
+
+1. **Choose the Right Mode**
+   ```python
+   # Standalone for simple, self-contained agents
+   use_our_core=False
+   
+   # Core Agent for complex features (memory, advanced tools)
+   use_our_core=True
+   ```
+
+2. **Provide Clear Purpose**
    ```python
    # Good
-   requirements = """
-   - Include comprehensive error handling
-   - Add logging for debugging
-   - Use async/await for better performance
-   - Include docstrings for all functions
-   """
-   ```
-
-2. **Use Descriptive Names**
-   ```python
-   # Good
-   agent_name = "CustomerSupportAnalyzer"
-   purpose = "Analyze customer support tickets and categorize by urgency"
-   ```
-
-3. **Leverage Tool Integration**
-   ```python
-   # Good for complex workflows
-   tools_needed = [
-       "web_search",
-       "document_processor", 
-       "sentiment_analyzer",
-       "email_sender"
-   ]
-   ```
-
-### 🔧 **Configuration**
-
-1. **Environment-Specific Settings**
-   ```python
-   # Development
-   CoderConfig.TEMPERATURE = 0.1  # Consistent results
+   purpose = "Monitor social media for brand mentions, analyze sentiment, and alert on negative trends"
    
-   # Production  
-   CoderConfig.TEMPERATURE = 0.05  # Even more consistent
-   ```
-
-2. **Session Management**
-   ```python
-   # Use meaningful session IDs
-   session_id = f"project_{project_name}_{datetime.now().strftime('%Y%m%d')}"
-   ```
-
-### 🧪 **Testing**
-
-1. **Always Test Generated Code**
-   ```python
-   result = agent.generate_complete_agent(...)
-   
-   # Verify generation success
-   assert result["success"] == True
-   assert len(result["agent_code"]) > 100
-   assert result["approach"] == "clean_prompt_based"
-   ```
-
-2. **Use Mock for CI/CD**
-   ```python
-   # Tests work even without dependencies
-   if not CODER_AVAILABLE:
-       print("✅ Using mock implementations for testing")
+   # Too vague
+   purpose = "Monitor social media"
    ```
 
 ---
 
-## 🚨 Troubleshooting
+## 🚀 Advanced Features
 
-### ❗ **Common Issues**
+### 🔗 **Tool Chaining**
 
-#### 1. **Import Errors**
+The Coder Agent can intelligently chain tools:
+
 ```python
-# Error: ModuleNotFoundError: No module named 'langchain_core'
-# Solution: Tests automatically use mock implementations
+# Single request triggers multiple tools
+response = coder.chat(
+    "Create a web scraping agent, ensure it handles rate limiting, "
+    "add monitoring for success rates, and create a Docker deployment"
+)
+
+# Automatically uses:
+# 1. agent_generator → Create the agent
+# 2. analyze_agent_code → Check for rate limiting
+# 3. add_monitoring → Add metrics
+# 4. dockerize_agent → Create deployment
 ```
 
-#### 2. **Azure OpenAI Configuration**
+### 🧠 **Learning from History**
+
+With memory enabled, the agent learns from past generations:
+
 ```python
-# Error: Invalid endpoint or API key
-# Solution: Check environment variables
-import os
-print("Endpoint:", os.getenv("AZURE_OPENAI_ENDPOINT"))
-print("API Key:", os.getenv("OPENAI_API_KEY"))
+# First generation
+coder.generate_agent(template_type="simple", agent_name="DataProcessor", ...)
+
+# Later generation benefits from learned patterns
+coder.generate_agent(template_type="simple", agent_name="LogProcessor", ...)
+# May reuse successful patterns from DataProcessor
 ```
 
-#### 3. **Generation Failures**
+### 🎯 **Smart Tool Selection**
+
+The agent intelligently selects tools based on keywords:
+
 ```python
-# Check the result for error details
-result = agent.generate_complete_agent(...)
-if not result["success"]:
-    print("Error:", result.get("error", "Unknown error"))
-```
-
-### 🔍 **Debugging**
-
-#### Enable Verbose Logging
-```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
-# Now you'll see detailed generation logs
-agent = EliteCoderAgent("debug_session")
-```
-
-#### Check Memory Storage
-```python
-# Verify memory integration
-agent = EliteCoderAgent("memory_test")
-result = agent.generate_complete_agent(...)
-print("Memory result:", result["save_result"])
+# "validate" → triggers validate_agent tool
+# "optimize" → triggers optimize_agent tool  
+# "deploy" → triggers dockerize_agent tool
+# "test" → triggers generate_unit_tests tool
 ```
 
 ---
 
 ## 🤝 Contributing
 
-### 🛠️ **Development Setup**
+### 🛠️ **Adding New Tools**
 
-1. **Clone and Setup**
-   ```bash
-   git clone <repository-url>
-   cd workspace
-   pip install -r requirements.txt
+1. Create tool in `core_agents/tools.py`:
+   ```python
+   def create_my_new_tool(model):
+       class MyNewTool(BaseTool):
+           name = "my_new_tool"
+           description = "What this tool does"
+           # Implementation
+       return MyNewTool()
    ```
 
-2. **Run Tests**
-   ```bash
-   PYTHONPATH=/workspace python3 core/test_core/test_coder.py
-   ```
+2. Add to `create_all_coder_tools()` function
 
-3. **Code Style**
-   ```bash
-   # Follow PEP 8 guidelines
-   # Use type hints
-   # Add comprehensive docstrings
-   ```
+3. Update documentation
 
-### 📝 **Contributing Guidelines**
+### 📝 **Development Guidelines**
 
-1. **New Features**
-   - Add corresponding tests
-   - Update documentation
-   - Follow existing patterns
-
-2. **Bug Fixes**
-   - Include reproduction steps
-   - Add regression tests
-   - Verify fix with existing tests
-
-3. **Documentation**
-   - Keep README updated
-   - Add code examples
-   - Include troubleshooting info
+- Follow existing tool patterns
+- Add comprehensive docstrings
+- Include error handling
+- Write tests for new features
 
 ---
 
@@ -660,26 +510,6 @@ This project is part of the Core Agent framework. See the main repository for li
 
 ---
 
-## 🙏 Acknowledgments
+**🚀 Ready to revolutionize your agent development? Get started with the Quick Start guide above!**
 
-- **Core Agent Framework**: Foundation for agent infrastructure
-- **LangGraph**: Powerful agent workflow management
-- **Azure OpenAI**: Advanced language model capabilities
-- **Community**: Feedback and contributions that made this possible
-
----
-
-## 📞 Support
-
-For questions, issues, or contributions:
-
-1. **Check the troubleshooting section** above
-2. **Run the test suite** to verify your setup
-3. **Review existing issues** in the repository
-4. **Create a detailed issue** with reproduction steps
-
----
-
-**🚀 Ready to generate some amazing agents? Get started with the Quick Start guide above!**
-
-*Elite Coder Agent - Where Intelligence Meets Code Generation* ✨
+*Coder Agent - Where AI Meets Complete Agent Development* ✨
