@@ -156,17 +156,17 @@ pip install -r requirements.txt
 ### 2. **Basic Setup**
 
 ```python
-from core_agents.coder import CoderAgent
+from agent.coder import CoderAgent
 
 # Create a Coder Agent (with all 12 tools ready)
 agent = CoderAgent(session_id="my_session")
 
 # Generate a simple agent
 result = agent.generate_agent(
-    template_type="simple",
-    agent_name="DataProcessor", 
-    purpose="Process and analyze data",
-    use_our_core=False  # Standalone LangGraph
+   template_type="simple",
+   agent_name="DataProcessor",
+   purpose="Process and analyze data",
+   use_our_core=False  # Standalone LangGraph
 )
 
 print(result["code"])
@@ -175,7 +175,7 @@ print(result["code"])
 ### 3. **Configuration**
 
 ```python
-from core_agents.coder import CoderConfig
+from agent.coder import CoderConfig
 
 # Configure Azure OpenAI settings
 CoderConfig.AZURE_OPENAI_ENDPOINT = "https://your-endpoint.openai.azure.com/"
@@ -190,17 +190,17 @@ CoderConfig.GPT4_MODEL_NAME = "gpt-4"
 ### 🎯 **Example 1: Simple Standalone Agent**
 
 ```python
-from core_agents.coder import CoderAgent
+from agent.coder import CoderAgent
 
 # Initialize with all tools
 coder = CoderAgent()
 
 # Generate a standalone LangGraph agent
 result = coder.generate_agent(
-    template_type="simple",
-    agent_name="DataAnalyzer",
-    purpose="Analyze CSV files and generate reports",
-    use_our_core=False  # Pure LangGraph
+   template_type="simple",
+   agent_name="DataAnalyzer",
+   purpose="Analyze CSV files and generate reports",
+   use_our_core=False  # Pure LangGraph
 )
 
 print(f"✅ Generated: {result['agent_name']}")

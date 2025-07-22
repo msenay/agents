@@ -19,7 +19,7 @@ from datetime import datetime
 sys.path.insert(0, '/workspace')
 
 try:
-    from core_agents.coder import (
+    from agent.coder import (
         EliteCoderAgent, 
         CoderConfig, 
         CleanAgentGeneratorTool,
@@ -726,18 +726,18 @@ class TestEliteCoderAgent(unittest.TestCase):
         self.mock_memory = MockMemoryManager()
         
         # Mock Azure OpenAI
-        self.mock_llm_patcher = patch('core_agents.coder.AzureChatOpenAI')
+        self.mock_llm_patcher = patch('agent.coder.AzureChatOpenAI')
         self.mock_llm_class = self.mock_llm_patcher.start()
         self.mock_llm_instance = MockAzureChatOpenAI()
         self.mock_llm_class.return_value = self.mock_llm_instance
         
         # Mock Core Agent managers
-        self.mock_memory_manager_patcher = patch('core_agents.coder.MemoryManager')
+        self.mock_memory_manager_patcher = patch('agent.coder.MemoryManager')
         self.mock_memory_manager_class = self.mock_memory_manager_patcher.start()
         self.mock_memory_manager_class.return_value = self.mock_memory
         
         # Mock Core Agent tools
-        self.mock_tools_patcher = patch('core_agents.coder.create_python_coding_tools')
+        self.mock_tools_patcher = patch('agent.coder.create_python_coding_tools')
         self.mock_tools_func = self.mock_tools_patcher.start()
         
         # Create mock tools with proper names and _run methods
@@ -1032,15 +1032,15 @@ class TestEliteCoderFactoryFunction(unittest.TestCase):
     
     def setUp(self):
         """Set up mocks for factory function testing"""
-        self.mock_llm_patcher = patch('core_agents.coder.AzureChatOpenAI')
+        self.mock_llm_patcher = patch('agent.coder.AzureChatOpenAI')
         self.mock_llm_class = self.mock_llm_patcher.start()
         self.mock_llm_class.return_value = MockAzureChatOpenAI()
         
-        self.mock_memory_patcher = patch('core_agents.coder.MemoryManager')
+        self.mock_memory_patcher = patch('agent.coder.MemoryManager')
         self.mock_memory_class = self.mock_memory_patcher.start()
         self.mock_memory_class.return_value = MockMemoryManager()
         
-        self.mock_tools_patcher = patch('core_agents.coder.create_python_coding_tools')
+        self.mock_tools_patcher = patch('agent.coder.create_python_coding_tools')
         self.mock_tools_func = self.mock_tools_patcher.start()
         self.mock_tools_func.return_value = [Mock(name="test_tool")]
     
@@ -1099,15 +1099,15 @@ class TestEliteCoderEdgeCases(unittest.TestCase):
     
     def setUp(self):
         """Set up for edge case testing"""
-        self.mock_llm_patcher = patch('core_agents.coder.AzureChatOpenAI')
+        self.mock_llm_patcher = patch('agent.coder.AzureChatOpenAI')
         self.mock_llm_class = self.mock_llm_patcher.start()
         self.mock_llm_class.return_value = MockAzureChatOpenAI()
         
-        self.mock_memory_patcher = patch('core_agents.coder.MemoryManager')
+        self.mock_memory_patcher = patch('agent.coder.MemoryManager')
         self.mock_memory_class = self.mock_memory_patcher.start()
         self.mock_memory_class.return_value = MockMemoryManager()
         
-        self.mock_tools_patcher = patch('core_agents.coder.create_python_coding_tools')
+        self.mock_tools_patcher = patch('agent.coder.create_python_coding_tools')
         self.mock_tools_func = self.mock_tools_patcher.start()
         self.mock_tools_func.return_value = []  # No tools for edge case testing
     

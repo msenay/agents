@@ -27,9 +27,8 @@ Available Tools:
 - Templates: save_agent_template
 """
 
-import os
 import sys
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from datetime import datetime
 
 # Add workspace to path for imports
@@ -39,16 +38,11 @@ sys.path.insert(0, '/workspace')
 from core.core_agent import CoreAgent
 from core.config import AgentConfig
 from langchain_openai import AzureChatOpenAI
-from langchain_core.tools import BaseTool
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel, Field
 
 # Import all tools
-from core_agents.tools import (
-    create_all_coder_tools,
-    get_tools_by_category,
-    suggest_tools_for_task,
-    create_agent_generator_tool
+from agent.coder.tools import (
+    create_all_coder_tools
 )
 
 
