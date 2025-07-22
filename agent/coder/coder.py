@@ -28,17 +28,12 @@ from core.core_agent import CoreAgent
 from core.config import AgentConfig
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage
-from langchain_core.tools import BaseTool
 
 # Import prompts
-from agent.coder.prompts import (
-    SIMPLE_AGENT_PROMPT,
-    WITH_TOOLS_AGENT_PROMPT,
-    MULTI_AGENT_PROMPT,
-    CORE_AGENT_SIMPLE_PROMPT,
-    CORE_AGENT_WITH_TOOLS_PROMPT,
-    SYSTEM_PROMPT
-)
+from agent.coder.prompts import SYSTEM_PROMPT
+
+# Import tools from tools.py
+from agent.coder.tools import get_coder_tools
 
 
 # Tool Input Schemas
@@ -67,119 +62,6 @@ class CoderConfig:
     # Model Parameters
     TEMPERATURE = 0.1  # Low temperature for consistent code generation
     MAX_TOKENS = 4000
-
-
-def create_agent_generator_tool(model):
-    """Create tool for generating agent code from specifications"""
-    
-    class AgentGeneratorTool(BaseTool):
-        name: str = "agent_generator"
-        description: str = "Generate agent code from detailed specifications"
-        args_schema: type[BaseModel] = AgentSpecInput
-        
-        def _run(self, agent_spec: str, agent_type: str = "simple", use_our_core: bool = False) -> str:
-            """Generate agent code based on specifications"""
-            
-            # Select appropriate prompt based on type and core usage
-            if use_our_core:
-                if agent_type == "simple":
-                    base_prompt = CORE_AGENT_SIMPLE_PROMPT
-                elif agent_type == "with_tools":
-                    base_prompt = CORE_AGENT_WITH_TOOLS_PROMPT
-                else:  # multi_agent
-                    base_prompt = MULTI_AGENT_PROMPT
-            else:
-                if agent_type == "simple":
-                    base_prompt = SIMPLE_AGENT_PROMPT
-                elif agent_type == "with_tools":
-                    base_prompt = WITH_TOOLS_AGENT_PROMPT
-                else:  # multi_agent
-                    base_prompt = MULTI_AGENT_PROMPT
-            
-            # Create the full prompt with specifications
-            full_prompt = f"""{base_prompt}
-
-SPECIFICATIONS:
-==============
-{agent_spec}
-
-Based on these specifications, generate complete, working agent code.
-Make sure to:
-1. Extract the agent name, purpose, and requirements from the specifications
-2. Implement all requested functionality
-3. Include proper error handling
-4. Add comprehensive documentation
-5. Provide usage examples
-
-Generate ONLY the Python code, no explanations."""
-            
-            response = model.invoke([HumanMessage(content=full_prompt)])
-            return response.content
-    
-    return AgentGeneratorTool()
-
-
-def create_optimize_agent_tool(model):
-    """Create tool for optimizing agent code"""
-    
-    class OptimizeAgentTool(BaseTool):
-        name: str = "optimize_agent"
-        description: str = "Optimize agent code for performance and best practices"
-        args_schema: type[BaseModel] = CodeInput
-        
-        def _run(self, code: str) -> str:
-            prompt = f"""Optimize this agent code:
-
-```python
-{code}
-```
-
-Optimization areas:
-1. Performance improvements
-2. Memory efficiency
-3. Better error handling
-4. Code simplification
-5. Design pattern improvements
-6. Add missing docstrings
-7. Improve type hints
-
-Return the optimized code. Keep all functionality intact."""
-            
-            response = model.invoke([HumanMessage(content=prompt)])
-            return response.content
-    
-    return OptimizeAgentTool()
-
-
-def create_format_code_tool(model):
-    """Create tool for formatting code"""
-    
-    class FormatCodeTool(BaseTool):
-        name: str = "format_code"
-        description: str = "Format code with Black/isort standards"
-        args_schema: type[BaseModel] = CodeInput
-        
-        def _run(self, code: str) -> str:
-            prompt = f"""Format and clean up this code:
-
-```python
-{code}
-```
-
-Apply:
-1. Black formatting standards
-2. isort import ordering
-3. Remove unused imports
-4. Fix line lengths
-5. Consistent naming conventions
-6. Proper spacing
-
-Return the formatted code."""
-            
-            response = model.invoke([HumanMessage(content=prompt)])
-            return response.content
-    
-    return FormatCodeTool()
 
 
 class CoderAgent(CoreAgent):
@@ -217,12 +99,8 @@ class CoderAgent(CoreAgent):
             max_tokens=CoderConfig.MAX_TOKENS
         )
         
-        # Create tools
-        tools = [
-            create_agent_generator_tool(model),  # Main code generation from specs
-            create_optimize_agent_tool(model),   # Code optimization
-            create_format_code_tool(model)       # Code formatting
-        ]
+        # Create tools using the dispatcher from tools.py
+        tools = get_coder_tools(model)  # Gets all 3 tools: agent_generator, optimize_agent, format_code
         
         # Create configuration
         config = AgentConfig(
