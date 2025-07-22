@@ -43,7 +43,7 @@ for key, value in REAL_AZURE_CONFIG.items():
     os.environ[key] = value
 
 try:
-    from core_agents.coder import (
+    from agent.coder import (
         EliteCoderAgent, 
         CoderConfig, 
         create_elite_coder_agent
