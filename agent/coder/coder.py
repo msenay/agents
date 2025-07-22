@@ -60,6 +60,7 @@ class CoderAgent(CoreAgent):
             api_key=CoderConfig.OPENAI_API_KEY,
             api_version=CoderConfig.OPENAI_API_VERSION,
             model=CoderConfig.GPT4_MODEL_NAME,
+            azure_deployment=CoderConfig.GPT4_DEPLOYMENT_NAME,
             temperature=CoderConfig.TEMPERATURE,
             max_tokens=CoderConfig.MAX_TOKENS
         )
