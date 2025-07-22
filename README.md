@@ -125,6 +125,7 @@ workspace/
 - Resource monitoring and limits
 - Test execution with reports
 - Error handling and recovery
+- [Full Documentation](agent/executor/README_executor.md)
 
 ## 🐳 Docker Deployment
 
@@ -208,6 +209,7 @@ python core/test_core/test_core_agent_comprehensive.py
 
 - [Core Agent Framework Documentation](core/README.md)
 - [CoderAgent Documentation](agent/coder/README_coder.md)
+- [ExecutorAgent Documentation](agent/executor/README_executor.md)
 - [Configuration Guide](core/README.md#configuration-examples)
 - [Multi-Agent Patterns](core/README.md#multi-agent-system-configuration)
 
