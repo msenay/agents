@@ -1,10 +1,30 @@
 #!/usr/bin/env python3
 """
-Coder Agent - Specialized agent for generating other agents
-==========================================================
+Coder Agent - Advanced AI Agent Generator with Comprehensive Toolkit
+===================================================================
 
-An AI agent that specializes in creating other agents using the Core Agent infrastructure.
-Supports simple agents, agents with tools, and multi-agent systems.
+An intelligent agent that generates, analyzes, optimizes, tests, and deploys LangGraph agents.
+
+Features:
+- 12 specialized tools for complete agent development lifecycle
+- Supports both standalone LangGraph and Core Agent based implementations  
+- Intelligent tool selection and chaining for complex workflows
+- Memory integration for learning from past generations
+- Production-ready code generation with validation and optimization
+
+Agent Types:
+- Simple: Basic agents with state management
+- With Tools: Agents with custom tool integration
+- Multi-Agent: Supervisor-based multi-agent systems
+
+Available Tools:
+- Generation: agent_generator, generate_rag_agent
+- Analysis: analyze_agent_code, validate_agent, optimize_agent
+- Documentation: generate_agent_docs
+- Testing: generate_unit_tests
+- Deployment: dockerize_agent, convert_to_api
+- Enhancement: add_monitoring, format_code
+- Templates: save_agent_template
 """
 
 import os
@@ -51,10 +71,26 @@ class CoderConfig:
 
 
 class CoderAgent(CoreAgent):
-    """Coder Agent - Specializes in creating other agents"""
+    """
+    Advanced AI Agent Generator with Comprehensive Development Toolkit
+    
+    A powerful agent that handles the complete agent development lifecycle:
+    - Generates standalone LangGraph or Core Agent based implementations
+    - Analyzes and optimizes existing agent code
+    - Creates tests, documentation, and deployment configurations
+    - Intelligently chains tools for complex workflows
+    
+    Equipped with 12 specialized tools that the LLM can intelligently
+    select and combine based on the task requirements.
+    """
     
     def __init__(self, session_id: str = None):
-        """Initialize Coder Agent with Core Agent infrastructure"""
+        """
+        Initialize Coder Agent with all development tools
+        
+        Args:
+            session_id: Unique session identifier (auto-generated if not provided)
+        """
         if session_id is None:
             session_id = f"coder_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
@@ -94,7 +130,12 @@ class CoderAgent(CoreAgent):
             print(f"   - {tool.name}: {tool.description}")
     
     def _get_system_prompt(self) -> str:
-        """System prompt for the Coder Agent"""
+        """
+        Generate comprehensive system prompt with tool awareness
+        
+        Returns:
+            System prompt that guides the LLM in tool selection and usage
+        """
         return """You are an expert Coder Agent with a comprehensive toolkit for creating, analyzing, and deploying LangGraph agents.
 
 Your expertise includes:
@@ -203,7 +244,18 @@ You intelligently select and use the right tools to deliver complete, production
 
 
 def demo_coder_agent():
-    """Demonstrate the Coder Agent functionality"""
+    """
+    Comprehensive demonstration of Coder Agent capabilities
+    
+    Showcases:
+    - Simple standalone agent generation
+    - Core Agent based implementation with tools
+    - Multi-agent system creation
+    - Interactive chat functionality
+    - Custom agent generation from natural language
+    
+    All 12 tools are available for the LLM to use intelligently.
+    """
     print("🚀 CODER AGENT DEMO - The Ultimate Agent Generator")
     print("=" * 80)
     
