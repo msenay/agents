@@ -19,10 +19,6 @@ import sys
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
-
-# Add workspace to path for imports
-sys.path.insert(0, '/workspace')
-
 # Core Agent Infrastructure
 from core.core_agent import CoreAgent
 from core.config import AgentConfig

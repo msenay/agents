@@ -5,10 +5,6 @@ Coder Agent Demo - Specification-Based Agent Generation
 
 Demonstrates how CoderAgent generates agents from specifications.
 """
-
-import sys
-sys.path.insert(0, '/workspace')
-
 from agent.coder.coder import CoderAgent
 
 
@@ -54,7 +50,8 @@ def demo_simple_agent_from_spec():
         print(f"📊 Type: {result['agent_type']} (Standalone)")
         print(f"\n📄 Code preview (first 500 chars):")
         print("-" * 40)
-        print(result["code"][:500] + "...")
+        print(result["code"])
+        print("-" * 40)
     else:
         print(f"❌ Error: {result['error']}")
 
@@ -109,7 +106,8 @@ def demo_core_agent_with_tools_from_spec():
         print(f"📊 Type: {result['agent_type']} (Core Agent)")
         print(f"\n📄 Code preview (first 500 chars):")
         print("-" * 40)
-        print(result["code"][:500] + "...")
+        print(result["code"])
+        print("-" * 40)
     else:
         print(f"❌ Error: {result['error']}")
 
@@ -174,7 +172,8 @@ def demo_multi_agent_system_from_spec():
         print(f"📊 Type: {result['agent_type']}")
         print(f"\n📄 Code preview (first 500 chars):")
         print("-" * 40)
-        print(result["code"][:500] + "...")
+        print(result["code"])
+        print("-" * 40)
     else:
         print(f"❌ Error: {result['error']}")
 
@@ -202,7 +201,9 @@ def demo_chat_interface():
     
     print(f"\n🤖 Response preview (first 800 chars):")
     print("-" * 40)
-    print(response[:800] + "...")
+    print(response)
+    print("-" * 40)
+    print("-" * 40)
 
 
 def main():
@@ -218,10 +219,30 @@ def main():
     
     try:
         # Run all demos
+        print("demo_simple_agent_from_spec")
         demo_simple_agent_from_spec()
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
+        print("demo_core_agent_with_tools_from_spec")
         demo_core_agent_with_tools_from_spec()
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
+        print("demo_multi_agent_system_from_spec")
         demo_multi_agent_system_from_spec()
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
+        print("demo_chat_interface")
         demo_chat_interface()
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
+        print("-" * 40)
         
         print("\n" + "=" * 80)
         print("✅ All demos completed successfully!")
