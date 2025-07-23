@@ -10,8 +10,80 @@ import sys
 from typing import Dict, Any
 
 # Try to import the OrchestratorAgent
+try:
+    # Import directly from orchestrator.py to avoid __init__.py
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from orchestrator import OrchestratorAgent
+    IMPORTS_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Import error: {e}")
+    print("Running in demo mode without actual execution...")
+    IMPORTS_AVAILABLE = False
+    
+    # Mock OrchestratorAgent for demonstration
+    class OrchestratorAgent:
+        def __init__(self, **kwargs):
+            self.coordination_pattern = kwargs.get('coordination_pattern', 'supervisor')
+            self.enable_monitoring = kwargs.get('enable_monitoring', False)
+            self.session_id = "demo_session_123"
+            print(f"✅ OrchestratorAgent initialized with pattern: {self.coordination_pattern}")
+            print(f"📋 Session ID: {self.session_id}")
+            print(f"🛠️ Tools: ['plan_workflow', 'delegate_task', 'check_quality', 'aggregate_results', 'monitor_workflow']")
+            
+        def orchestrate(self, request, workflow_type="auto"):
+            print(f"\n🎭 Orchestrating workflow for: {request[:100]}...")
+            
+            # Simulate workflow execution
+            import time
+            steps = [
+                "📝 Planning workflow...",
+                "🚀 Delegating to CoderAgent...",
+                "✅ Code generation complete",
+                "🧪 Delegating to TesterAgent...",
+                "✅ Test generation complete", 
+                "⚙️  Delegating to ExecutorAgent...",
+                "✅ Execution and validation complete"
+            ]
+            
+            for step in steps:
+                print(f"   {step}")
+                time.sleep(0.5)  # Small delay for effect
+                
+            return {
+                "success": True,
+                "result": """
+[Demo Mode] Workflow completed successfully!
 
-from orchestrator import OrchestratorAgent
+Generated Artifacts:
+1. TodoList class with all requested features
+2. Comprehensive test suite with 95% coverage
+3. Validated execution with all tests passing
+
+The orchestrator coordinated:
+- CoderAgent: Generated clean, documented code
+- TesterAgent: Created 15 unit tests covering all methods
+- ExecutorAgent: Ran all tests successfully
+""",
+                "workflow_state": {
+                    "completed_tasks": 3,
+                    "status": "completed",
+                    "agents_used": ["coder", "tester", "executor"]
+                }
+            }
+            
+        def coder(self, request):
+            """Mock direct coder access"""
+            return f"[Demo Mode] CoderAgent would generate: {request}"
+            
+        def tester(self, request):
+            """Mock direct tester access"""
+            return f"[Demo Mode] TesterAgent would generate tests for: {request}"
+            
+        def executor(self, request):
+            """Mock direct executor access"""
+            return f"[Demo Mode] ExecutorAgent would execute: {request}"
 
 
 
@@ -36,6 +108,14 @@ def check_environment():
         print("✅ OPENAI_API_KEY is set")
     else:
         print("⚠️  OPENAI_API_KEY not set (required for actual execution)")
+    
+    # Check imports
+    if IMPORTS_AVAILABLE:
+        print("✅ All dependencies loaded successfully")
+    else:
+        print("⚠️  Some dependencies missing - running in demo mode")
+    
+    return api_key_set and IMPORTS_AVAILABLE
 
 
 
@@ -48,6 +128,8 @@ def demo_full_development_workflow():
     """Demo: Complete development workflow from idea to tested code"""
     print_section("Full Development Workflow")
     
+    if not IMPORTS_AVAILABLE:
+        print("🎭 DEMO MODE - Showing what would happen:\n")
     request = """
     Create a Python class for managing a todo list with the following features:
     1. Add tasks with priority levels (high, medium, low)
@@ -70,10 +152,17 @@ def demo_full_development_workflow():
             
             if result["success"]:
                 print("\n✅ Workflow completed successfully!")
-                print("\n📊 Report:")
-                print(result["report"])
+                if "report" in result:
+                    print("\n📊 Report:")
+                    print(result["report"])
+                else:
+                    print(f"\n📊 Result: {result.get('result', 'Workflow completed')}")
+                    if "workflow_state" in result:
+                        state = result["workflow_state"]
+                        print(f"📈 Completed tasks: {state.get('completed_tasks', 0)}")
+                        print(f"📊 Status: {state.get('status', 'unknown')}")
             else:
-                print(f"\n❌ Workflow failed: {result['error']}")
+                print(f"\n❌ Workflow failed: {result.get('error', 'Unknown error')}")
             return
         except Exception as e:
             print(f"\n⚠️  Execution error: {e}")
