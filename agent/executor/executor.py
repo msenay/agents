@@ -39,6 +39,7 @@ class ExecutorConfig:
     # Execution Parameters
     DEFAULT_TIMEOUT = 30  # seconds
     MAX_TIMEOUT = 300  # 5 minutes max
+    MAX_TOKENS = 4000
 
 
 class ExecutorAgent(CoreAgent):
