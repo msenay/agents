@@ -113,6 +113,10 @@ class ExecutorAgent(CoreAgent):
         """Get the system prompt for the agent"""
         return SYSTEM_PROMPT
     
+    def chat(self, message: str) -> str:
+        """Chat interface - delegates to invoke"""
+        return self.invoke(message)
+    
     def execute_code(self, code: str, timeout: int = None) -> Dict[str, Any]:
         """
         Execute Python code safely

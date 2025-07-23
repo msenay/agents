@@ -120,6 +120,10 @@ class CoderAgent(CoreAgent):
         """Get the system prompt for the agent"""
         return SYSTEM_PROMPT
     
+    def chat(self, message: str) -> str:
+        """Chat interface - delegates to invoke"""
+        return self.invoke(message)
+    
     def generate_from_spec(self, spec: str, agent_type: str = "simple", use_our_core: bool = False) -> Dict[str, Any]:
         """
         Generate agent code from specifications

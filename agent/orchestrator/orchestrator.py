@@ -61,6 +61,10 @@ class OrchestratorAgent(CoreAgent):
             "executor": ExecutorAgent(session_id=f"{self.session_id}_executor")
         }
         
+        # Add name attributes to agents
+        for name, agent in self.agents.items():
+            agent.name = name
+        
         # Workflow state
         self.workflow_state = {
             "current_step": None,
@@ -95,9 +99,9 @@ class OrchestratorAgent(CoreAgent):
             tools=tools,
             system_prompt=SYSTEM_PROMPT,
             
-            # Enable supervisor pattern by default
-            enable_supervisor=True if coordination_pattern == "supervisor" else False,
-            agents=self.agents if coordination_pattern == "supervisor" else None,
+            # Enable supervisor pattern only if we have agents
+            enable_supervisor=False,  # We'll handle coordination manually
+            agents=None,  # Don't pass agents to avoid supervisor initialization issues
             
             # Enable memory for workflow context
             enable_memory=True,
@@ -195,7 +199,7 @@ class OrchestratorAgent(CoreAgent):
     
     def _orchestrate_supervisor(self, request: str, workflow_type: str) -> Dict[str, Any]:
         """Orchestrate using supervisor pattern (sequential with quality control)"""
-        # Use the chat interface which has access to tools
+        # Use the invoke method which is available from CoreAgent
         supervisor_request = f"""
 Orchestrate this request using the supervisor pattern:
 
@@ -211,7 +215,7 @@ Steps:
 Remember to use the tools available to you for coordination.
 """
         
-        response = self.chat(supervisor_request)
+        response = self.invoke(supervisor_request)
         return {"supervisor_result": response}
     
     def _orchestrate_swarm(self, request: str, workflow_type: str) -> Dict[str, Any]:
@@ -231,7 +235,7 @@ Steps:
 Focus on maximizing parallelism while ensuring correctness.
 """
         
-        response = self.chat(swarm_request)
+        response = self.invoke(swarm_request)
         return {"swarm_result": response}
     
     def _orchestrate_pipeline(self, request: str, workflow_type: str) -> Dict[str, Any]:
@@ -251,7 +255,7 @@ Execute in strict sequence:
 Each step must complete successfully before proceeding.
 """
         
-        response = self.chat(pipeline_request)
+        response = self.invoke(pipeline_request)
         return {"pipeline_result": response}
     
     def _orchestrate_adaptive(self, request: str, workflow_type: str) -> Dict[str, Any]:
@@ -270,7 +274,7 @@ Consider:
 Then orchestrate using the chosen pattern.
 """
         
-        response = self.chat(adaptive_request)
+        response = self.invoke(adaptive_request)
         return {"adaptive_result": response}
     
     def _create_final_report(self, result: Dict[str, Any]) -> str:
@@ -365,10 +369,14 @@ Then orchestrate using the chosen pattern.
         
         for name, agent in self.agents.items():
             try:
-                agent_status = agent.get_status()
+                # Add name attribute if missing
+                if not hasattr(agent, 'name'):
+                    agent.name = name
+                
+                agent_status = agent.get_status() if hasattr(agent, 'get_status') else {"name": name, "status": "active"}
                 status["agents"][name] = agent_status
-            except:
-                status["agents"][name] = {"status": "unknown"}
+            except Exception as e:
+                status["agents"][name] = {"name": name, "status": "unknown", "error": str(e)}
         
         return status
     
@@ -384,6 +392,10 @@ Then orchestrate using the chosen pattern.
             "end_time": None
         }
         print("🔄 Workflow state reset")
+    
+    def chat(self, message: str) -> str:
+        """Chat interface for the orchestrator - delegates to invoke"""
+        return self.invoke(message)
     
     # Direct agent access methods
     def coder(self, task: str) -> str:

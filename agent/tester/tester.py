@@ -109,6 +109,10 @@ class TesterAgent(CoreAgent):
         """Get the system prompt for the agent"""
         return SYSTEM_PROMPT
     
+    def chat(self, message: str) -> str:
+        """Chat interface - delegates to invoke"""
+        return self.invoke(message)
+    
     def generate_tests(self, code: str, framework: str = "pytest", test_type: str = "unit") -> Dict[str, Any]:
         """
         Generate tests for given code

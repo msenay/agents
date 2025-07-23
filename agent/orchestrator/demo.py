@@ -392,9 +392,18 @@ def demo_interactive_orchestration():
                 continue
             
             print("\n🚀 Orchestrating your request...\n")
-            response = orchestrator.chat(request)
-            print("\n📊 Response:")
-            print(response)
+            try:
+                response = orchestrator.chat(request)
+                print("\n📊 Response:")
+                print(response)
+            except AttributeError as e:
+                if "'chat'" in str(e):
+                    # Fallback to invoke if chat is not available
+                    response = orchestrator.invoke(request)
+                    print("\n📊 Response:")
+                    print(response)
+                else:
+                    raise
             
         except KeyboardInterrupt:
             print("\n\nExiting interactive mode...")
