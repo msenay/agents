@@ -1,21 +1,10 @@
 from typing import List
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+from agent.coder.models import AgentSpecInput, CodeInput
 from agent.coder.prompts import CORE_AGENT_SIMPLE_PROMPT, CORE_AGENT_WITH_TOOLS_PROMPT, MULTI_AGENT_PROMPT, SIMPLE_AGENT_PROMPT, WITH_TOOLS_AGENT_PROMPT
-
-
-# Tool Input Schemas
-class AgentSpecInput(BaseModel):
-    """Input schema for agent generation from specifications"""
-    agent_spec: str = Field(description="Detailed agent specifications (like a recipe)")
-    agent_type: str = Field(default="simple", description="Type: simple, with_tools, multi_agent")
-    use_our_core: bool = Field(default=False, description="Whether to use Core Agent infrastructure")
-
-
-class CodeInput(BaseModel):
-    """Input schema for code operations"""
-    code: str = Field(description="Python code to process")
 
 
 def create_agent_generator_tool(model):
