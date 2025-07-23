@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 # Core Agent Infrastructure
 from core.core_agent import CoreAgent
 from core.config import AgentConfig
-from langchain_openai import AzureChatOpenAI
+from core.llm_factory import get_coder_llm
 from langchain_core.messages import HumanMessage
 
 # Import prompts
@@ -45,19 +45,7 @@ class CodeInput(BaseModel):
     code: str = Field(description="Python code to process")
 
 
-class CoderConfig:
-    """Coder Agent Configuration"""
-    
-    # Azure OpenAI Configuration
-    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "https://oai-202-fbeta-dev.openai.azure.com/")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4")
-    OPENAI_API_VERSION = "2023-12-01-preview"
-    GPT4_MODEL_NAME = "gpt-4o"
-    GPT4_DEPLOYMENT_NAME = "gpt4o"
-    
-    # Model Parameters
-    TEMPERATURE = 0.1  # Low temperature for consistent code generation
-    MAX_TOKENS = 4000
+# CoderConfig removed - now using LLM Factory
 
 
 class CoderAgent(CoreAgent):
@@ -84,16 +72,8 @@ class CoderAgent(CoreAgent):
         if session_id is None:
             session_id = f"coder_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create Azure OpenAI model
-        model = AzureChatOpenAI(
-            azure_endpoint=CoderConfig.AZURE_OPENAI_ENDPOINT,
-            api_key=CoderConfig.OPENAI_API_KEY,
-            api_version=CoderConfig.OPENAI_API_VERSION,
-            model=CoderConfig.GPT4_MODEL_NAME,
-            deployment_name=CoderConfig.GPT4_DEPLOYMENT_NAME,
-            temperature=CoderConfig.TEMPERATURE,
-            max_tokens=CoderConfig.MAX_TOKENS
-        )
+        # Create model using LLM Factory
+        model = get_coder_llm()
         
         # Create tools using the dispatcher from tools.py
         tools = get_coder_tools(model)  # Gets all 3 tools: agent_generator, optimize_agent, format_code

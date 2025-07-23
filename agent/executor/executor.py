@@ -26,27 +26,16 @@ sys.path.insert(0, '/workspace')
 # Core Agent Infrastructure
 from core.core_agent import CoreAgent
 from core.config import AgentConfig
-from langchain_openai import AzureChatOpenAI
+from core.llm_factory import get_executor_llm
 
 # Import prompts and tools
 from agent.executor.prompts import SYSTEM_PROMPT
 from agent.executor.tools import get_executor_tools, get_core_executor_tools
 
 
+# ExecutorConfig removed - now using LLM Factory
 class ExecutorConfig:
-    """Executor Agent Configuration"""
-    
-    # Azure OpenAI Configuration
-    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "https://oai-202-fbeta-dev.openai.azure.com/")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4")
-    OPENAI_API_VERSION = "2023-12-01-preview"
-    GPT4_MODEL_NAME = "gpt-4o"
-    GPT4_DEPLOYMENT_NAME = "gpt4o"
-    
-    # Model Parameters
-    TEMPERATURE = 0.1  # Low temperature for consistent execution
-    MAX_TOKENS = 4000
-    
+    """Executor Agent Configuration - only execution parameters"""
     # Execution Parameters
     DEFAULT_TIMEOUT = 30  # seconds
     MAX_TIMEOUT = 300  # 5 minutes max
@@ -74,16 +63,8 @@ class ExecutorAgent(CoreAgent):
         if session_id is None:
             session_id = f"executor_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create Azure OpenAI model
-        model = AzureChatOpenAI(
-            azure_endpoint=ExecutorConfig.AZURE_OPENAI_ENDPOINT,
-            api_key=ExecutorConfig.OPENAI_API_KEY,
-            api_version=ExecutorConfig.OPENAI_API_VERSION,
-            model=ExecutorConfig.GPT4_MODEL_NAME,
-            deployment_name=ExecutorConfig.GPT4_DEPLOYMENT_NAME,
-            temperature=ExecutorConfig.TEMPERATURE,
-            max_tokens=ExecutorConfig.MAX_TOKENS
-        )
+        # Create model using LLM Factory
+        model = get_executor_llm()
         
         # Create tools - use core tools by default for efficiency
         if use_all_tools:
