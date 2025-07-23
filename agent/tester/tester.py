@@ -76,7 +76,7 @@ class TesterAgent(CoreAgent):
             enable_memory=True,  # Remember test patterns and strategies
             memory_backend="inmemory",
             memory_types=["short_term", "long_term"],
-            max_tokens=TesterConfig.MAX_TOKENS
+            max_tokens=3000  # Default max tokens for tester
         )
         
         # Initialize parent CoreAgent

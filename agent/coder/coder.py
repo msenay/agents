@@ -87,7 +87,7 @@ class CoderAgent(CoreAgent):
             enable_memory=True,  # Remember successful patterns
             memory_backend="inmemory",
             memory_types=["short_term", "long_term"],
-            max_tokens=CoderConfig.MAX_TOKENS
+            max_tokens=4000  # Default max tokens for coder
         )
         
         # Initialize parent CoreAgent

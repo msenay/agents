@@ -8,6 +8,29 @@ and ExecutorAgent in harmony for complete development workflows.
 import os
 import sys
 from typing import Dict, Any
+from pathlib import Path
+
+# Load environment variables from .env file
+def load_env():
+    """Load environment variables from .env file if it exists"""
+    env_path = Path(__file__).parent.parent.parent / '.env'
+    if env_path.exists():
+        print("📋 Loading environment variables from .env file...")
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        # Remove quotes if present
+                        value = value.strip('"').strip("'")
+                        os.environ[key] = value
+        print("✅ Environment variables loaded!")
+    else:
+        print("⚠️  No .env file found. Using system environment variables.")
+
+# Load environment variables
+load_env()
 
 # Try to import the OrchestratorAgent
 try:
