@@ -20,6 +20,25 @@ from agent.orchestrator.tools import get_orchestrator_tools
 from langchain_openai import AzureChatOpenAI
 
 
+class OrchestratorConfig:
+    """Executor Agent Configuration"""
+
+    # Azure OpenAI Configuration
+    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "https://oai-202-fbeta-dev.openai.azure.com/")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4")
+    OPENAI_API_VERSION = "2023-12-01-preview"
+    GPT4_MODEL_NAME = "gpt-4o"
+    GPT4_DEPLOYMENT_NAME = "gpt4o"
+
+    # Model Parameters
+    TEMPERATURE = 0.1  # Low temperature for consistent execution
+    MAX_TOKENS = 4000
+
+    # Execution Parameters
+    DEFAULT_TIMEOUT = 30  # seconds
+    MAX_TIMEOUT = 300  # 5 minutes max
+
+
 class OrchestratorAgent(CoreAgent):
     """
     OrchestratorAgent coordinates multiple specialized agents to complete complex workflows.
@@ -135,16 +154,13 @@ class OrchestratorAgent(CoreAgent):
     def _get_model(self):
         """Get the configured model for the orchestrator"""
         return AzureChatOpenAI(
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", "https://your-endpoint.openai.azure.com/"),
-            openai_api_key=os.getenv("OPENAI_API_KEY", "your-api-key"),
-            openai_api_version=os.getenv("OPENAI_API_VERSION", "2023-12-01-preview"),
-            deployment_name=os.getenv("GPT4_DEPLOYMENT_NAME", "gpt4"),
-            model_name=os.getenv("GPT4_MODEL_NAME", "gpt-4"),
-            temperature=0.3,  # Balanced for coordination
-            max_tokens=4000,
-            timeout=60,
-            max_retries=self.max_retries,
-            streaming=True
+            azure_endpoint=OrchestratorConfig.AZURE_OPENAI_ENDPOINT,
+            api_key=OrchestratorConfig.OPENAI_API_KEY,
+            api_version=OrchestratorConfig.OPENAI_API_VERSION,
+            model=OrchestratorConfig.GPT4_MODEL_NAME,
+            deployment_name=OrchestratorConfig.GPT4_DEPLOYMENT_NAME,
+            temperature=OrchestratorConfig.TEMPERATURE,
+            max_tokens=OrchestratorConfig.MAX_TOKENS
         )
     
     def orchestrate(self, request: str, workflow_type: str = "auto") -> Dict[str, Any]:
