@@ -454,8 +454,12 @@ def main():
     print("\n" + "="*60)
     print("🎭 ORCHESTRATOR AGENT DEMO SUITE")
     print("="*60)
-    print("\nThis demo showcases the OrchestratorAgent's ability to coordinate")
-    print("multiple agents (Coder, Tester, Executor) in harmony.\n")
+    print("\nThe OrchestratorAgent coordinates multiple specialized agents to handle")
+    print("complex software development tasks efficiently. It manages:")
+    print("  • CoderAgent - Generates and analyzes code")
+    print("  • TesterAgent - Creates comprehensive test suites")
+    print("  • ExecutorAgent - Runs and validates code execution")
+    print("\nUsing intelligent coordination patterns for optimal workflow management.\n")
     
     # Check environment
     ready = check_environment()
@@ -481,8 +485,48 @@ def main():
     
     print("\n" + "="*60)
     print("📋 Available Demos:")
-    for i, (name, _) in enumerate(demos):
-        print(f"{i+1}. {name}")
+    print("="*60)
+    
+    demo_descriptions = [
+        ("Full Development Workflow", 
+         "Complete software development cycle: Code → Test → Execute\n"
+         "   Pattern: Supervisor (sequential with quality control)\n"
+         "   Best for: Building new features from scratch"),
+        
+        ("Code Review Workflow",
+         "Analyze and improve existing code quality\n"
+         "   Pattern: Pipeline (efficient sequential processing)\n"
+         "   Best for: Refactoring, optimization, code improvements"),
+        
+        ("Bug Fix Workflow",
+         "Identify and fix reported bugs systematically\n"
+         "   Pattern: Pipeline (quick sequential fixes)\n"
+         "   Best for: Debugging, error resolution, hotfixes"),
+        
+        ("Parallel Tasks (Swarm)",
+         "Execute multiple independent tasks simultaneously\n"
+         "   Pattern: Swarm (parallel execution)\n"
+         "   Best for: Microservices, independent modules, speed-critical tasks"),
+        
+        ("Adaptive Pattern",
+         "Automatically selects the best coordination pattern\n"
+         "   Pattern: Dynamic (analyzes and chooses)\n"
+         "   Best for: Mixed complexity tasks, flexible requirements"),
+        
+        ("Direct Agent Access",
+         "Use individual agents without orchestration\n"
+         "   Pattern: None (direct agent usage)\n"
+         "   Best for: Single-purpose tasks, quick operations"),
+        
+        ("Interactive Mode",
+         "Step-by-step execution with user guidance\n"
+         "   Pattern: User-driven coordination\n"
+         "   Best for: Exploratory development, learning, custom workflows")
+    ]
+    
+    for i, (name, desc) in enumerate(demo_descriptions):
+        print(f"\n{i+1}. {name}")
+        print(f"   {desc}")
     
     while True:
         choice = input("\nSelect a demo (1-7) or 'all' to run all, 'exit' to quit: ")
