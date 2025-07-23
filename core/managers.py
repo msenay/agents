@@ -747,7 +747,7 @@ class SupervisorManager:
         self.supervisor_graph = None
         self.swarm_graph = None
         self.handoff_graph = None
-        self.agents = self.config.agents.copy()  # Initialize from config
+        self.agents = self.config.agents.copy() if self.config.agents else {}  # Initialize from config
         self.handoff_tools = {}
 
         # Test compatibility properties
@@ -781,7 +781,7 @@ class SupervisorManager:
                 agents_list = list(self.config.agents.values())
                 self.swarm_graph = create_swarm(
                     agents=agents_list,
-                    default_active_agent=self.config.default_active_agent or list(self.config.agents.keys())[0]
+                    default_active_agent=self.config.default_active_agent or (list(self.config.agents.keys())[0] if self.config.agents else None)
                 ).compile()
                 logger.info("Swarm graph initialized")
         except Exception as e:
@@ -824,7 +824,7 @@ class SupervisorManager:
             return handoff_tool
 
         # Create handoff tools for each agent
-        for agent_name in self.config.agents.keys():
+        for agent_name in (self.config.agents.keys() if self.config.agents else []):
             self.handoff_tools[agent_name] = create_handoff_tool(
                 agent_name=agent_name,
                 description=f"Transfer user to the {agent_name} assistant."
@@ -837,7 +837,7 @@ class SupervisorManager:
         self.handoff_graph = StateGraph(MessagesState)
 
         # Add all agents as nodes (convert CoreAgent to callable if needed)
-        for agent_name, agent in self.config.agents.items():
+        for agent_name, agent in (self.config.agents.items() if self.config.agents else []):
             if hasattr(agent, 'compiled_graph') and agent.compiled_graph:
                 self.handoff_graph.add_node(agent_name, agent.compiled_graph)
             elif hasattr(agent, 'graph') and agent.graph:
@@ -859,7 +859,7 @@ class SupervisorManager:
             self.handoff_graph.add_edge(START, self.config.default_active_agent)
         else:
             # Default to first agent
-            first_agent = list(self.config.agents.keys())[0]
+            first_agent = list(self.config.agents.keys())[0] if self.config.agents else None
             self.handoff_graph.add_edge(START, first_agent)
 
         self.handoff_graph = self.handoff_graph.compile()
