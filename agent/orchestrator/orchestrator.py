@@ -126,7 +126,7 @@ class OrchestratorAgent(CoreAgent):
         super().__init__(config)
         
         # Populate tools dictionary after initialization
-        self.tools_dict = {tool.name: tool for tool in self.get_tools()}
+        self.tools_dict = {tool.name: tool for tool in tools}
         
         print(f"✅ OrchestratorAgent initialized with pattern: {coordination_pattern}")
         print(f"📋 Session ID: {self.session_id}")
