@@ -7,13 +7,13 @@ in harmony for complete development workflows.
 
 import os
 import uuid
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 
+from agent.coder.coder import CoderAgent
+from agent.executor.executor import ExecutorAgent
+from agent.tester.tester import TesterAgent
 from core import CoreAgent, AgentConfig
-from agent.coder import CoderAgent
-from agent.tester import TesterAgent
-from agent.executor import ExecutorAgent
 
 from agent.orchestrator.prompts import SYSTEM_PROMPT
 from agent.orchestrator.tools import get_orchestrator_tools

@@ -10,12 +10,9 @@ import sys
 from typing import Dict, Any
 
 # Try to import the OrchestratorAgent
-try:
-    from agent.orchestrator import OrchestratorAgent
-    DEPENDENCIES_AVAILABLE = True
-except ImportError as e:
-    DEPENDENCIES_AVAILABLE = False
-    IMPORT_ERROR = str(e)
+
+from orchestrator import OrchestratorAgent
+
 
 
 def print_section(title: str):
@@ -39,26 +36,12 @@ def check_environment():
         print("✅ OPENAI_API_KEY is set")
     else:
         print("⚠️  OPENAI_API_KEY not set (required for actual execution)")
-    
-    # Check dependencies
-    if DEPENDENCIES_AVAILABLE:
-        print("✅ Dependencies available")
-    else:
-        print(f"⚠️  Missing dependencies: {IMPORT_ERROR}")
-        print("   Run: pip install -r requirements.txt")
-    
-    print("")
-    return DEPENDENCIES_AVAILABLE and api_key_set
+
 
 
 def create_orchestrator(pattern="supervisor"):
     """Create an orchestrator instance if possible"""
-    if DEPENDENCIES_AVAILABLE:
-        try:
-            return OrchestratorAgent(coordination_pattern=pattern, enable_monitoring=True)
-        except Exception as e:
-            print(f"⚠️  Could not create orchestrator: {e}")
-    return None
+    return OrchestratorAgent(coordination_pattern=pattern, enable_monitoring=True)
 
 
 def demo_full_development_workflow():
@@ -389,22 +372,6 @@ def demo_direct_agent_access():
 def demo_interactive_orchestration():
     """Demo: Interactive orchestration with user input"""
     print_section("Interactive Orchestration")
-    
-    if not DEPENDENCIES_AVAILABLE:
-        print("⚠️  Interactive mode requires dependencies to be installed.")
-        print("Showing what interactive mode offers:\n")
-        print("💬 Interactive Features:")
-        print("- Chat with the orchestrator")
-        print("- Request any development task")
-        print("- See real-time orchestration")
-        print("- Monitor agent status")
-        print("- Choose coordination patterns")
-        print("\nExample requests you could make:")
-        print('- "Create a password validator with tests"')
-        print('- "Review and optimize my sorting algorithm"')
-        print('- "Build a simple CLI tool for file management"')
-        return
-    
     orchestrator = create_orchestrator()
     if not orchestrator:
         return
