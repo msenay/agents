@@ -13,14 +13,16 @@ Key Features:
 
 The agent uses its LLM to intelligently convert specifications into working code.
 """
-from typing import Dict, Any
-from datetime import datetime
 
-from agent.coder.models import CoderConfig
+import os
+import sys
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+from pydantic import BaseModel, Field
 # Core Agent Infrastructure
 from core.core_agent import CoreAgent
 from core.config import AgentConfig
-from langchain_openai import AzureChatOpenAI
+from core.llm_factory import get_coder_llm
 from langchain_core.messages import HumanMessage
 
 # Import prompts
@@ -28,6 +30,22 @@ from agent.coder.prompts import SYSTEM_PROMPT
 
 # Import tools from tools.py
 from agent.coder.tools import get_coder_tools
+
+
+# Tool Input Schemas
+class AgentSpecInput(BaseModel):
+    """Input schema for agent generation from specifications"""
+    agent_spec: str = Field(description="Detailed agent specifications/requirements (like a recipe)")
+    agent_type: str = Field(default="simple", description="Type: simple, with_tools, multi_agent")
+    use_our_core: bool = Field(default=False, description="Use Core Agent infrastructure (default: False)")
+
+
+class CodeInput(BaseModel):
+    """Input schema for code operations"""
+    code: str = Field(description="Python code to process")
+
+
+# CoderConfig removed - now using LLM Factory
 
 
 class CoderAgent(CoreAgent):
@@ -54,16 +72,8 @@ class CoderAgent(CoreAgent):
         if session_id is None:
             session_id = f"coder_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create Azure OpenAI model
-        model = AzureChatOpenAI(
-            azure_endpoint=CoderConfig.AZURE_OPENAI_ENDPOINT,
-            api_key=CoderConfig.OPENAI_API_KEY,
-            api_version=CoderConfig.OPENAI_API_VERSION,
-            model=CoderConfig.GPT4_MODEL_NAME,
-            azure_deployment=CoderConfig.GPT4_DEPLOYMENT_NAME,
-            temperature=CoderConfig.TEMPERATURE,
-            max_tokens=CoderConfig.MAX_TOKENS
-        )
+        # Create model using LLM Factory
+        model = get_coder_llm()
         
         # Create tools using the dispatcher from tools.py
         tools = get_coder_tools(model)  # Gets all 3 tools: agent_generator, optimize_agent, format_code
@@ -77,7 +87,7 @@ class CoderAgent(CoreAgent):
             enable_memory=True,  # Remember successful patterns
             memory_backend="inmemory",
             memory_types=["short_term", "long_term"],
-            max_tokens=CoderConfig.MAX_TOKENS
+            max_tokens=4000  # Default max tokens for coder
         )
         
         # Initialize parent CoreAgent
@@ -89,6 +99,10 @@ class CoderAgent(CoreAgent):
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the agent"""
         return SYSTEM_PROMPT
+    
+    def chat(self, message: str) -> str:
+        """Chat interface - delegates to invoke"""
+        return self.invoke(message)
     
     def generate_from_spec(self, spec: str, agent_type: str = "simple", use_our_core: bool = False) -> Dict[str, Any]:
         """

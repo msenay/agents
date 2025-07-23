@@ -26,26 +26,14 @@ sys.path.insert(0, '/workspace')
 # Core Agent Infrastructure
 from core.core_agent import CoreAgent
 from core.config import AgentConfig
-from langchain_openai import AzureChatOpenAI
+from core.llm_factory import get_tester_llm
 
 # Import prompts and tools
 from agent.tester.prompts import SYSTEM_PROMPT
 from agent.tester.tools import get_tester_tools, get_core_tester_tools
 
 
-class TesterConfig:
-    """Tester Agent Configuration"""
-    
-    # Azure OpenAI Configuration
-    AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "https://oai-202-fbeta-dev.openai.azure.com/")
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4")
-    OPENAI_API_VERSION = "2023-12-01-preview"
-    GPT4_MODEL_NAME = "gpt-4o"
-    GPT4_DEPLOYMENT_NAME = "gpt4o"
-    
-    # Model Parameters
-    TEMPERATURE = 0.1  # Low temperature for consistent test generation
-    MAX_TOKENS = 4000
+# TesterConfig removed - now using LLM Factory
 
 
 class TesterAgent(CoreAgent):
@@ -70,16 +58,8 @@ class TesterAgent(CoreAgent):
         if session_id is None:
             session_id = f"tester_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Create Azure OpenAI model
-        model = AzureChatOpenAI(
-            azure_endpoint=TesterConfig.AZURE_OPENAI_ENDPOINT,
-            api_key=TesterConfig.OPENAI_API_KEY,
-            api_version=TesterConfig.OPENAI_API_VERSION,
-            model=TesterConfig.GPT4_MODEL_NAME,
-            deployment_name=TesterConfig.GPT4_DEPLOYMENT_NAME,
-            temperature=TesterConfig.TEMPERATURE,
-            max_tokens=TesterConfig.MAX_TOKENS
-        )
+        # Create model using LLM Factory
+        model = get_tester_llm()
         
         # Create tools - use core tools by default for efficiency
         if use_all_tools:
@@ -96,7 +76,7 @@ class TesterAgent(CoreAgent):
             enable_memory=True,  # Remember test patterns and strategies
             memory_backend="inmemory",
             memory_types=["short_term", "long_term"],
-            max_tokens=TesterConfig.MAX_TOKENS
+            max_tokens=3000  # Default max tokens for tester
         )
         
         # Initialize parent CoreAgent
@@ -108,6 +88,10 @@ class TesterAgent(CoreAgent):
     def _get_system_prompt(self) -> str:
         """Get the system prompt for the agent"""
         return SYSTEM_PROMPT
+    
+    def chat(self, message: str) -> str:
+        """Chat interface - delegates to invoke"""
+        return self.invoke(message)
     
     def generate_tests(self, code: str, framework: str = "pytest", test_type: str = "unit") -> Dict[str, Any]:
         """

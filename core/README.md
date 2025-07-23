@@ -13,6 +13,7 @@
 - [Quick Start](#quick-start)
 - [Creating Agents](#creating-agents)
 - [Configuration Examples](#configuration-examples)
+- [Specialized Agents](#specialized-agents)
 - [Architecture](#architecture)
 - [Advanced Features](#advanced-features)
 - [Best Practices](#best-practices)
@@ -64,6 +65,27 @@ pip install -r requirements.txt
 ```
 
 ### Basic Usage
+
+#### Option 1: Use Pre-built Specialized Agents
+
+```python
+# Use the CoderAgent for development tasks
+from agent.coder import CoderAgent
+coder = CoderAgent()
+response = coder.chat("Create a simple data processing agent")
+
+# Use the TesterAgent for testing
+from agent.tester import TesterAgent
+tester = TesterAgent()
+response = tester.chat("Write tests for a user authentication function")
+
+# Use the ExecutorAgent for code execution
+from agent.executor import ExecutorAgent
+executor = ExecutorAgent()
+response = executor.chat("Run a simple Python calculation")
+```
+
+#### Option 2: Create Custom Agents with CoreAgent
 
 ```python
 from core import CoreAgent, AgentConfig
@@ -205,8 +227,15 @@ coder = CoreAgent(coder_config)
 An agent specialized in writing and executing tests:
 
 ```python
+from agent.tester import TesterAgent
+
+# The TesterAgent is now a specialized agent with comprehensive testing tools
+# It includes tools for test generation, fixtures, mocking, and coverage analysis
+tester = TesterAgent()
+
+# Or create with custom configuration
 unittester_config = AgentConfig(
-    name="UnitTesterAgent",
+    name="TesterAgent",
     description="Expert in test-driven development and quality assurance",
     
     # Model configuration
@@ -254,6 +283,13 @@ tester = CoreAgent(unittester_config)
 An agent for safely executing and monitoring code:
 
 ```python
+from agent.executor import ExecutorAgent
+
+# The ExecutorAgent is now a specialized agent with built-in tools
+# It provides safe code execution with comprehensive test running capabilities
+executor = ExecutorAgent()
+
+# Or create with custom configuration
 executor_config = AgentConfig(
     name="ExecutorAgent",
     description="Safe code execution and monitoring specialist",
@@ -356,6 +392,114 @@ result = supervisor.coordinate_task(
     "Create a Python function to calculate fibonacci numbers with tests"
 )
 ```
+
+## 🎯 Specialized Agents
+
+The framework includes several pre-built specialized agents that extend the CoreAgent with domain-specific tools and capabilities:
+
+### 🚀 **CoderAgent**
+A comprehensive agent for generating, analyzing, and optimizing LangGraph agents.
+
+```python
+from agent.coder import CoderAgent
+
+# Initialize with 12 specialized development tools
+coder = CoderAgent(session_id="dev_session")
+
+# Generate a new agent
+result = coder.generate_agent(
+    template_type="simple",
+    agent_name="DataProcessor",
+    purpose="Process and analyze data",
+    use_our_core=True  # Use CoreAgent infrastructure
+)
+```
+
+**Key Features:**
+- 12 specialized tools for agent development
+- Supports both standalone LangGraph and CoreAgent modes
+- Intelligent tool chaining for complex workflows
+- Auto-generates tests, docs, and deployment configs
+
+### 🧪 **TesterAgent**
+Expert in generating comprehensive unit tests with pytest.
+
+```python
+from agent.tester import TesterAgent
+
+# Initialize with testing-specific tools
+tester = TesterAgent()
+
+# Generate tests for existing code
+response = tester.chat("""
+Generate comprehensive unit tests for this function:
+
+def calculate_fibonacci(n):
+    if n <= 1:
+        return n
+    return calculate_fibonacci(n-1) + calculate_fibonacci(n-2)
+""")
+```
+
+**Key Features:**
+- Generates pytest-compatible test suites
+- Creates fixtures and mocks automatically
+- Identifies edge cases and error conditions
+- Follows testing best practices
+
+### ⚙️ **ExecutorAgent**
+Safely executes code and runs tests with comprehensive monitoring.
+
+```python
+from agent.executor import ExecutorAgent
+
+# Initialize with execution tools
+executor = ExecutorAgent()
+
+# Execute code safely
+response = executor.chat("""
+Execute this code and show me the output:
+
+import numpy as np
+data = np.random.randn(1000)
+print(f"Mean: {data.mean():.2f}")
+print(f"Std: {data.std():.2f}")
+""")
+```
+
+**Key Features:**
+- Safe code execution with sandboxing
+- Resource monitoring and limits
+- Test execution with coverage reports
+- Error handling and recovery
+
+### 🎭 **OrchestratorAgent**
+Coordinates multiple agents for complete development workflows.
+
+```python
+from agent.orchestrator import OrchestratorAgent
+
+# Initialize with supervisor pattern (default)
+orchestrator = OrchestratorAgent()
+
+# Orchestrate a complete workflow
+result = orchestrator.orchestrate(
+    "Create a REST API with authentication and tests",
+    workflow_type="full_development"
+)
+
+# Or use different coordination patterns
+orchestrator_swarm = OrchestratorAgent(coordination_pattern="swarm")  # Parallel
+orchestrator_pipeline = OrchestratorAgent(coordination_pattern="pipeline")  # Sequential
+orchestrator_adaptive = OrchestratorAgent(coordination_pattern="adaptive")  # Auto-select
+```
+
+**Key Features:**
+- 4 coordination patterns (Supervisor, Swarm, Pipeline, Adaptive)
+- Manages CoderAgent, TesterAgent, and ExecutorAgent in harmony
+- Built-in workflow templates
+- Quality control between steps
+- Progress monitoring and reporting
 
 ## 🏗️ Architecture
 
