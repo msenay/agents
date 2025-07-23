@@ -76,6 +76,9 @@ class OrchestratorAgent(CoreAgent):
             "end_time": None
         }
         
+        # Create tools dictionary for easy access
+        self.tools_dict = {}
+        
         # Configure model
         model = self._get_model()
         
@@ -122,6 +125,9 @@ class OrchestratorAgent(CoreAgent):
         # Initialize CoreAgent
         super().__init__(config)
         
+        # Populate tools dictionary after initialization
+        self.tools_dict = {tool.name: tool for tool in self.get_tools()}
+        
         print(f"✅ OrchestratorAgent initialized with pattern: {coordination_pattern}")
         print(f"📋 Session ID: {self.session_id}")
         print(f"🛠️ Tools: {[tool.name for tool in tools]}")
@@ -158,6 +164,9 @@ class OrchestratorAgent(CoreAgent):
         self.workflow_state["start_time"] = datetime.now()
         self.workflow_state["request"] = request
         self.workflow_state["workflow_type"] = workflow_type
+        self.workflow_state["completed_tasks"] = 0
+        self.workflow_state["errors"] = []
+        self.workflow_state["status"] = "running"
         
         try:
             # Use the appropriate coordination pattern
@@ -199,83 +208,158 @@ class OrchestratorAgent(CoreAgent):
     
     def _orchestrate_supervisor(self, request: str, workflow_type: str) -> Dict[str, Any]:
         """Orchestrate using supervisor pattern (sequential with quality control)"""
-        # Use the invoke method which is available from CoreAgent
-        supervisor_request = f"""
-Orchestrate this request using the supervisor pattern:
-
-Request: {request}
-Workflow Type: {workflow_type}
-
-Steps:
-1. First, plan the workflow using the plan_workflow tool
-2. Then delegate tasks to appropriate agents sequentially
-3. Check quality after each step
-4. Aggregate final results
-
-Remember to use the tools available to you for coordination.
-"""
+        results = {}
         
-        response = self.invoke(supervisor_request)
-        return {"supervisor_result": response}
+        # Step 1: Plan the workflow
+        workflow_plan = self.tools_dict["plan_workflow"](
+            request=request,
+            workflow_type=workflow_type,
+            available_agents=list(self.agents.keys())
+        )
+        self.workflow_state["current_step"] = "Workflow planned"
+        results["workflow_plan"] = workflow_plan
+        
+        # Step 2: Execute tasks sequentially
+        task_results = []
+        for i, task in enumerate(workflow_plan.get("tasks", [])):
+            # Delegate task
+            task_result = self.tools_dict["delegate_task"](
+                task=task["description"],
+                agent=task["agent"],
+                context=str(task_results),
+                requirements=task.get("requirements", [])
+            )
+            
+            # Check quality
+            quality_result = self.tools_dict["check_quality"](
+                task=task["description"],
+                result=task_result,
+                criteria=task.get("success_criteria", [])
+            )
+            
+            task_results.append({
+                "task": task,
+                "result": task_result,
+                "quality": quality_result
+            })
+            
+            self.workflow_state["completed_tasks"] += 1
+            
+            # Stop if quality check fails
+            if not quality_result.get("passed", True):
+                self.workflow_state["errors"].append(f"Quality check failed for task {i+1}")
+                break
+        
+        # Step 3: Aggregate results
+        final_result = self.tools_dict["aggregate_results"](
+            results=task_results,
+            original_request=request
+        )
+        
+        return final_result
     
     def _orchestrate_swarm(self, request: str, workflow_type: str) -> Dict[str, Any]:
         """Orchestrate using swarm pattern (parallel execution)"""
-        swarm_request = f"""
-Orchestrate this request using the swarm pattern for parallel execution:
-
-Request: {request}
-Workflow Type: {workflow_type}
-
-Steps:
-1. Identify tasks that can be executed in parallel
-2. Use the execute_parallel tool to coordinate parallel tasks
-3. Synchronize results when needed
-4. Aggregate final results
-
-Focus on maximizing parallelism while ensuring correctness.
-"""
+        # Step 1: Plan the workflow
+        workflow_plan = self.tools_dict["plan_workflow"](
+            request=request,
+            workflow_type=workflow_type,
+            available_agents=list(self.agents.keys())
+        )
         
-        response = self.invoke(swarm_request)
-        return {"swarm_result": response}
+        # Step 2: Execute tasks in parallel
+        parallel_tasks = []
+        for task in workflow_plan.get("tasks", []):
+            parallel_tasks.append({
+                "agent": task["agent"],
+                "task": task["description"],
+                "requirements": task.get("requirements", [])
+            })
+        
+        # Execute all tasks in parallel
+        parallel_results = self.tools_dict["execute_parallel"](
+            tasks=parallel_tasks,
+            timeout=300  # 5 minutes timeout
+        )
+        
+        # Step 3: Aggregate results
+        final_result = self.tools_dict["aggregate_results"](
+            results=parallel_results,
+            original_request=request
+        )
+        
+        self.workflow_state["completed_tasks"] = len(parallel_tasks)
+        
+        return final_result
     
     def _orchestrate_pipeline(self, request: str, workflow_type: str) -> Dict[str, Any]:
         """Orchestrate using pipeline pattern (strict sequential)"""
-        pipeline_request = f"""
-Orchestrate this request using a strict pipeline pattern:
-
-Request: {request}
-Workflow Type: {workflow_type}
-
-Execute in strict sequence:
-1. CoderAgent generates/analyzes code
-2. TesterAgent creates tests
-3. ExecutorAgent validates
-4. Loop if needed until all tests pass
-
-Each step must complete successfully before proceeding.
-"""
+        results = []
         
-        response = self.invoke(pipeline_request)
-        return {"pipeline_result": response}
+        # Step 1: Code generation with CoderAgent
+        code_task = self.tools_dict["delegate_task"](
+            task=f"Generate code for: {request}",
+            agent="coder",
+            context="",
+            requirements=["Generate complete, working code", "Include error handling", "Follow best practices"]
+        )
+        results.append({"step": "code_generation", "result": code_task})
+        
+        # Step 2: Test generation with TesterAgent
+        test_task = self.tools_dict["delegate_task"](
+            task=f"Generate comprehensive tests for the code",
+            agent="tester",
+            context=str(code_task),
+            requirements=["Create unit tests", "Test edge cases", "Ensure high coverage"]
+        )
+        results.append({"step": "test_generation", "result": test_task})
+        
+        # Step 3: Execution and validation with ExecutorAgent
+        exec_task = self.tools_dict["delegate_task"](
+            task=f"Execute and validate the code with tests",
+            agent="executor",
+            context=str(results),
+            requirements=["Run all tests", "Check for errors", "Validate functionality"]
+        )
+        results.append({"step": "execution", "result": exec_task})
+        
+        # Aggregate results
+        final_result = self.tools_dict["aggregate_results"](
+            results=results,
+            original_request=request
+        )
+        
+        self.workflow_state["completed_tasks"] = 3
+        
+        return final_result
     
     def _orchestrate_adaptive(self, request: str, workflow_type: str) -> Dict[str, Any]:
         """Orchestrate using adaptive pattern (dynamic selection)"""
-        adaptive_request = f"""
-Analyze this request and choose the best coordination pattern:
-
-Request: {request}
-Workflow Type: {workflow_type}
-
-Consider:
-- Use supervisor for complex workflows needing quality control
-- Use swarm for independent parallel tasks
-- Use pipeline for strict sequential dependencies
-
-Then orchestrate using the chosen pattern.
-"""
+        # Analyze the request to determine the best pattern
+        workflow_plan = self.tools_dict["plan_workflow"](
+            request=request,
+            workflow_type=workflow_type,
+            available_agents=list(self.agents.keys())
+        )
         
-        response = self.invoke(adaptive_request)
-        return {"adaptive_result": response}
+        # Determine the best pattern based on task dependencies
+        tasks = workflow_plan.get("tasks", [])
+        has_dependencies = any(task.get("depends_on") for task in tasks)
+        needs_quality_check = workflow_type in ["full_development", "production"]
+        
+        # Choose pattern
+        if needs_quality_check:
+            # Use supervisor for quality-critical workflows
+            self.coordination_pattern = "supervisor"
+            return self._orchestrate_supervisor(request, workflow_type)
+        elif not has_dependencies and len(tasks) > 2:
+            # Use swarm for independent parallel tasks
+            self.coordination_pattern = "swarm"
+            return self._orchestrate_swarm(request, workflow_type)
+        else:
+            # Use pipeline for simple sequential workflows
+            self.coordination_pattern = "pipeline"
+            return self._orchestrate_pipeline(request, workflow_type)
     
     def _create_final_report(self, result: Dict[str, Any]) -> str:
         """Create a comprehensive final report of the workflow"""
