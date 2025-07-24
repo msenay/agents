@@ -300,3 +300,58 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Ready to build intelligent agents? Get started with the examples above!** 🚀
+
+
+
+**
+**Single‑agent flow**
+
+1. **Receive the request**
+   Turn the user’s request into a short **intent**.
+
+2. **Is there a tool? (deterministic check)**
+
+   * Look up whether there’s a suitable function in the Skill/Tool registry.
+   * **If yes:** The LLM only fills in the arguments → call the tool → return the result.
+   * **If no:** Switch to code‑writing mode.
+
+3. **Write & run code (fallback)**
+
+   * The agent generates the necessary code.
+   * Execute it in a **sandbox** (with timeout, resource limits, network restrictions).
+
+4. **Validate / test (if possible)**
+
+   * Simple guardrails, schema checks, verify the file exists, size > 0, etc.
+
+5. **Respond & log**
+
+   * Return the result + output file/summary to the user.
+   * Log metrics, cost, errors (optionally store to memory).
+
+---
+
+**Multi‑agent**
+
+1. **Supervisor / Router**
+   Receives the user request, infers intent, and decides which agent to hand it to.
+
+2. **Planner**
+   Breaks the task into steps and decides which agent/tool will handle each step.
+
+3. **Tool Executor**
+   Safely invokes schema‑defined deterministic tools.
+
+4. **Coder Agent**
+   When there’s no ready tool / flexible scripting is needed, it writes code and runs it in a sandbox.
+
+5. **Critic / Verifier (optional)**
+   Tests outputs, catches errors and prompt‑injection attempts.
+
+6. **Memory / KB (optional)**
+   Stores past plans, tool call examples, user preferences.
+
+> Depending on needs, you can add specialist agents like **Data Analyst, Researcher, Evaluator**, etc.
+
+
+**
