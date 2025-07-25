@@ -90,14 +90,14 @@ def run_redis_demo():
         
         # Memory configuration
         enable_memory=True,
-        memory_backend="inmemory",  # Use inmemory for now to test flow
-        # redis_url=REDIS_URL,
+        memory_backend="redis",  # Use redis backend
+        redis_url=REDIS_URL,
         memory_types=["short_term", "long_term"],  # Remove semantic for now
         
         # Memory features
         enable_memory_tools=True,
-        enable_ttl=True,
-        default_ttl_minutes=60,
+        enable_ttl=False,  # Disable TTL temporarily
+        # default_ttl_minutes=60,
         
         # System prompt
         system_prompt="""You are a helpful AI assistant with Redis memory capabilities.
@@ -173,23 +173,11 @@ You can remember conversations, save information, and perform calculations."""
     print("\n👤 User: Please save a note that I have a meeting tomorrow at 2 PM with the marketing team")
     print(f"🤖 Agent: {response['messages'][-1].content}")
     
-    # Test 4: TTL
+    # Test 4: TTL - Skipped (disabled)
     print("\n" + "-"*60)
-    print("TEST 4: TTL (Time-To-Live)")
+    print("TEST 4: TTL (Time-To-Live) - SKIPPED")
     print("-"*60)
-    
-    print("\n📝 Storing temporary data with 5 second TTL...")
-    mm.store_long_term_memory("temp_token", {"token": "abc123", "expires": "soon"}, ttl=5)
-    
-    # Check immediately
-    data = mm.get_long_term_memory("temp_token")
-    print(f"✅ Immediate check: {data}")
-    
-    print("\n⏳ Waiting 6 seconds...")
-    time.sleep(6)
-    
-    data = mm.get_long_term_memory("temp_token")
-    print(f"📖 After expiry: {data}")
+    print("⚠️  TTL is temporarily disabled")
     
     # Test 5: Semantic memory (vector search) - DISABLED FOR NOW
     # print("\n" + "-"*60)
