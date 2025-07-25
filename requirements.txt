@@ -12,12 +12,12 @@ langgraph-checkpoint-redis==0.0.8  # Very old version
 langgraph-sdk==0.1.48
 
 # Alternative Redis support
-langchain-redis==0.0.8  # Newer Redis implementation
+langchain-redis==0.2.3
 
 # LangGraph Extensions
-langgraph-supervisor==0.2.1
+langgraph-supervisor==0.0.28
 langgraph-swarm==0.0.2
-langmem==0.1.0
+langmem==0.0.28
 
 # Stores
 langgraph-store==0.1.5
