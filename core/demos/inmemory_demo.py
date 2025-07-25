@@ -136,11 +136,11 @@ def main():
     print("TEST 4: THREAD ISOLATION")
     print("-"*60)
     
+    print("\n👤 User (different thread): What's my name?")
     response = agent.invoke(
         "What's my name?",
         config={"configurable": {"thread_id": "different_user"}}
     )
-    print("\n👤 User (different thread): What's my name?")
     print(f"🤖 Agent: {response['messages'][-1].content}")
     
     print("\n" + "="*60)
