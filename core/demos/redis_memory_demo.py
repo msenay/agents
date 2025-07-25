@@ -12,6 +12,9 @@ Features tested:
 3. Semantic memory (vector search)
 4. Session memory (multi-agent sharing)
 5. TTL (Time-To-Live) support
+
+Environment Variables:
+- REDIS_URL: Redis connection URL (default: redis://:redis_password@localhost:6379)
 """
 
 import os
@@ -26,18 +29,29 @@ from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 
 
+# Get Redis URL from environment or use default with password
+DEFAULT_REDIS_URL = "redis://:redis_password@localhost:6379"
+REDIS_URL = os.getenv("REDIS_URL", DEFAULT_REDIS_URL)
+
+
 # Redis connection check
 def check_redis_connection():
     """Check Redis connection"""
     try:
         import redis
-        r = redis.from_url("redis://localhost:6379")
+        r = redis.from_url(REDIS_URL)
         r.ping()
         print("✅ Redis connection successful")
+        print(f"   URL: {REDIS_URL.replace('redis_password', '***')}")  # Hide password in output
         return True
     except Exception as e:
         print(f"❌ Redis connection failed: {e}")
-        print("🔧 Solution: docker-compose up redis")
+        print(f"   URL: {REDIS_URL.replace('redis_password', '***')}")
+        print("\n🔧 Solutions:")
+        print("   1. Check if Redis is running: docker-compose up redis")
+        print("   2. Use correct password: redis://:redis_password@localhost:6379")
+        print("   3. Or set REDIS_URL environment variable")
+        print("   4. For passwordless: docker-compose -f docker-compose.override.yml up redis")
         return False
 
 
@@ -45,7 +59,8 @@ class RedisMemoryDemo:
     """Demo testing Redis memory features"""
     
     def __init__(self):
-        self.redis_url = "redis://localhost:6379"
+        # Use environment variable or default
+        self.redis_url = REDIS_URL
         self.model = None
         self.agent = None
         
