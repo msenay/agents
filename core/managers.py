@@ -326,14 +326,8 @@ class MemoryManager:
 
         elif store_type == "redis" and RedisStore and self.config.redis_url:
             try:
-                # Test Redis connection and modules first
-                test_store_cm = RedisStore.from_conn_string(self.config.redis_url, index=index_config, ttl=ttl_config)
-                with test_store_cm as test_store:
-                    # Test basic operations to ensure Redis Stack modules are available
-                    test_store.put(("test",), "init_test", {"test": True})
-                    test_store.get(("test",), "init_test")
-
-                # If we get here, Redis is fully functional
+                # Create RedisStore wrapper without testing first
+                # The store will create indexes automatically when needed
                 class RedisStoreWrapper:
                     def __init__(self, conn_string, index=None, ttl=None):
                         self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
@@ -364,11 +358,11 @@ class MemoryManager:
                     index=index_config,
                     ttl=ttl_config
                 )
-                logger.info("RedisStore initialized with full functionality")
+                logger.info("RedisStore initialized - indexes will be created on first use")
 
             except Exception as e:
                 # Redis connection failed - this is a critical error for production
-                error_msg = f"Redis connection failed: {e}. Please check Redis server and connection string."
+                error_msg = f"Redis store initialization failed: {e}. Please check Redis server and connection string."
                 logger.error(error_msg)
                 raise RuntimeError(error_msg)
 

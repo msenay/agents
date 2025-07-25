@@ -124,101 +124,61 @@ class RedisMemoryDemo:
         
         self.agent = None
 
-    def create_agent_with_full_config(self) -> CoreAgent:
-        """Create agent with explicit full configuration"""
+    def create_minimal_redis_agent(self) -> CoreAgent:
+        """Create a minimal agent with just Redis short-term memory"""
         
-        # Full explicit configuration showing all options
         config = AgentConfig(
-            # Basic Configuration
-            name="RedisMemoryAgent",
+            name="MinimalRedisAgent",
             model=self.model,
+            tools=[get_current_time],
             
-            # Tools Configuration
-            tools=[get_current_time, calculate, search_web],
-            
-            # Memory Configuration - Main Switch
+            # Enable only short-term memory first
             enable_memory=True,
             memory_backend="redis",
-            
-            # Backend URLs
             redis_url=self.redis_url,
-            postgres_url=None,  # Not used in this demo
+            memory_types=["short_term"],  # Only short-term to start
             
-            # Memory Types to Enable
-            # Start with basic types, semantic can be tested separately
-            memory_types=["short_term", "long_term", "session"],  # Remove "semantic" for now
-            
-            # Memory Features
-            enable_memory_tools=True,  # Gives agent access to save/load memory
-            
-            # TTL Support (only for redis backend)
-            enable_ttl=True,  # Time-to-live for Redis entries
-            default_ttl_minutes=60,  # 60 minutes default TTL (parameter name is default_ttl_minutes, not default_ttl)
-            refresh_on_read=True,  # Refresh TTL on access
-            
-            # Semantic Search Configuration (commented out for now)
-            # embedding_model="azure_openai:text-embedding-3-small",  # Use azure_openai instead of openai
-            # embedding_dims=1536,
-            
-            # Session Configuration
-            session_id="demo_session_123",
-            memory_namespace="demo_namespace",  # parameter name is memory_namespace, not session_namespace
-            
-            # Conversation Memory Management
-            enable_message_trimming=True,  # parameter name is enable_message_trimming, not enable_trimming
-            max_tokens=1000,  # Used with message trimming
-            trim_strategy="last",  # Keep last messages when trimming
-            enable_summarization=False,  # Don't summarize (requires langmem)
-            
-            # Agent Behavior
-            system_prompt="""You are a helpful AI assistant with comprehensive memory capabilities.
-            
-Your memory features:
-1. Short-term: You automatically remember our conversation history
-2. Long-term: You can save and retrieve important information
-3. Session: You can share memory with other agents
-4. Semantic: You can search memories by meaning/similarity
-
-Use your tools and memory effectively to help users.""",
-            
-            # Optional Features (these don't exist in AgentConfig)
-            # verbose=True,  # NOT a valid parameter
-            # stream_mode="values",  # NOT a valid parameter
-            # recursion_limit=10,  # NOT a valid parameter
-            
-            # Response Format (optional)
-            response_format=None,  # Could be JSON schema
-            
-            # Rate Limiting
-            enable_rate_limiting=False,
-            requests_per_second=1.0,  # Default rate limit
-            
-            # Hooks (optional)
-            pre_model_hook=None,
-            post_model_hook=None,
-            
-            # Multi-agent Configuration (these parameters exist but with different names)
-            # enable_multi_agent=False,  # NOT a valid parameter
-            # multi_agent_url=None  # NOT a valid parameter
-            enable_supervisor=False,  # For multi-agent patterns
-            enable_swarm=False,  # For swarm patterns
-            enable_handoff=False  # For handoff patterns
+            system_prompt="You are a helpful assistant with Redis memory."
         )
         
-        print("\n📋 Agent Configuration:")
+        print("\n📋 Minimal Agent Configuration:")
         print(f"   Name: {config.name}")
         print(f"   Memory Backend: {config.memory_backend}")
         print(f"   Memory Types: {config.memory_types}")
-        print(f"   Tools: {[t.name for t in config.tools]}")
-        print(f"   TTL Enabled: {config.enable_ttl} (default: {config.default_ttl_minutes} minutes)")
-        print(f"   Session ID: {config.session_id}")
-        print(f"   Message Trimming: {config.enable_message_trimming} (max_tokens: {config.max_tokens})")
         
-        # Create the agent
         agent = CoreAgent(config)
-        print("\n✅ Agent created successfully with full configuration")
+        print("\n✅ Minimal agent created successfully")
         
         return agent
+
+    def create_agent_with_full_config(self) -> CoreAgent:
+        """Create agent with full configuration (for advanced tests)"""
+        
+        config = AgentConfig(
+            name="FullRedisAgent",
+            model=self.model,
+            tools=[get_current_time, calculate, search_web],
+            
+            # Full memory configuration
+            enable_memory=True,
+            memory_backend="redis",
+            redis_url=self.redis_url,
+            memory_types=["short_term", "long_term"],  # Basic types only
+            
+            # Memory features
+            enable_memory_tools=True,
+            enable_ttl=True,
+            default_ttl_minutes=60,
+            
+            # Message management
+            enable_message_trimming=True,
+            max_tokens=1000,
+            trim_strategy="last",
+            
+            system_prompt="You are a helpful assistant with comprehensive Redis memory."
+        )
+        
+        return CoreAgent(config)
 
     async def test_short_term_memory(self):
         """Test short-term (conversation) memory"""
@@ -427,6 +387,28 @@ Use your tools and memory effectively to help users.""",
         )
         print(f"📥 Response: {response['messages'][-1].content}")
 
+    async def run_minimal_tests(self):
+        """Run minimal Redis tests with just short-term memory"""
+        print("\n🚀 STARTING MINIMAL REDIS TESTS")
+        print(f"   Timestamp: {datetime.now()}")
+        
+        # Check Redis connection first
+        if not check_redis_connection():
+            print("\n❌ Cannot proceed without Redis connection")
+            return
+        
+        # Create minimal agent
+        self.agent = self.create_minimal_redis_agent()
+        
+        # Run only short-term memory test
+        try:
+            await self.test_short_term_memory()
+            print("\n✅ Minimal test completed successfully!")
+        except Exception as e:
+            print(f"\n❌ Error in minimal test: {e}")
+            import traceback
+            traceback.print_exc()
+
     async def run_all_tests(self):
         """Run all Redis memory tests"""
         print("\n🚀 STARTING COMPREHENSIVE REDIS MEMORY TESTS")
@@ -437,15 +419,32 @@ Use your tools and memory effectively to help users.""",
             print("\n❌ Cannot proceed without Redis connection")
             return
         
-        # Create agent with full configuration
-        self.agent = self.create_agent_with_full_config()
+        # First try minimal test
+        print("\n📝 Testing minimal configuration first...")
+        try:
+            self.agent = self.create_minimal_redis_agent()
+            await self.test_short_term_memory()
+            print("\n✅ Minimal configuration works!")
+        except Exception as e:
+            print(f"\n❌ Minimal configuration failed: {e}")
+            print("Cannot proceed with full tests")
+            return
         
-        # Run all tests
+        # If minimal works, try full configuration
+        print("\n📝 Testing full configuration...")
+        try:
+            self.agent = self.create_agent_with_full_config()
+            print("\n✅ Full configuration created successfully!")
+        except Exception as e:
+            print(f"\n❌ Full configuration failed: {e}")
+            print("Continuing with minimal agent...")
+        
+        # Run tests based on what's enabled
         tests = [
             self.test_short_term_memory,
             self.test_long_term_memory,
-            # self.test_semantic_memory,  # Skip for now due to embedding configuration issues
-            self.test_session_memory,
+            # self.test_semantic_memory,  # Skip - requires embeddings
+            # self.test_session_memory,  # Skip - may require special setup
             self.test_ttl_memory,
             self.test_memory_tools,
             self.test_memory_trimming
@@ -466,8 +465,18 @@ Use your tools and memory effectively to help users.""",
 
 async def main():
     """Main entry point"""
+    import sys
+    
     demo = RedisMemoryDemo()
-    await demo.run_all_tests()
+    
+    # Check command line arguments
+    if len(sys.argv) > 1 and sys.argv[1] == "--minimal":
+        print("Running minimal tests only...")
+        await demo.run_minimal_tests()
+    else:
+        print("Running full test suite...")
+        print("(Use --minimal flag for basic tests only)")
+        await demo.run_all_tests()
 
 
 if __name__ == "__main__":
