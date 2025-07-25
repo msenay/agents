@@ -140,8 +140,11 @@ class RedisMemoryDemo:
             
             # Memory Features
             enable_memory_tools=True,  # Gives agent access to save/load memory
+            
+            # TTL Support (only for redis backend)
             enable_ttl=True,  # Time-to-live for Redis entries
-            default_ttl=3600,  # 1 hour default TTL
+            default_ttl_minutes=60,  # 60 minutes default TTL (parameter name is default_ttl_minutes, not default_ttl)
+            refresh_on_read=True,  # Refresh TTL on access
             
             # Semantic Search Configuration
             embedding_model="openai:text-embedding-3-small",
@@ -149,11 +152,12 @@ class RedisMemoryDemo:
             
             # Session Configuration
             session_id="demo_session_123",
-            session_namespace="demo_namespace",
+            memory_namespace="demo_namespace",  # parameter name is memory_namespace, not session_namespace
             
             # Conversation Memory Management
-            enable_trimming=True,  # Trim old messages
-            trim_threshold=20,  # Keep last 20 messages
+            enable_message_trimming=True,  # parameter name is enable_message_trimming, not enable_trimming
+            max_tokens=1000,  # Used with message trimming
+            trim_strategy="last",  # Keep last messages when trimming
             enable_summarization=False,  # Don't summarize (requires langmem)
             
             # Agent Behavior
@@ -167,25 +171,28 @@ Your memory features:
 
 Use your tools and memory effectively to help users.""",
             
-            # Optional Features
-            verbose=True,  # Show detailed logs
-            stream_mode="values",  # How to stream responses
-            recursion_limit=10,  # Max recursion depth
+            # Optional Features (these don't exist in AgentConfig)
+            # verbose=True,  # NOT a valid parameter
+            # stream_mode="values",  # NOT a valid parameter
+            # recursion_limit=10,  # NOT a valid parameter
             
             # Response Format (optional)
             response_format=None,  # Could be JSON schema
             
             # Rate Limiting
             enable_rate_limiting=False,
-            requests_per_second=None,
+            requests_per_second=1.0,  # Default rate limit
             
             # Hooks (optional)
             pre_model_hook=None,
             post_model_hook=None,
             
-            # Multi-agent Configuration
-            enable_multi_agent=False,  # Not used in this demo
-            multi_agent_url=None
+            # Multi-agent Configuration (these parameters exist but with different names)
+            # enable_multi_agent=False,  # NOT a valid parameter
+            # multi_agent_url=None  # NOT a valid parameter
+            enable_supervisor=False,  # For multi-agent patterns
+            enable_swarm=False,  # For swarm patterns
+            enable_handoff=False  # For handoff patterns
         )
         
         print("\n📋 Agent Configuration:")
@@ -193,9 +200,9 @@ Use your tools and memory effectively to help users.""",
         print(f"   Memory Backend: {config.memory_backend}")
         print(f"   Memory Types: {config.memory_types}")
         print(f"   Tools: {[t.name for t in config.tools]}")
-        print(f"   TTL Enabled: {config.enable_ttl} (default: {config.default_ttl}s)")
+        print(f"   TTL Enabled: {config.enable_ttl} (default: {config.default_ttl_minutes} minutes)")
         print(f"   Session ID: {config.session_id}")
-        print(f"   Trimming: {config.enable_trimming} (threshold: {config.trim_threshold})")
+        print(f"   Message Trimming: {config.enable_message_trimming} (max_tokens: {config.max_tokens})")
         
         # Create the agent
         agent = CoreAgent(config)
@@ -392,7 +399,7 @@ Use your tools and memory effectively to help users.""",
         
         # Send many messages to trigger trimming
         print("\n📤 Sending multiple messages to test trimming...")
-        for i in range(25):  # More than trim_threshold (20)
+        for i in range(25):  # Will trigger trimming based on max_tokens
             response = await self.agent.ainvoke(
                 f"Message {i+1}: This is test message number {i+1}",
                 config={"configurable": {"thread_id": thread_id}}
