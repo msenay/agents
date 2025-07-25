@@ -12,7 +12,6 @@ Core agent'da memory sistemi LangGraph'ın memory pattern'lerini takip ederek im
   - `InMemorySaver`: Hafızada tutuyor, restart'ta kayboluyor
   - `RedisSaver`: Redis'e kaydediyor, persistent
   - `PostgresSaver`: PostgreSQL'e kaydediyor, persistent  
-  - `MongoDBSaver`: MongoDB'ye kaydediyor, persistent
 
 **Kullanım**:
 ```python
@@ -62,7 +61,7 @@ config = AgentConfig(
 - **Short-term**: `RedisSaver` ile her thread'in state'i Redis'e checkpoint olarak kaydediliyor
 - **Long-term**: `RedisStore` ile kalıcı veriler saklanıyor
 - **Semantic**: Redis Stack'in vector search özelliği kullanılıyor (RediSearch modülü gerekli)
-- **TTL**: Veriler otomatik olarak expire oluyor
+- **TTL**: Veriler otomatik olarak expire oluyor (sadece Redis destekliyor)
 
 ### 5. Memory Manager İmplementasyonu
 
@@ -88,14 +87,13 @@ class MemoryManager:
 
 ### ✅ İyi Olan Kısımlar:
 1. LangGraph pattern'lerini düzgün takip ediyor
-2. Multiple backend desteği var
-3. TTL, semantic search gibi gelişmiş özellikler var
+2. Multiple backend desteği var (InMemory, Redis, PostgreSQL)
+3. TTL (Redis), semantic search gibi gelişmiş özellikler var
 4. Error handling ve fallback'ler var
 
 ### ⚠️ Potansiyel İyileştirmeler:
-1. **MongoDB Store**: Henüz LangGraph'ta yok, InMemoryStore'a fallback ediyor
-2. **Message Trimming**: Token limitleri için mesaj trimming var ama summarization için LangMem gerekiyor
-3. **Dokümantasyon**: Kullanım örnekleri README'de yok
+1. **Message Trimming**: Token limitleri için mesaj trimming var ama summarization için LangMem gerekiyor
+2. **Dokümantasyon**: Kullanım örnekleri README'de yok
 
 ## Özet
 
@@ -103,6 +101,6 @@ Core agent'daki memory implementasyonu oldukça gelişmiş ve LangGraph'ın öne
 - Short-term memory thread state'leri Redis'te saklanıyor
 - Long-term memory kalıcı veriler için RedisStore kullanıyor  
 - Semantic search için vector desteği var (Redis Stack gerekli)
-- TTL ile otomatik temizlik yapılabiliyor
+- TTL ile otomatik temizlik yapılabiliyor (sadece Redis destekliyor)
 
 Thread_id mekanizması tam olarak LangGraph tutorial'daki gibi çalışıyor - her thread_id ayrı bir konuşma context'i oluşturuyor.

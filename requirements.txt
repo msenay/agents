@@ -1,34 +1,37 @@
-# Core LangGraph dependencies
-langgraph>=0.2.0
-langchain-core>=0.3.0
-langchain-openai>=0.2.0
-langgraph-checkpoint-postgres==2.0.23
-langgraph-checkpoint-redis==0.0.8
-langgraph-checkpoint-mongodb==0.1.4
-# Optional memory backends
-redis>=5.0.0
-pymongo>=4.0.0
-psycopg2-binary>=2.9.0
+# LangChain Core
+langchain-core==0.3.25
+langchain==0.3.14
+langchain-openai==0.2.13
+langchain-anthropic==0.3.1
 
-# Optional advanced features
-langmem
-agentevals
-langgraph-supervisor
-langgraph-swarm
-langchain-mcp-adapters
+# LangGraph
+langgraph==0.2.62
+langgraph-checkpoint==2.0.11
+langgraph-checkpoint-postgres==2.0.9
+langgraph-checkpoint-redis==0.1.4
+langgraph-sdk==0.1.48
 
-# API Server dependencies
-uvicorn[standard]>=0.24.0
-psycopg2-binary>=2.9.0
+# LangGraph Extensions
+langgraph-supervisor==0.2.1
+langgraph-swarm==0.0.2
+langmem==0.1.0
 
-# Testing dependencies
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
+# Stores
+langgraph-store==0.1.5
+langgraph-store-redis==0.1.0
+langgraph-store-postgres==0.1.0
 
-# Development dependencies
-python-dotenv>=1.0.0
+# MCP Support
+langchain-mcp-adapters==0.0.1
 
+# Evaluation
+agentevals==0.0.1
 
-langchain-anthropic>=0.1.0
-langchain-google-genai>=1.0.0
-pydantic>=2.0.0
+# Database drivers
+redis==5.0.1
+psycopg2-binary==2.9.10
+pgvector==0.3.6
+
+# Other dependencies
+pydantic==2.10.4
+pydantic-settings==2.7.0

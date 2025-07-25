@@ -10,7 +10,6 @@ from langgraph.checkpoint.redis import RedisSaver
 from langgraph.store.redis import RedisStore
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
-from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.store.memory import InMemoryStore
 from langchain_core.messages.utils import trim_messages, count_tokens_approximately
 from langchain_core.messages import RemoveMessage
@@ -254,36 +253,9 @@ class MemoryManager:
                     logger.error(error_msg)
                     raise RuntimeError(error_msg)
 
-            elif checkpointer_type == "mongodb":
-                if MongoDBSaver and self.config.mongodb_url:
-                    try:
-                        # MongoDB checkpointer with TTL support
-                        ttl_config = None
-                        if self.config.enable_ttl:
-                            ttl_config = {
-                                "default_ttl": self.config.default_ttl_minutes,
-                                "refresh_on_read": self.config.refresh_on_read
-                            }
-
-                        self.checkpointer = MongoDBSaver.from_conn_string(
-                            self.config.mongodb_url,
-                            ttl=ttl_config
-                        )
-                        logger.info("MongoDBSaver checkpointer initialized")
-                    except Exception as e:
-                        # MongoDB connection failed - this is a critical error for production
-                        error_msg = f"MongoDB checkpointer connection failed: {e}. Please check MongoDB server and connection string."
-                        logger.error(error_msg)
-                        raise RuntimeError(error_msg)
-                else:
-                    # MongoDB not available
-                    error_msg = "MongoDB checkpointer enabled but MongoDBSaver not available or mongodb_url not configured."
-                    logger.error(error_msg)
-                    raise RuntimeError(error_msg)
-
             else:
                 # Check if it's a completely invalid type (for strict validation in tests)
-                valid_types = ["inmemory", "redis", "postgres", "mongodb"]
+                valid_types = ["inmemory", "redis", "postgres"]
                 if checkpointer_type not in valid_types:
                     raise ValueError(f"Invalid short-term memory type: {checkpointer_type}. Must be one of: {valid_types}")
 
@@ -338,7 +310,7 @@ class MemoryManager:
                 if semantic_enabled:
                     raise RuntimeError(f"Semantic search enabled but embeddings initialization failed: {e}")
 
-        # Set up TTL configuration for Redis/MongoDB
+        # Set up TTL configuration for Redis
         ttl_config = None
         if self.config.enable_ttl:
             ttl_config = {
@@ -434,11 +406,6 @@ class MemoryManager:
                 error_msg = f"PostgreSQL connection failed: {e}. Please check PostgreSQL server and connection string."
                 logger.error(error_msg)
                 raise RuntimeError(error_msg)
-
-        elif store_type == "mongodb":
-            # MongoDB Store is not yet available in langgraph, use InMemoryStore as fallback
-            logger.warning("MongoDB Store is not yet available in langgraph, using InMemoryStore as fallback")
-            self.store = InMemoryStore(index=index_config) if InMemoryStore else None
 
         else:
             # Fallback to InMemoryStore
