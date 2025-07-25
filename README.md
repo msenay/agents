@@ -354,4 +354,31 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 > Depending on needs, you can add specialist agents like **Data Analyst, Researcher, Evaluator**, etc.
 
 
+**MEMORY
+
+What It Actually Means:
+"Short-term Memory" = Conversation Memory
+❌ It is not kept for a short time! (It can stay in Redis/Postgres for years)
+✅ Thread-based conversation history
+✅ Messages are automatically loaded
+✅ Separate for each thread_id
+
+"Long-term Memory" = Knowledge Store
+❌ It has nothing to do with how long it is stored
+✅ A key-value knowledge store
+✅ Manual save/load
+✅ Independent of threads
+
+🤷 Why These Names?
+
+LangGraph’s terminology: they just named it this way, and we follow it
+
+Inspired by human memory psychology, but technically different
+
+Usage Pattern:
+
+Short-term = Active conversation (like working memory)
+
+Long-term = Persistent knowledge (like permanent memory)
+
 **
