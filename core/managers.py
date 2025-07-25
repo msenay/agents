@@ -199,6 +199,15 @@ class MemoryManager:
                 )
                 # Enter the context manager to get the actual checkpointer
                 self.checkpointer = self.checkpointer_cm.__enter__()
+                
+                # Try to ensure indexes are created
+                try:
+                    # This will create the index if it doesn't exist
+                    self.checkpointer.get_tuple({"configurable": {"thread_id": "__init_test__"}})
+                except Exception:
+                    # Index might not exist yet, that's fine
+                    pass
+                    
                 logger.info("RedisSaver checkpointer initialized")
 
             elif checkpointer_type == "postgres" and PostgresSaver and self.config.postgres_url:
