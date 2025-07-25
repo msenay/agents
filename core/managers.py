@@ -192,11 +192,13 @@ class MemoryManager:
                         "refresh_on_read": self.config.refresh_on_read
                     }
 
-                self.checkpointer = RedisSaver.from_conn_string(
+                # RedisSaver.from_conn_string returns a context manager
+                self.checkpointer_cm = RedisSaver.from_conn_string(
                     self.config.redis_url,
                     ttl=ttl_config
                 )
-                self.checkpointer.setup()  # Initialize Redis indices
+                # Enter the context manager to get the actual checkpointer
+                self.checkpointer = self.checkpointer_cm.__enter__()
                 logger.info("RedisSaver checkpointer initialized")
 
             elif checkpointer_type == "postgres" and PostgresSaver and self.config.postgres_url:
