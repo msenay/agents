@@ -192,23 +192,22 @@ class MemoryManager:
                         "refresh_on_read": self.config.refresh_on_read
                     }
 
-                # RedisSaver.from_conn_string returns a context manager
-                self.checkpointer_cm = RedisSaver.from_conn_string(
-                    self.config.redis_url,
-                    ttl=ttl_config
-                )
-                # Enter the context manager to get the actual checkpointer
-                self.checkpointer = self.checkpointer_cm.__enter__()
-                
-                # Try to ensure indexes are created
+                # New version of RedisSaver might handle indexes automatically
                 try:
-                    # This will create the index if it doesn't exist
-                    self.checkpointer.get_tuple({"configurable": {"thread_id": "__init_test__"}})
-                except Exception:
-                    # Index might not exist yet, that's fine
-                    pass
-                    
-                logger.info("RedisSaver checkpointer initialized")
+                    self.checkpointer = RedisSaver.from_conn_string(
+                        self.config.redis_url,
+                        ttl=ttl_config
+                    )
+                    logger.info("RedisSaver checkpointer initialized")
+                except Exception as e:
+                    logger.error(f"Failed to initialize RedisSaver: {e}")
+                    # Try with context manager approach
+                    self.checkpointer_cm = RedisSaver.from_conn_string(
+                        self.config.redis_url,
+                        ttl=ttl_config
+                    )
+                    self.checkpointer = self.checkpointer_cm.__enter__()
+                    logger.info("RedisSaver checkpointer initialized with context manager")
 
             elif checkpointer_type == "postgres" and PostgresSaver and self.config.postgres_url:
                 try:
