@@ -5,7 +5,7 @@ Redis Memory Demo - Tests all Redis features with CoreAgent
 
 import os
 import sys
-import asyncio
+import time
 from datetime import datetime
 
 # Add parent directory to path
@@ -63,7 +63,7 @@ def calculate(expression: str) -> str:
         return f"Error: {str(e)}"
 
 
-async def run_redis_demo():
+def run_redis_demo():
     """Main demo function"""
     print("\n" + "="*60)
     print("🚀 REDIS MEMORY DEMO - CORE AGENT")
@@ -130,7 +130,7 @@ You can remember conversations, save information, and perform calculations."""
     thread_id = "user_123"
     
     # First message
-    response = await agent.ainvoke(
+    response = agent.invoke(
         "Hi! My name is Alice and I work as a data scientist.",
         config={"configurable": {"thread_id": thread_id}}
     )
@@ -138,7 +138,7 @@ You can remember conversations, save information, and perform calculations."""
     print(f"🤖 Agent: {response['messages'][-1].content}")
     
     # Second message - should remember
-    response = await agent.ainvoke(
+    response = agent.invoke(
         "What's my name and profession?",
         config={"configurable": {"thread_id": thread_id}}
     )
@@ -170,7 +170,7 @@ You can remember conversations, save information, and perform calculations."""
     print("TEST 3: MEMORY TOOLS (Agent-controlled memory)")
     print("-"*60)
     
-    response = await agent.ainvoke(
+    response = agent.invoke(
         "Please save a note that I have a meeting tomorrow at 2 PM with the marketing team",
         config={"configurable": {"thread_id": thread_id}}
     )
@@ -190,7 +190,7 @@ You can remember conversations, save information, and perform calculations."""
     print(f"✅ Immediate check: {data}")
     
     print("\n⏳ Waiting 6 seconds...")
-    await asyncio.sleep(6)
+    time.sleep(6)
     
     data = mm.get_long_term_memory("temp_token")
     print(f"📖 After expiry: {data}")
@@ -237,7 +237,7 @@ You can remember conversations, save information, and perform calculations."""
     print("TEST 6: DIFFERENT THREAD (Isolation)")
     print("-"*60)
     
-    response = await agent.ainvoke(
+    response = agent.invoke(
         "What's my name?",
         config={"configurable": {"thread_id": "different_user"}}
     )
@@ -257,4 +257,4 @@ You can remember conversations, save information, and perform calculations."""
 
 
 if __name__ == "__main__":
-    asyncio.run(run_redis_demo())
+    run_redis_demo()
