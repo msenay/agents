@@ -4,12 +4,15 @@ langchain==0.3.14
 langchain-openai==0.2.13
 langchain-anthropic==0.3.1
 
-# LangGraph - Latest versions
+# LangGraph - Latest available versions
 langgraph==0.2.62
-langgraph-checkpoint==2.0.11
+langgraph-checkpoint==2.1.1
 langgraph-checkpoint-postgres==2.0.9
-langgraph-checkpoint-redis==2.0.11
+langgraph-checkpoint-redis==0.0.8  # Very old version
 langgraph-sdk==0.1.48
+
+# Alternative Redis support
+langchain-redis==0.0.8  # Newer Redis implementation
 
 # LangGraph Extensions
 langgraph-supervisor==0.2.1
@@ -29,7 +32,7 @@ agentevals==0.0.1
 
 # Database drivers
 redis==5.2.1
-redisvl==0.3.0
+redisvl==0.3.6
 psycopg2-binary==2.9.10
 pgvector==0.3.6
 
