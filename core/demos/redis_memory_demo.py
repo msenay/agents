@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Redis Memory Demo - CoreAgent ile Redis'in tüm memory özelliklerini test eder
+Redis Memory Demo - Tests all Redis memory features with CoreAgent
 
-Gereksinimler:
-- Redis Stack kurulu olmalı (docker-compose up redis)
+Requirements:
+- Redis Stack must be running (docker-compose up redis)
 - pip install redis langgraph-checkpoint-redis langgraph-store-redis
 
-Test edilecekler:
+Features tested:
 1. Short-term memory (conversation/thread-based)
 2. Long-term memory (key-value store)
 3. Semantic memory (vector search)
@@ -26,23 +26,23 @@ from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 
 
-# Redis bağlantı kontrolü
+# Redis connection check
 def check_redis_connection():
-    """Redis bağlantısını kontrol et"""
+    """Check Redis connection"""
     try:
         import redis
         r = redis.from_url("redis://localhost:6379")
         r.ping()
-        print("✅ Redis bağlantısı başarılı")
+        print("✅ Redis connection successful")
         return True
     except Exception as e:
-        print(f"❌ Redis bağlantısı başarısız: {e}")
-        print("🔧 Çözüm: docker-compose up redis")
+        print(f"❌ Redis connection failed: {e}")
+        print("🔧 Solution: docker-compose up redis")
         return False
 
 
 class RedisMemoryDemo:
-    """Redis memory özelliklerini test eden demo"""
+    """Demo testing Redis memory features"""
     
     def __init__(self):
         self.redis_url = "redis://localhost:6379"
@@ -50,63 +50,63 @@ class RedisMemoryDemo:
         self.agent = None
         
     def setup(self):
-        """Demo için gerekli setup"""
-        print("\n🚀 Redis Memory Demo Başlıyor...")
+        """Setup for demo"""
+        print("\n🚀 Redis Memory Demo Starting...")
         print("=" * 60)
         
-        # OpenAI API key kontrolü
+        # OpenAI API key check
         if not os.getenv("OPENAI_API_KEY"):
-            print("⚠️  OPENAI_API_KEY bulunamadı. Mock model kullanılacak.")
+            print("⚠️  OPENAI_API_KEY not found. Using mock model.")
             from core.simple_examples import MockLLM
             self.model = MockLLM()
         else:
-            print("✅ OpenAI API key bulundu")
+            print("✅ OpenAI API key found")
             self.model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
             
     def create_memory_tools(self):
-        """Long-term memory için tool'lar oluştur"""
+        """Create tools for long-term memory"""
         
         @tool
         def save_user_info(name: str, info: Dict[str, Any]) -> str:
-            """Kullanıcı bilgilerini long-term memory'ye kaydet"""
+            """Save user information to long-term memory"""
             if self.agent:
                 key = f"user_info_{name}"
                 self.agent.memory_manager.store_long_term_memory(key, info)
-                return f"{name} için bilgiler kaydedildi"
-            return "Agent henüz hazır değil"
+                return f"Information saved for {name}"
+            return "Agent not ready yet"
             
         @tool  
         def get_user_info(name: str) -> str:
-            """Kullanıcı bilgilerini long-term memory'den getir"""
+            """Get user information from long-term memory"""
             if self.agent:
                 key = f"user_info_{name}"
                 info = self.agent.memory_manager.get_long_term_memory(key)
                 if info:
-                    return f"{name} bilgileri: {json.dumps(info, ensure_ascii=False)}"
-                return f"{name} için bilgi bulunamadı"
-            return "Agent henüz hazır değil"
+                    return f"{name} info: {json.dumps(info)}"
+                return f"No information found for {name}"
+            return "Agent not ready yet"
             
         @tool
         def search_similar_notes(query: str, limit: int = 3) -> str:
-            """Semantic search ile benzer notları bul"""
+            """Find similar notes using semantic search"""
             if self.agent and hasattr(self.agent.memory_manager, 'search_memory'):
                 results = self.agent.memory_manager.search_memory(query, limit=limit)
                 if results:
-                    return f"Benzer notlar: {results}"
-                return "Benzer not bulunamadı"
-            return "Semantic search mevcut değil"
+                    return f"Similar notes: {results}"
+                return "No similar notes found"
+            return "Semantic search not available"
             
         return [save_user_info, get_user_info, search_similar_notes]
         
     def test_short_term_memory(self):
-        """Short-term (conversation) memory testi"""
+        """Test short-term (conversation) memory"""
         print("\n\n🔵 TEST 1: Short-term Memory (Thread-based Conversations)")
         print("-" * 60)
         
         config = AgentConfig(
             name="RedisShortTermAgent",
             model=self.model,
-            system_prompt="Sen Redis memory kullanan bir asistansın.",
+            system_prompt="You are an assistant using Redis memory.",
             enable_memory=True,
             memory_backend="redis",
             memory_types=["short_term"],
@@ -115,53 +115,53 @@ class RedisMemoryDemo:
         
         try:
             agent = CoreAgent(config)
-            print("✅ Short-term memory agent oluşturuldu")
+            print("✅ Short-term memory agent created")
             
-            # Thread 1 - Ali ile konuşma
+            # Thread 1 - Conversation with Ali
             print("\n📱 Thread 1 - Ali:")
             thread_1_config = {"configurable": {"thread_id": "ali_conversation"}}
             
-            response1 = agent.invoke("Merhaba, benim adım Ali ve İstanbul'da yaşıyorum", config=thread_1_config)
-            print(f"Ali: Merhaba, benim adım Ali ve İstanbul'da yaşıyorum")
+            response1 = agent.invoke("Hello, my name is Ali and I live in Istanbul", config=thread_1_config)
+            print(f"Ali: Hello, my name is Ali and I live in Istanbul")
             print(f"Agent: {response1['messages'][-1].content}")
             
-            response2 = agent.invoke("En sevdiğim yemek lahmacun", config=thread_1_config)
-            print(f"\nAli: En sevdiğim yemek lahmacun")
+            response2 = agent.invoke("My favorite food is pizza", config=thread_1_config)
+            print(f"\nAli: My favorite food is pizza")
             print(f"Agent: {response2['messages'][-1].content}")
             
-            # Thread 2 - Ayşe ile konuşma
-            print("\n\n📱 Thread 2 - Ayşe:")
+            # Thread 2 - Conversation with Ayse
+            print("\n\n📱 Thread 2 - Ayse:")
             thread_2_config = {"configurable": {"thread_id": "ayse_conversation"}}
             
-            response3 = agent.invoke("Selam ben Ayşe, Ankara'da oturuyorum", config=thread_2_config)
-            print(f"Ayşe: Selam ben Ayşe, Ankara'da oturuyorum")
+            response3 = agent.invoke("Hi, I'm Ayse, I live in Ankara", config=thread_2_config)
+            print(f"Ayse: Hi, I'm Ayse, I live in Ankara")
             print(f"Agent: {response3['messages'][-1].content}")
             
-            # Thread 1'e geri dön
-            print("\n\n📱 Thread 1'e Geri Dönüş:")
-            response4 = agent.invoke("Adımı ve yaşadığım şehri hatırlıyor musun?", config=thread_1_config)
-            print(f"Ali: Adımı ve yaşadığım şehri hatırlıyor musun?")
+            # Return to Thread 1
+            print("\n\n📱 Returning to Thread 1:")
+            response4 = agent.invoke("Do you remember my name and where I live?", config=thread_1_config)
+            print(f"Ali: Do you remember my name and where I live?")
             print(f"Agent: {response4['messages'][-1].content}")
             
-            # State kontrolü
+            # State check
             if hasattr(agent.compiled_graph, 'get_state'):
                 state = agent.compiled_graph.get_state(thread_1_config)
-                print(f"\n📊 Thread 1 State: {len(state.values.get('messages', []))} mesaj")
+                print(f"\n📊 Thread 1 State: {len(state.values.get('messages', []))} messages")
                 
-            print("\n✅ Short-term memory testi başarılı!")
+            print("\n✅ Short-term memory test successful!")
             
         except Exception as e:
-            print(f"❌ Short-term memory testi başarısız: {e}")
+            print(f"❌ Short-term memory test failed: {e}")
             
     def test_long_term_memory(self):
-        """Long-term (persistent store) memory testi"""
+        """Test long-term (persistent store) memory"""
         print("\n\n🟢 TEST 2: Long-term Memory (Persistent Key-Value Store)")
         print("-" * 60)
         
         config = AgentConfig(
             name="RedisLongTermAgent", 
             model=self.model,
-            system_prompt="Sen kullanıcı bilgilerini kaydeden bir asistansın.",
+            system_prompt="You are an assistant that saves user information.",
             enable_memory=True,
             memory_backend="redis",
             memory_types=["short_term", "long_term"],
@@ -171,60 +171,60 @@ class RedisMemoryDemo:
         
         try:
             self.agent = agent = CoreAgent(config)
-            print("✅ Long-term memory agent oluşturuldu")
+            print("✅ Long-term memory agent created")
             
-            # Manuel kaydetme
-            print("\n📝 Manuel Kaydetme:")
+            # Manual save
+            print("\n📝 Manual Save:")
             user_data = {
                 "name": "Ali",
                 "age": 28,
-                "city": "İstanbul",
-                "interests": ["teknoloji", "müzik", "seyahat"],
+                "city": "Istanbul",
+                "interests": ["technology", "music", "travel"],
                 "registered_at": datetime.now().isoformat()
             }
             
             agent.memory_manager.store_long_term_memory("user_ali_profile", user_data)
-            print(f"Kaydedilen: {user_data}")
+            print(f"Saved: {user_data}")
             
-            # Manuel okuma
-            print("\n📖 Manuel Okuma:")
+            # Manual load
+            print("\n📖 Manual Load:")
             retrieved = agent.memory_manager.get_long_term_memory("user_ali_profile")
-            print(f"Okunan: {retrieved}")
+            print(f"Retrieved: {retrieved}")
             
-            # Tool ile kullanım
-            print("\n🔧 Tool ile Kullanım:")
-            response = agent.invoke("Ali kullanıcısının bilgilerini getir")
-            print(f"Tool yanıtı: {response['messages'][-1].content}")
+            # Using with tool
+            print("\n🔧 Using with Tool:")
+            response = agent.invoke("Get Ali's user information")
+            print(f"Tool response: {response['messages'][-1].content}")
             
-            # Farklı namespace'de kaydetme
-            print("\n📁 Namespace Kullanımı:")
+            # Using different namespace
+            print("\n📁 Namespace Usage:")
             agent.memory_manager.store_long_term_memory(
                 "settings",
-                {"theme": "dark", "language": "tr"},
+                {"theme": "dark", "language": "en"},
                 namespace="app_config"
             )
             settings = agent.memory_manager.get_long_term_memory("settings", namespace="app_config")
             print(f"App settings: {settings}")
             
-            print("\n✅ Long-term memory testi başarılı!")
+            print("\n✅ Long-term memory test successful!")
             
         except Exception as e:
-            print(f"❌ Long-term memory testi başarısız: {e}")
+            print(f"❌ Long-term memory test failed: {e}")
             
     def test_semantic_memory(self):
-        """Semantic (vector search) memory testi"""
+        """Test semantic (vector search) memory"""
         print("\n\n🔴 TEST 3: Semantic Memory (Vector-based Similarity Search)")
         print("-" * 60)
         
-        # Embedding model kontrolü
+        # Embedding model check
         if not os.getenv("OPENAI_API_KEY"):
-            print("⚠️  Semantic search OpenAI API key gerektirir. Test atlanıyor.")
+            print("⚠️  Semantic search requires OpenAI API key. Skipping test.")
             return
             
         config = AgentConfig(
             name="RedisSemanticAgent",
             model=self.model,
-            system_prompt="Sen semantic search yapabilen bir asistansın.",
+            system_prompt="You are an assistant capable of semantic search.",
             enable_memory=True,
             memory_backend="redis",
             memory_types=["long_term", "semantic"],
@@ -236,50 +236,50 @@ class RedisMemoryDemo:
         
         try:
             self.agent = agent = CoreAgent(config)
-            print("✅ Semantic memory agent oluşturuldu")
+            print("✅ Semantic memory agent created")
             
-            # Çeşitli notlar kaydet
-            print("\n📝 Notlar Kaydediliyor:")
+            # Save various notes
+            print("\n📝 Saving Notes:")
             notes = [
-                ("travel_paris", {"content": "Paris'te Eyfel Kulesi'ni gördüm, harika bir deneyimdi", "date": "2024-01-15"}),
-                ("travel_tokyo", {"content": "Tokyo'da sakura ağaçları çiçek açmıştı, muhteşem manzara", "date": "2024-03-20"}),
-                ("cooking_pasta", {"content": "İtalyan usulü makarna yapmayı öğrendim, domates sosu tarifi", "date": "2024-02-10"}),
-                ("tech_python", {"content": "Python ile machine learning projesi geliştirdim", "date": "2024-01-05"}),
-                ("book_scifi", {"content": "Dune kitabını okudum, bilimkurgu severler için harika", "date": "2024-02-28"})
+                ("travel_paris", {"content": "Visited the Eiffel Tower in Paris, amazing experience", "date": "2024-01-15"}),
+                ("travel_tokyo", {"content": "Cherry blossoms were blooming in Tokyo, beautiful scenery", "date": "2024-03-20"}),
+                ("cooking_pasta", {"content": "Learned to make Italian pasta from scratch, tomato sauce recipe", "date": "2024-02-10"}),
+                ("tech_python", {"content": "Developed a machine learning project with Python", "date": "2024-01-05"}),
+                ("book_scifi", {"content": "Read Dune book, great for sci-fi lovers", "date": "2024-02-28"})
             ]
             
             for key, data in notes:
                 agent.memory_manager.store_long_term_memory(key, data)
                 print(f"  ✓ {key}: {data['content'][:50]}...")
                 
-            # Semantic search testleri
-            print("\n🔍 Semantic Search Testleri:")
+            # Semantic search tests
+            print("\n🔍 Semantic Search Tests:")
             
             queries = [
-                "seyahat anıları",
-                "yemek tarifleri", 
-                "programlama projeleri",
-                "Japonya deneyimleri"
+                "travel memories",
+                "cooking recipes", 
+                "programming projects",
+                "Japan experiences"
             ]
             
             for query in queries:
-                print(f"\n📍 Aranan: '{query}'")
+                print(f"\n📍 Searching for: '{query}'")
                 if hasattr(agent.memory_manager, 'search_memory'):
                     results = agent.memory_manager.search_memory(query, limit=3)
                     if results:
                         for i, result in enumerate(results, 1):
                             print(f"  {i}. {result}")
                     else:
-                        print("  Sonuç bulunamadı")
+                        print("  No results found")
                         
-            print("\n✅ Semantic memory testi başarılı!")
+            print("\n✅ Semantic memory test successful!")
             
         except Exception as e:
-            print(f"❌ Semantic memory testi başarısız: {e}")
-            print("📌 Not: Redis Stack (RediSearch modülü) gerekli!")
+            print(f"❌ Semantic memory test failed: {e}")
+            print("📌 Note: Redis Stack (RediSearch module) required!")
             
     def test_session_memory(self):
-        """Session (multi-agent shared) memory testi"""
+        """Test session (multi-agent shared) memory"""
         print("\n\n🟡 TEST 4: Session Memory (Multi-Agent Shared Memory)")
         print("-" * 60)
         
@@ -289,7 +289,7 @@ class RedisMemoryDemo:
         config1 = AgentConfig(
             name="ResearchAgent",
             model=self.model,
-            system_prompt="Sen araştırma yapan bir agentsın.",
+            system_prompt="You are a research agent.",
             enable_memory=True,
             memory_backend="redis",
             memory_types=["session"],
@@ -301,7 +301,7 @@ class RedisMemoryDemo:
         config2 = AgentConfig(
             name="WriterAgent",
             model=self.model,
-            system_prompt="Sen yazı yazan bir agentsın.",
+            system_prompt="You are a writing agent.",
             enable_memory=True,
             memory_backend="redis",
             memory_types=["session"],
@@ -312,28 +312,28 @@ class RedisMemoryDemo:
         try:
             agent1 = CoreAgent(config1)
             agent2 = CoreAgent(config2)
-            print(f"✅ Session agents oluşturuldu (Session: {session_id})")
+            print(f"✅ Session agents created (Session: {session_id})")
             
-            # Agent 1 araştırma yapar ve paylaşır
-            print("\n👤 Agent 1 (Researcher) veri paylaşıyor:")
+            # Agent 1 does research and shares
+            print("\n👤 Agent 1 (Researcher) sharing data:")
             if agent1.memory_manager.has_session_memory():
                 research_data = {
-                    "topic": "Yapay Zeka Trendleri 2024",
+                    "topic": "AI Trends 2024",
                     "key_points": [
-                        "Multimodal AI yükselişte",
-                        "Edge AI cihazları yaygınlaşıyor",
-                        "AI regulation artıyor"
+                        "Multimodal AI on the rise",
+                        "Edge AI devices becoming common",
+                        "AI regulation increasing"
                     ],
                     "sources": ["MIT Review", "Nature AI", "ArXiv"]
                 }
                 agent1.memory_manager.store_session_memory(research_data)
-                print(f"  ✓ Araştırma verileri paylaşıldı: {research_data['topic']}")
+                print(f"  ✓ Research data shared: {research_data['topic']}")
                 
-                # Agent 2 veriyi okur
-                print("\n👤 Agent 2 (Writer) veriyi okuyor:")
+                # Agent 2 reads the data
+                print("\n👤 Agent 2 (Writer) reading data:")
                 shared_data = agent2.memory_manager.get_session_memory()
                 if shared_data:
-                    print(f"  ✓ Paylaşılan veri alındı: {len(shared_data)} item")
+                    print(f"  ✓ Shared data received: {len(shared_data)} items")
                     for item in shared_data:
                         print(f"    - {item}")
                         
@@ -351,40 +351,40 @@ class RedisMemoryDemo:
                     {"status": "writing_draft", "word_count": 1500}
                 )
                 
-                print("  ✓ Agent-specific veriler kaydedildi")
+                print("  ✓ Agent-specific data saved")
                 
             else:
-                print("⚠️  Session memory Redis backend gerektirir")
+                print("⚠️  Session memory requires Redis backend")
                 
-            print("\n✅ Session memory testi tamamlandı!")
+            print("\n✅ Session memory test completed!")
             
         except Exception as e:
-            print(f"❌ Session memory testi başarısız: {e}")
+            print(f"❌ Session memory test failed: {e}")
             
     def test_ttl_support(self):
-        """TTL (Time-To-Live) desteği testi"""
+        """Test TTL (Time-To-Live) support"""
         print("\n\n⏰ TEST 5: TTL Support (Auto-expiration)")
         print("-" * 60)
         
         config = AgentConfig(
             name="RedisTTLAgent",
             model=self.model,
-            system_prompt="Sen TTL destekli memory kullanan bir asistansın.",
+            system_prompt="You are an assistant using TTL-enabled memory.",
             enable_memory=True,
             memory_backend="redis",
             memory_types=["short_term", "long_term"],
             redis_url=self.redis_url,
             enable_ttl=True,
-            default_ttl_minutes=1,  # 1 dakika TTL
+            default_ttl_minutes=1,  # 1 minute TTL
             refresh_on_read=True
         )
         
         try:
             agent = CoreAgent(config)
-            print("✅ TTL agent oluşturuldu (TTL: 1 dakika)")
+            print("✅ TTL agent created (TTL: 1 minute)")
             
-            # Veri kaydet
-            print("\n📝 TTL'li veri kaydediliyor:")
+            # Save data
+            print("\n📝 Saving data with TTL:")
             temp_data = {
                 "session_token": "abc123xyz",
                 "created_at": datetime.now().isoformat(),
@@ -392,34 +392,34 @@ class RedisMemoryDemo:
             }
             
             agent.memory_manager.store_long_term_memory("temp_session", temp_data)
-            print(f"  ✓ Geçici veri kaydedildi: {temp_data}")
+            print(f"  ✓ Temporary data saved: {temp_data}")
             
-            # Hemen oku
-            print("\n📖 Veri hemen okunuyor:")
+            # Read immediately
+            print("\n📖 Reading data immediately:")
             retrieved = agent.memory_manager.get_long_term_memory("temp_session")
-            print(f"  ✓ Veri mevcut: {retrieved is not None}")
+            print(f"  ✓ Data exists: {retrieved is not None}")
             
-            # TTL refresh testi
+            # TTL refresh test
             if config.refresh_on_read:
-                print("\n🔄 TTL refresh testi:")
-                print("  - refresh_on_read=True olduğu için TTL yenilendi")
-                print("  - Veri 1 dakika daha yaşayacak")
+                print("\n🔄 TTL refresh test:")
+                print("  - refresh_on_read=True so TTL was refreshed")
+                print("  - Data will live for another minute")
                 
-            print("\n⏳ Not: 1 dakika sonra veri otomatik silinecek")
-            print("✅ TTL testi tamamlandı!")
+            print("\n⏳ Note: Data will auto-expire after 1 minute")
+            print("✅ TTL test completed!")
             
         except Exception as e:
-            print(f"❌ TTL testi başarısız: {e}")
+            print(f"❌ TTL test failed: {e}")
             
     def test_advanced_features(self):
-        """Gelişmiş özellikler testi"""
+        """Test advanced features"""
         print("\n\n🚀 TEST 6: Advanced Features")
         print("-" * 60)
         
         config = AgentConfig(
             name="RedisAdvancedAgent",
             model=self.model,
-            system_prompt="Sen gelişmiş Redis özellikleri kullanan bir asistansın.",
+            system_prompt="You are an assistant using advanced Redis features.",
             enable_memory=True,
             memory_backend="redis",
             memory_types=["short_term", "long_term", "semantic"],
@@ -431,13 +431,13 @@ class RedisMemoryDemo:
         
         try:
             agent = CoreAgent(config)
-            print("✅ Advanced agent oluşturuldu")
+            print("✅ Advanced agent created")
             
             # Message trimming
             print("\n✂️ Message Trimming:")
             print(f"  - Max tokens: {config.max_tokens}")
             print(f"  - Strategy: {config.trim_strategy}")
-            print("  - Uzun konuşmalarda eski mesajlar otomatik kesilir")
+            print("  - Old messages auto-trimmed in long conversations")
             
             # Store metadata
             print("\n📊 Metadata Storage:")
@@ -447,16 +447,16 @@ class RedisMemoryDemo:
                     "user_id": "usr_123",
                     "session_start": datetime.now().isoformat(),
                     "device": "web",
-                    "location": "TR",
+                    "location": "US",
                     "preferences": {
-                        "language": "tr",
+                        "language": "en",
                         "theme": "dark"
                     }
                 }
             )
-            print("  ✓ Session metadata kaydedildi")
+            print("  ✓ Session metadata saved")
             
-            # Namespace kullanımı
+            # Namespace usage
             print("\n📁 Namespace Organization:")
             namespaces = ["users", "sessions", "analytics", "configs"]
             for ns in namespaces:
@@ -465,90 +465,90 @@ class RedisMemoryDemo:
                     {"namespace": ns, "data": f"Test data for {ns}"},
                     namespace=ns
                 )
-            print(f"  ✓ {len(namespaces)} farklı namespace'de veri organize edildi")
+            print(f"  ✓ Data organized in {len(namespaces)} different namespaces")
             
-            print("\n✅ Advanced features testi tamamlandı!")
+            print("\n✅ Advanced features test completed!")
             
         except Exception as e:
-            print(f"❌ Advanced features testi başarısız: {e}")
+            print(f"❌ Advanced features test failed: {e}")
             
     def show_redis_stats(self):
-        """Redis kullanım istatistikleri"""
-        print("\n\n📊 Redis Kullanım İstatistikleri")
+        """Show Redis usage statistics"""
+        print("\n\n📊 Redis Usage Statistics")
         print("-" * 60)
         
         try:
             import redis
             r = redis.from_url(self.redis_url)
             
-            # Key sayıları
+            # Key count
             keys = r.keys("*")
-            print(f"\n🔑 Toplam key sayısı: {len(keys)}")
+            print(f"\n🔑 Total key count: {len(keys)}")
             
-            # Key türlerine göre grupla
+            # Group by key types
             key_types = {}
             for key in keys:
                 key_str = key.decode() if isinstance(key, bytes) else key
                 prefix = key_str.split(":")[0] if ":" in key_str else "other"
                 key_types[prefix] = key_types.get(prefix, 0) + 1
                 
-            print("\n📂 Key türleri:")
+            print("\n📂 Key types:")
             for prefix, count in sorted(key_types.items()):
-                print(f"  - {prefix}: {count} adet")
+                print(f"  - {prefix}: {count} keys")
                 
-            # Memory kullanımı
+            # Memory usage
             info = r.info("memory")
             used_memory = info.get("used_memory_human", "N/A")
-            print(f"\n💾 Memory kullanımı: {used_memory}")
+            print(f"\n💾 Memory usage: {used_memory}")
             
         except Exception as e:
-            print(f"❌ Redis stats alınamadı: {e}")
+            print(f"❌ Could not get Redis stats: {e}")
             
     def cleanup(self):
-        """Test verilerini temizle (opsiyonel)"""
-        print("\n\n🧹 Cleanup (Opsiyonel)")
+        """Clean test data (optional)"""
+        print("\n\n🧹 Cleanup (Optional)")
         print("-" * 60)
         
-        response = input("Test verilerini temizlemek ister misiniz? (y/N): ")
+        response = input("Do you want to clean test data? (y/N): ")
         if response.lower() == 'y':
             try:
                 import redis
                 r = redis.from_url(self.redis_url)
                 
-                # Test key'lerini bul ve sil
+                # Find and delete test keys
                 test_keys = r.keys("*test*") + r.keys("*ali*") + r.keys("*ayse*")
                 if test_keys:
                     r.delete(*test_keys)
-                    print(f"✅ {len(test_keys)} test key'i silindi")
+                    print(f"✅ {len(test_keys)} test keys deleted")
                 else:
-                    print("ℹ️  Silinecek test key'i bulunamadı")
+                    print("ℹ️  No test keys found to delete")
                     
             except Exception as e:
-                print(f"❌ Cleanup başarısız: {e}")
+                print(f"❌ Cleanup failed: {e}")
         else:
-            print("ℹ️  Test verileri korundu")
+            print("ℹ️  Test data preserved")
 
 
 def main():
-    """Ana demo fonksiyonu"""
+    """Main demo function"""
     print("🚀 Redis Memory Demo - CoreAgent")
     print("================================")
-    print("\nBu demo Redis'in tüm memory özelliklerini test eder:")
+    print("\nThis demo tests all Redis memory features:")
     print("- Short-term (conversation) memory")
     print("- Long-term (key-value) memory") 
     print("- Semantic (vector search) memory")
     print("- Session (multi-agent) memory")
     print("- TTL (auto-expiration) support")
     
-    # Redis kontrolü
+    # Redis check
     if not check_redis_connection():
         return
         
-    # Demo çalıştır
+    # Run demo
     demo = RedisMemoryDemo()
     demo.setup()
     
-    # Testleri çalıştır
+    # Run tests
     demo.test_short_term_memory()
     demo.test_long_term_memory()
     demo.test_semantic_memory()
@@ -556,20 +556,20 @@ def main():
     demo.test_ttl_support()
     demo.test_advanced_features()
     
-    # İstatistikler
+    # Statistics
     demo.show_redis_stats()
     
-    # Temizlik
+    # Cleanup
     demo.cleanup()
     
-    print("\n\n✨ Redis Memory Demo Tamamlandı!")
-    print("\n📚 Öğrendiklerimiz:")
-    print("1. Short-term = Thread-based conversation (otomatik)")
-    print("2. Long-term = Key-value store (manuel)")
+    print("\n\n✨ Redis Memory Demo Completed!")
+    print("\n📚 What we learned:")
+    print("1. Short-term = Thread-based conversation (automatic)")
+    print("2. Long-term = Key-value store (manual)")
     print("3. Semantic = Vector similarity search")
     print("4. Session = Multi-agent sharing")
     print("5. TTL = Automatic expiration")
-    print("\n🎯 Redis tüm memory türlerini destekliyor!")
+    print("\n🎯 Redis supports all memory types!")
 
 
 if __name__ == "__main__":
