@@ -4,38 +4,28 @@ langchain==0.3.14
 langchain-openai==0.2.13
 langchain-anthropic==0.3.1
 
-# LangGraph - Latest available versions
+# LangGraph Core (minimal for Python 3.12+)
 langgraph==0.2.62
 langgraph-checkpoint==2.1.1
 langgraph-checkpoint-postgres==2.0.9
-langgraph-checkpoint-redis==0.0.8  # Very old version
-langgraph-sdk==0.1.48
 
 # Alternative Redis support
 langchain-redis==0.2.3
 
-# LangGraph Extensions
-langgraph-supervisor==0.0.28
-langgraph-swarm==0.0.2
-langmem==0.0.28
-
-# Stores
-langgraph-store==0.1.5
-langgraph-store-redis==0.1.0
-langgraph-store-postgres==0.1.0
-
-# MCP Support
-langchain-mcp-adapters==0.0.1
-
-# Evaluation
-agentevals==0.0.1
-
 # Database drivers
 redis==5.2.1
-redisvl==0.3.6
 psycopg2-binary==2.9.10
 pgvector==0.3.6
 
 # Other dependencies
 pydantic==2.10.4
 pydantic-settings==2.7.0
+
+# Optional - may not work with Python 3.12+
+# langgraph-checkpoint-redis==0.0.8
+# langgraph-store==0.1.5
+# langgraph-store-redis==0.1.0
+# langgraph-store-postgres==0.1.0
+# langmem==0.0.28
+# langgraph-supervisor==0.0.28
+# langgraph-swarm==0.0.2
