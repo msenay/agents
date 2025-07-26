@@ -201,22 +201,35 @@ class MemoryManager:
                         "refresh_on_read": self.config.refresh_on_read
                     }
 
-                # New version of RedisSaver might handle indexes automatically
+                # Create a wrapper for Redis checkpointer to handle context manager
+                class RedisCheckpointerWrapper:
+                    def __init__(self, conn_string, ttl=None):
+                        self._cm = RedisSaver.from_conn_string(conn_string, ttl=ttl)
+                        self._saver = None
+                        # Enter context manager immediately
+                        self._saver = self._cm.__enter__()
+                    
+                    def __getattr__(self, name):
+                        # Forward all attribute access to the actual saver
+                        return getattr(self._saver, name)
+                    
+                    def __del__(self):
+                        # Cleanup on deletion
+                        if self._cm:
+                            try:
+                                self._cm.__exit__(None, None, None)
+                            except:
+                                pass
+                
                 try:
-                    self.checkpointer = RedisSaver.from_conn_string(
+                    self.checkpointer = RedisCheckpointerWrapper(
                         self.config.redis_url,
                         ttl=ttl_config
                     )
                     logger.info("RedisSaver checkpointer initialized")
                 except Exception as e:
                     logger.error(f"Failed to initialize RedisSaver: {e}")
-                    # Try with context manager approach
-                    self.checkpointer_cm = RedisSaver.from_conn_string(
-                        self.config.redis_url,
-                        ttl=ttl_config
-                    )
-                    self.checkpointer = self.checkpointer_cm.__enter__()
-                    logger.info("RedisSaver checkpointer initialized with context manager")
+                    raise RuntimeError(f"Redis checkpointer initialization failed: {e}")
 
             elif checkpointer_type == "postgres" and PostgresSaver and self.config.postgres_url:
                 try:
