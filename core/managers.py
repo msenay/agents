@@ -368,10 +368,16 @@ class MemoryManager:
                 # Try to use RedisStore directly first
                 try:
                     # New versions might return the store directly
+                    # Extract embeddings for semantic search
+                    embed_param = None
+                    if index_config and 'embeddings' in index_config:
+                        embed_param = index_config['embeddings']
+                        
                     store_instance = RedisStore.from_conn_string(
                         self.config.redis_url,
                         index=index_config,
-                        ttl=ttl_config
+                        ttl=ttl_config,
+                        embed=embed_param  # Add embed parameter for semantic search
                     )
                     
                     # Check if it's a context manager or direct instance
@@ -396,8 +402,13 @@ class MemoryManager:
                     logger.warning(f"Direct RedisStore initialization failed: {e}")
                     # Fallback to wrapper approach
                     class RedisStoreWrapper:
-                        def __init__(self, conn_string, index=None, ttl=None):
-                            self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
+                        def __init__(self, conn_string, index=None, ttl=None, embed=None):
+                            self._store_cm = RedisStore.from_conn_string(
+                                conn_string, 
+                                index=index, 
+                                ttl=ttl,
+                                embed=embed
+                            )
                             self._store = None
                             # Enter the context manager once
                             self._store = self._store_cm.__enter__()
@@ -427,10 +438,16 @@ class MemoryManager:
                             # Forward any other method calls to the actual store
                             return getattr(self._store, name)
 
+                    # Extract embeddings for wrapper
+                    embed_param = None
+                    if index_config and 'embeddings' in index_config:
+                        embed_param = index_config['embeddings']
+                        
                     self.store = RedisStoreWrapper(
                         self.config.redis_url,
                         index=index_config,
-                        ttl=ttl_config
+                        ttl=ttl_config,
+                        embed=embed_param
                     )
                 
                 logger.info("RedisStore initialized - indexes will be created on first use")

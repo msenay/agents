@@ -153,7 +153,7 @@ def test_memory_combination(memory_types, test_name):
             print("\n--- Testing SEMANTIC Memory ---")
             
             # Store some documents
-            if hasattr(agent.memory_manager, 'store'):
+            if hasattr(agent.memory_manager, 'store') and agent.memory_manager.store:
                 try:
                     # Store related documents
                     docs = [
@@ -309,7 +309,9 @@ def test_thread_safety():
         print(f"🤖 Agent: {response['messages'][-1].content}")
         
         content = response['messages'][-1].content.lower()
-        if "alice" not in content and "bob" not in content and "red" not in content and "green" not in content:
+        # Remove emojis and check more carefully
+        clean_content = ''.join(char for char in content if char.isalnum() or char.isspace())
+        if "alice" not in clean_content and "bob" not in clean_content and "red" not in clean_content and "green" not in clean_content:
             results["new_thread"] = "✅ Correct - No prior knowledge"
         else:
             results["new_thread"] = "❌ Failed - Knows other threads"
