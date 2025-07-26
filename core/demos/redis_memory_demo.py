@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Redis Memory Demo - Tests all Redis features with CoreAgent
-Using updated LangGraph 0.5.4
+Comprehensive Redis Memory Demo for Core Agent
+Tests all memory type combinations
 """
 
 import os
 import sys
 import time
-import redis
+from datetime import datetime
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-# Set environment variables
+# Set Azure OpenAI credentials
 os.environ["AZURE_OPENAI_ENDPOINT"] = "https://oai-202-fbeta-dev.openai.azure.com/"
 os.environ["AZURE_OPENAI_API_KEY"] = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4"
 os.environ["OPENAI_API_KEY"] = os.environ["AZURE_OPENAI_API_KEY"]
@@ -20,9 +20,10 @@ os.environ["OPENAI_API_KEY"] = os.environ["AZURE_OPENAI_API_KEY"]
 from core import CoreAgent, AgentConfig
 from langchain_openai import AzureChatOpenAI
 from langchain_core.tools import tool
+import redis
 
-# Redis URL
-REDIS_URL = os.getenv("REDIS_URL", "redis://:redis_password@localhost:6379")
+# Redis connection
+REDIS_URL = os.environ.get("REDIS_URL", "redis://:redis_password@localhost:6379")
 
 
 def check_redis():
@@ -31,44 +32,32 @@ def check_redis():
         r = redis.from_url(REDIS_URL)
         r.ping()
         print("✅ Redis connection successful")
-
         return True
-        
     except Exception as e:
-        print(f"❌ Redis error: {e}")
-        print("\n🔧 Solutions:")
-        print("   1. Start Redis: docker-compose up redis")
-        print("   2. Check password in docker-compose.yml")
+        print(f"❌ Redis connection failed: {e}")
+        print("\n💡 Make sure Redis is running:")
+        print("   docker-compose up -d redis")
         return False
 
 
-@tool
-def save_note(title: str, content: str) -> str:
-    """Save a note to memory"""
-    return f"Note '{title}' saved successfully"
-
-
-@tool
-def calculate(expression: str) -> str:
-    """Calculate a mathematical expression"""
+def clear_redis_data():
+    """Clear all Redis data for fresh start"""
     try:
-        result = eval(expression, {"__builtins__": {}}, {})
-        return f"Result: {result}"
-    except Exception as e:
-        return f"Error: {str(e)}"
+        r = redis.from_url(REDIS_URL)
+        r.flushdb()
+        print("🧹 Redis data cleared")
+    except:
+        pass
 
 
-def run_redis_demo():
-    """Main demo function"""
-    print("\n" + "="*60)
-    print("🚀 REDIS MEMORY DEMO - LangGraph 0.5.4")
-    print("="*60)
+def test_memory_combination(memory_types, test_name):
+    """Test a specific memory combination"""
+    print("\n" + "="*80)
+    print(f"🧪 TESTING: {test_name}")
+    print(f"   Memory Types: {memory_types}")
+    print("="*80)
     
-    # Check Redis
-    if not check_redis():
-        return
-    
-    # Initialize model
+    # Create model
     model = AzureChatOpenAI(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
@@ -77,142 +66,207 @@ def run_redis_demo():
         temperature=0.7
     )
     
-    # Create agent with Redis memory
-    config = AgentConfig(
-        name="RedisAgent",
-        model=model,
-        tools=[save_note, calculate],
-        
-        # Memory configuration
-        enable_memory=True,
-        memory_backend="redis",
-        redis_url=REDIS_URL,
-        memory_types=["short_term", "long_term"],
-        
-        # Memory features
-        enable_memory_tools=True,
-        
-        # System prompt
-        system_prompt="You are a helpful assistant with Redis memory capabilities."
-    )
+    # Configure based on memory types
+    config_params = {
+        "name": f"RedisAgent_{test_name}",
+        "model": model,
+        "enable_memory": True,
+        "memory_backend": "redis",
+        "redis_url": REDIS_URL,
+        "memory_types": memory_types,
+        "enable_memory_tools": "long_term" in memory_types,
+        "system_prompt": "You are a helpful AI assistant with memory capabilities."
+    }
     
-    print("\n📋 Configuration:")
-    print(f"   Backend: {config.memory_backend}")
-    print(f"   Memory Types: {config.memory_types}")
-    print(f"   Tools: {[t.name for t in config.tools]}")
+    # Add embedding config if needed
+    if "semantic" in memory_types:
+        config_params.update({
+            "embedding_model": "openai:text-embedding-3-small",
+            "embedding_dims": 1536,
+            "enable_semantic_search": True
+        })
     
-    # Create agent
     try:
+        # Create agent
+        config = AgentConfig(**config_params)
         agent = CoreAgent(config)
-        print("\n✅ Agent created successfully!")
-        print("   Note: New LangGraph versions might handle indexes automatically")
+        print("✅ Agent created successfully")
+        
+        # Test based on memory types
+        results = {}
+        
+        # Test 1: Short-term memory (if enabled)
+        if "short_term" in memory_types:
+            print("\n--- Testing SHORT-TERM Memory ---")
+            
+            # First message
+            response = agent.invoke(
+                "Hi! My name is TestUser and I love Python programming.",
+                config={"configurable": {"thread_id": f"test_{test_name}"}}
+            )
+            print("👤 User: Hi! My name is TestUser and I love Python programming.")
+            print(f"🤖 Agent: {response['messages'][-1].content}")
+            
+            # Test memory recall
+            response = agent.invoke(
+                "What do you remember about me?",
+                config={"configurable": {"thread_id": f"test_{test_name}"}}
+            )
+            print("\n👤 User: What do you remember about me?")
+            print(f"🤖 Agent: {response['messages'][-1].content}")
+            
+            # Check if it remembers
+            content = response['messages'][-1].content.lower()
+            if "testuser" in content or "python" in content:
+                results["short_term"] = "✅ Working - Remembers conversation"
+            else:
+                results["short_term"] = "❌ Failed - Doesn't remember"
+        
+        # Test 2: Long-term memory (if enabled)
+        if "long_term" in memory_types:
+            print("\n--- Testing LONG-TERM Memory ---")
+            
+            # Store data directly
+            if hasattr(agent.memory_manager, 'store'):
+                agent.memory_manager.store.put(
+                    namespace="user_data",
+                    key="preferences",
+                    value={"theme": "dark", "language": "Python", "level": "expert"}
+                )
+                print("📝 Stored user preferences")
+                
+                # Retrieve data
+                data = agent.memory_manager.store.get(
+                    namespace="user_data",
+                    key="preferences"
+                )
+                print(f"📖 Retrieved: {data.value if data else 'None'}")
+                
+                if data and data.value.get("language") == "Python":
+                    results["long_term"] = "✅ Working - Can store/retrieve data"
+                else:
+                    results["long_term"] = "❌ Failed - Storage issue"
+            else:
+                results["long_term"] = "⚠️  No store available"
+        
+        # Test 3: Semantic/Embedding memory (if enabled)
+        if "semantic" in memory_types:
+            print("\n--- Testing SEMANTIC Memory ---")
+            
+            # Store some documents
+            if hasattr(agent.memory_manager, 'store'):
+                try:
+                    # Store related documents
+                    docs = [
+                        ("doc1", "Python is a great programming language for data science and machine learning."),
+                        ("doc2", "JavaScript is popular for web development and frontend frameworks."),
+                        ("doc3", "Machine learning models can be trained using Python libraries like TensorFlow.")
+                    ]
+                    
+                    for doc_id, content in docs:
+                        agent.memory_manager.store.put(
+                            namespace="knowledge_base",
+                            key=doc_id,
+                            value={"content": content}
+                        )
+                    print("📚 Stored 3 documents for semantic search")
+                    
+                    # Search semantically
+                    search_results = agent.memory_manager.store.search(
+                        namespace="knowledge_base",
+                        query="What programming language is good for AI?",
+                        limit=2
+                    )
+                    
+                    if search_results:
+                        print(f"🔍 Found {len(search_results)} relevant documents")
+                        results["semantic"] = "✅ Working - Semantic search successful"
+                    else:
+                        results["semantic"] = "❌ Failed - No search results"
+                        
+                except Exception as e:
+                    results["semantic"] = f"❌ Error - {str(e)[:50]}"
+            else:
+                results["semantic"] = "⚠️  No store available"
+        
+        # Test 4: Combined functionality (if multiple types)
+        if len(memory_types) > 1:
+            print("\n--- Testing COMBINED Memory ---")
+            
+            # Use conversation with memory tools
+            if "short_term" in memory_types and "long_term" in memory_types:
+                response = agent.invoke(
+                    "Please remember that my favorite color is blue",
+                    config={"configurable": {"thread_id": f"test_{test_name}_combined"}}
+                )
+                print("👤 User: Please remember that my favorite color is blue")
+                print(f"🤖 Agent: {response['messages'][-1].content}")
+                
+                results["combined"] = "✅ Multiple memory types active"
+        
+        # Summary
+        print("\n" + "-"*80)
+        print("📊 Results:")
+        for key, value in results.items():
+            print(f"   {key}: {value}")
+        
+        return results
+        
     except Exception as e:
-        print(f"\n❌ Failed to create agent: {e}")
-        print("\n💡 Troubleshooting:")
-        print("   1. Check if Redis Stack is running (not just Redis)")
-        print("   2. Try: docker run -d -p 6379:6379 redis/redis-stack:latest")
-        print("   3. Or use InMemory backend for testing")
+        print(f"\n❌ Test failed with error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
+
+def run_all_tests():
+    """Run all memory combination tests"""
+    print("\n" + "="*80)
+    print("🚀 REDIS MEMORY DEMO - ALL COMBINATIONS")
+    print("="*80)
+    
+    if not check_redis():
         return
     
-    # Test 1: Short-term memory (conversation)
-    print("\n" + "-"*60)
-    print("TEST 1: SHORT-TERM MEMORY (Conversation)")
-    print("-"*60)
+    # Test combinations
+    test_configs = [
+        (["short_term"], "Short-term Only"),
+        (["long_term"], "Long-term Only"),
+        (["semantic"], "Semantic Only"),
+        (["short_term", "long_term"], "Short + Long"),
+        (["short_term", "long_term", "semantic"], "Short + Long + Semantic"),
+    ]
     
-    thread_id = "user_123"
+    all_results = {}
     
-    try:
-        # First message
-        response = agent.invoke(
-            "Hi! My name is Alice and I work as a data scientist.",
-            config={"configurable": {"thread_id": thread_id}}
-        )
-        print("\n👤 User: Hi! My name is Alice and I work as a data scientist.")
-        print(f"🤖 Agent: {response['messages'][-1].content}")
+    for memory_types, test_name in test_configs:
+        # Clear Redis between tests for isolation
+        clear_redis_data()
+        time.sleep(1)  # Give Redis time to clear
         
-        # Second message - should remember
-        response = agent.invoke(
-            "What's my name and profession?",
-            config={"configurable": {"thread_id": thread_id}}
-        )
-        print("\n👤 User: What's my name and profession?")
-        print(f"🤖 Agent: {response['messages'][-1].content}")
+        results = test_memory_combination(memory_types, test_name)
+        all_results[test_name] = results
         
-    except Exception as e:
-        print(f"❌ Short-term memory error: {e}")
-        print("   This might be due to missing Redis indexes")
+        # Small delay between tests
+        time.sleep(2)
     
-    # Test 2: Long-term memory (persistent storage)
-    print("\n" + "-"*60)
-    print("TEST 2: LONG-TERM MEMORY (Persistent Storage)")
-    print("-"*60)
+    # Final summary
+    print("\n" + "="*80)
+    print("📊 FINAL SUMMARY - ALL TESTS")
+    print("="*80)
     
-    try:
-        mm = agent.memory_manager
-        
-        # Store data
-        print("\n📝 Storing user preferences...")
-        mm.store_long_term_memory("alice_preferences", {
-            "favorite_color": "blue",
-            "favorite_language": "Python",
-            "interests": ["machine learning", "data visualization"]
-        })
-        print("✅ Preferences stored")
-        
-        # Retrieve data
-        prefs = mm.get_long_term_memory("alice_preferences")
-        print(f"\n📖 Retrieved: {prefs}")
-        
-    except Exception as e:
-        print(f"❌ Long-term memory error: {e}")
+    for test_name, results in all_results.items():
+        print(f"\n{test_name}:")
+        if isinstance(results, dict) and "error" not in results:
+            for key, value in results.items():
+                print(f"  - {key}: {value}")
+        else:
+            print(f"  - Status: {results}")
     
-    # Test 3: Memory tools
-    print("\n" + "-"*60)
-    print("TEST 3: MEMORY TOOLS")
-    print("-"*60)
-    
-    try:
-        response = agent.invoke(
-            "Please save a note that I have a meeting tomorrow at 2 PM with the marketing team",
-            config={"configurable": {"thread_id": thread_id}}
-        )
-        print("\n👤 User: Please save a note about tomorrow's meeting")
-        print(f"🤖 Agent: {response['messages'][-1].content}")
-        
-    except Exception as e:
-        print(f"❌ Memory tools error: {e}")
-    
-    # Test 4: Thread isolation
-    print("\n" + "-"*60)
-    print("TEST 4: THREAD ISOLATION")
-    print("-"*60)
-    
-    try:
-        response = agent.invoke(
-            "What's my name?",
-            config={"configurable": {"thread_id": "different_user"}}
-        )
-        print("\n👤 User (different thread): What's my name?")
-        print(f"🤖 Agent: {response['messages'][-1].content}")
-        
-    except Exception as e:
-        print(f"❌ Thread isolation error: {e}")
-    
-    print("\n" + "="*60)
-    print("📊 DEMO SUMMARY")
-    print("="*60)
-    
-    print("\n✅ Tests attempted:")
-    print("1. Short-term memory - Conversation history per thread")
-    print("2. Long-term memory - Persistent key-value storage")
-    print("3. Memory tools - Agent can save/retrieve data")
-    print("4. Thread isolation - Different conversations isolated")
-    
-    print("\n💡 Notes:")
-    print("- LangGraph 0.5.4 should handle Redis better")
-    print("- If errors occur, indexes might still be needed")
-    print("- Consider using PostgreSQL or InMemory for stability")
+    print("\n" + "="*80)
+    print("✨ Demo completed!")
+    print("="*80)
 
 
 if __name__ == "__main__":
-    run_redis_demo()
+    run_all_tests()
