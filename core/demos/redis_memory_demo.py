@@ -82,8 +82,7 @@ def test_memory_combination(memory_types, test_name):
     if "semantic" in memory_types:
         config_params.update({
             "embedding_model": "openai:text-embedding-3-small",
-            "embedding_dims": 1536,
-            "enable_semantic_search": True
+            "embedding_dims": 1536
         })
     
     try:
