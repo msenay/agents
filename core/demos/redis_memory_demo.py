@@ -31,12 +31,7 @@ def check_redis():
         r = redis.from_url(REDIS_URL)
         r.ping()
         print("✅ Redis connection successful")
-        
-        # Clear any existing data for clean test
-        print("🧹 Clearing Redis data...")
-        r.flushdb()
-        print("✅ Redis cleared for fresh start")
-        
+
         return True
         
     except Exception as e:
