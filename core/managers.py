@@ -516,17 +516,8 @@ class MemoryManager:
         # Currently only Redis supports vector store through langchain-redis
         if store_type == "redis" and self.config.redis_url:
             try:
-                # Initialize embeddings with Azure OpenAI
-                if "openai" in self.config.embedding_model.lower():
-                    # Use Azure OpenAI embeddings
-                    from langchain_openai import AzureOpenAIEmbeddings
-                    import os
-                    embeddings = AzureOpenAIEmbeddings(
-                        azure_deployment="text-embedding-ada-002",
-                        api_version="2023-12-01-preview"
-                    )
-                else:
-                    embeddings = init_embeddings(self.config.embedding_model)
+                # Initialize embeddings
+                embeddings = init_embeddings(self.config.embedding_model)
                 
                 # Create Redis config for vector store
                 redis_config = RedisConfig(

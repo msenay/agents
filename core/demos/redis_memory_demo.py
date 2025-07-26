@@ -83,7 +83,7 @@ def test_memory_combination(memory_types, test_name):
     # Add embedding config if needed
     if "semantic" in memory_types:
         config_params.update({
-            "embedding_model": "azure:text-embedding-ada-002",
+            "embedding_model": "azure_openai:text-embedding-ada-002",
             "embedding_dims": 1536
         })
     
