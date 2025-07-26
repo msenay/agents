@@ -13,11 +13,14 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 # Set Azure OpenAI credentials
-os.environ["AZURE_OPENAI_ENDPOINT"] = "https://oai-202-fbeta-dev.openai.azure.com/"
-os.environ["AZURE_OPENAI_API_KEY"] = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4"
+os.environ["AZURE_OPENAI_ENDPOINT"] = os.environ.get("AZURE_OPENAI_ENDPOINT", "https://oai-202-fbeta-dev.openai.azure.com/")
+os.environ["AZURE_OPENAI_API_KEY"] = os.environ.get("AZURE_OPENAI_API_KEY", "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4")
 os.environ["OPENAI_API_KEY"] = os.environ["AZURE_OPENAI_API_KEY"]
-os.environ["AZURE_OPENAI_API_VERSION"] = "2023-12-01-preview"
-os.environ["AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"] = "ada3"
+os.environ["AZURE_OPENAI_API_VERSION"] = os.environ.get("AZURE_OPENAI_API_VERSION", "2023-12-01-preview")
+
+# Get deployment names from environment with defaults
+CHAT_DEPLOYMENT = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt4o")
+EMBEDDING_DEPLOYMENT = os.environ.get("AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT", "ada3")
 
 from core import CoreAgent, AgentConfig
 from langchain_openai import AzureChatOpenAI
@@ -63,8 +66,8 @@ def test_memory_combination(memory_types, test_name):
     model = AzureChatOpenAI(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
-        api_version="2023-12-01-preview",
-        azure_deployment="gpt4o",
+        api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+        azure_deployment=CHAT_DEPLOYMENT,
         temperature=0.7
     )
     
@@ -83,7 +86,7 @@ def test_memory_combination(memory_types, test_name):
     # Add embedding config if needed
     if "semantic" in memory_types:
         config_params.update({
-            "embedding_model": "azure_openai:ada3",
+            "embedding_model": f"azure_openai:{EMBEDDING_DEPLOYMENT}",
             "embedding_dims": 1536
         })
     
@@ -239,8 +242,8 @@ def test_thread_safety():
     model = AzureChatOpenAI(
         azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
         api_key=os.environ["AZURE_OPENAI_API_KEY"],
-        api_version="2023-12-01-preview",
-        azure_deployment="gpt4o",
+        api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+        azure_deployment=CHAT_DEPLOYMENT,
         temperature=0
     )
     
