@@ -405,6 +405,9 @@ def run_all_tests():
     print("\n" + "="*80)
     print("✨ Demo completed!")
     print("\n📝 Notes:")
+    print("  - Redis must be running for memory features to work")
+    print("  - Check docker-compose.yml for Redis configuration")
+    print("  - Memory isolation between threads is critical for production use")
     print("="*80)
 
 

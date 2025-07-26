@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Core Agent - Basit Kullanım Örnekleri
-Direkt çalıştırılabilir örnekler
+Simple Core Agent Examples
+Demonstrates basic agent creation patterns
 """
 
 from core import CoreAgent, AgentConfig
@@ -28,12 +28,12 @@ class MockLLM(BaseChatModel):
 
 
 # ============================================================
-# ÖRNEK 1: En Basit Agent
+# EXAMPLE 1: Minimal Agent
 # ============================================================
 def example_1_minimal_agent():
-    """En minimal agent örneği"""
+    """The most minimal agent example"""
     print("=" * 50)
-    print("ÖRNEK 1: Minimal Agent")
+    print("EXAMPLE 1: Minimal Agent")
     print("=" * 50)
     
     # Config - sadece zorunlu parametreler
@@ -51,47 +51,47 @@ def example_1_minimal_agent():
 
 
 # ============================================================
-# ÖRNEK 2: System Prompt'lu Agent
+# EXAMPLE 2: Agent with System Prompt
 # ============================================================
 def example_2_with_prompt():
-    """System prompt'lu agent"""
+    """Agent with custom system prompt"""
     print("\n" + "=" * 50)
-    print("ÖRNEK 2: System Prompt'lu Agent")
+    print("EXAMPLE 2: Agent with System Prompt")
     print("=" * 50)
     
     config = AgentConfig(
-        name="AsistanAgent",
+        name="AssistantAgent",
         model=MockLLM(),
-        system_prompt="Sen yardımsever bir asistansın. Her zaman nazik ve profesyonel ol."
+        system_prompt="You are a helpful assistant. Always be kind and professional."
     )
     
     agent = CoreAgent(config)
-    response = agent.invoke("Bugün hava nasıl?")
-    print(f"Yanıt: {response['messages'][-1].content}")
+    response = agent.invoke("How is the weather today?")
+    print(f"Response: {response['messages'][-1].content}")
 
 
 # ============================================================
-# ÖRNEK 3: Tool'lu Agent
+# EXAMPLE 3: Agent with Tools
 # ============================================================
 def example_3_with_tools():
-    """Tool kullanan agent"""
+    """Agent using tools"""
     print("\n" + "=" * 50)
-    print("ÖRNEK 3: Tool'lu Agent")
+    print("EXAMPLE 3: Agent with Tools")
     print("=" * 50)
     
-    # Basit bir tool tanımla
+    # Define a simple tool
     @tool
-    def hesap_makinesi(islem: str) -> str:
-        """Basit matematik işlemleri yapar. Örnek: '2 + 2' veya '10 * 5'"""
+    def calculator(operation: str) -> str:
+        """Performs simple math operations. Example: '2 + 2' or '10 * 5'"""
         try:
-            sonuc = eval(islem)
-            return f"Sonuç: {sonuc}"
+            result = eval(operation)
+            return f"Result: {result}"
         except:
-            return "Hata: Geçersiz işlem"
+            return "Error: Invalid operation"
     
     @tool
-    def tarih_saat() -> str:
-        """Şu anki tarih ve saati döndürür"""
+    def datetime_now() -> str:
+        """Returns the current date and time"""
         from datetime import datetime
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
@@ -99,29 +99,29 @@ def example_3_with_tools():
     config = AgentConfig(
         name="ToolAgent",
         model=MockLLM(),
-        system_prompt="Sen matematik ve zaman konularında yardımcı olan bir asistansın.",
-        tools=[hesap_makinesi, tarih_saat]
+        system_prompt="You are an assistant that helps with math and time-related questions.",
+        tools=[calculator, datetime_now]
     )
     
     agent = CoreAgent(config)
-    print(f"Kullanılabilir tool'lar: {[t.name for t in config.tools]}")
+    print(f"Available tools: {[t.name for t in config.tools]}")
 
 
 # ============================================================
-# ÖRNEK 4: Memory'li Agent
+# EXAMPLE 4: Agent with Memory
 # ============================================================
 def example_4_with_memory():
-    """Memory kullanan agent"""
+    """Agent using memory"""
     print("\n" + "=" * 50)
-    print("ÖRNEK 4: Memory'li Agent")
+    print("EXAMPLE 4: Agent with Memory")
     print("=" * 50)
     
     config = AgentConfig(
         name="MemoryAgent",
         model=MockLLM(),
-        system_prompt="Sen hafızası olan bir asistansın.",
+        system_prompt="You are an assistant with memory.",
         
-        # Memory ayarları
+        # Memory settings
         enable_memory=True,
         memory_backend="inmemory",
         memory_types=["short_term"]  # Thread-based conversation memory
@@ -129,24 +129,24 @@ def example_4_with_memory():
     
     agent = CoreAgent(config)
     
-    # Thread 1'de konuşma
+    # Conversation in Thread 1
     print("\nThread 1:")
-    agent.invoke("Benim adım Ahmet", config={"configurable": {"thread_id": "user_1"}})
-    agent.invoke("Adımı hatırlıyor musun?", config={"configurable": {"thread_id": "user_1"}})
+    agent.invoke("My name is Ahmet", config={"configurable": {"thread_id": "user_1"}})
+    agent.invoke("Do you remember my name?", config={"configurable": {"thread_id": "user_1"}})
     
-    # Thread 2'de farklı konuşma
+    # Conversation in Thread 2
     print("\nThread 2:")
-    agent.invoke("Ben Mehmet", config={"configurable": {"thread_id": "user_2"}})
-    agent.invoke("Kim olduğumu biliyor musun?", config={"configurable": {"thread_id": "user_2"}})
+    agent.invoke("I am Mehmet", config={"configurable": {"thread_id": "user_2"}})
+    agent.invoke("Do you know who I am?", config={"configurable": {"thread_id": "user_2"}})
 
 
 # ============================================================
-# ÖRNEK 5: Streaming Agent
+# EXAMPLE 5: Streaming Agent
 # ============================================================
 def example_5_streaming():
-    """Streaming destekli agent"""
+    """Streaming agent"""
     print("\n" + "=" * 50)
-    print("ÖRNEK 5: Streaming Agent")
+    print("EXAMPLE 5: Streaming Agent")
     print("=" * 50)
     
     config = AgentConfig(
@@ -157,21 +157,21 @@ def example_5_streaming():
     
     agent = CoreAgent(config)
     
-    # Stream kullanımı
-    print("Streaming yanıt:")
-    for chunk in agent.stream("Uzun bir hikaye anlat"):
-        # Gerçek kullanımda chunk'lar parça parça gelir
+    # Stream usage
+    print("Streaming response:")
+    for chunk in agent.stream("Tell me a long story"):
+        # In real usage, chunks come piece by piece
         print(".", end="", flush=True)
-    print("\nStreaming tamamlandı!")
+    print("\nStreaming complete!")
 
 
 # ============================================================
-# ÖRNEK 6: Rate Limited Agent
+# EXAMPLE 6: Rate Limited Agent
 # ============================================================
 def example_6_rate_limited():
-    """Rate limiting'li agent"""
+    """Rate limiting agent"""
     print("\n" + "=" * 50)
-    print("ÖRNEK 6: Rate Limited Agent")
+    print("EXAMPLE 6: Rate Limited Agent")
     print("=" * 50)
     
     config = AgentConfig(
@@ -180,61 +180,61 @@ def example_6_rate_limited():
         
         # Rate limiting
         enable_rate_limiting=True,
-        requests_per_second=2.0,  # Saniyede max 2 istek
+        requests_per_second=2.0,  # Max 2 requests per second
         max_bucket_size=5.0
     )
     
     agent = CoreAgent(config)
-    print(f"Rate limit: {config.requests_per_second} istek/saniye")
+    print(f"Rate limit: {config.requests_per_second} requests/second")
 
 
 # ============================================================
-# FACTORY PATTERN ÖRNEĞİ
+# FACTORY PATTERN EXAMPLE
 # ============================================================
 class AgentFactory:
-    """Agent oluşturmak için factory pattern"""
+    """Factory pattern for creating agents"""
     
     @staticmethod
     def create_chatbot(name: str = "Chatbot") -> CoreAgent:
-        """Basit bir chatbot oluştur"""
+        """Create a simple chatbot"""
         return CoreAgent(AgentConfig(
             name=name,
             model=MockLLM(),
-            system_prompt="Sen samimi ve yardımsever bir chatbotsun.",
+            system_prompt="You are a friendly and helpful chatbot.",
             enable_memory=True,
             memory_backend="inmemory"
         ))
     
     @staticmethod
     def create_coder(name: str = "Coder") -> CoreAgent:
-        """Kod yazan agent oluştur"""
+        """Create a coding agent"""
         
         @tool
         def python_runner(code: str) -> str:
-            """Python kodunu çalıştırır"""
-            return "Kod çalıştırıldı (simülasyon)"
+            """Runs Python code"""
+            return "Code executed (simulation)"
         
         return CoreAgent(AgentConfig(
             name=name,
             model=MockLLM(),
-            system_prompt="Sen uzman bir Python geliştiricisisin.",
+            system_prompt="You are an expert Python developer.",
             tools=[python_runner],
             enable_memory=True
         ))
     
     @staticmethod
     def create_researcher(name: str = "Researcher") -> CoreAgent:
-        """Araştırma yapan agent oluştur"""
+        """Create a research agent"""
         
         @tool
         def web_search(query: str) -> str:
-            """Web'de arama yapar"""
-            return f"'{query}' için arama sonuçları (simülasyon)"
+            """Searches the web"""
+            return f"Search results for '{query}' (simulation)"
         
         return CoreAgent(AgentConfig(
             name=name,
             model=MockLLM(),
-            system_prompt="Sen detaylı araştırma yapan bir asistansın.",
+            system_prompt="You are an assistant that conducts detailed research.",
             tools=[web_search],
             enable_memory=True,
             memory_types=["short_term", "long_term"]
@@ -242,12 +242,12 @@ class AgentFactory:
 
 
 # ============================================================
-# ÇALIŞTIR
+# RUN
 # ============================================================
 if __name__ == "__main__":
-    print("🚀 Core Agent Basit Örnekler\n")
+    print("🚀 Core Agent Simple Examples\n")
     
-    # Tüm örnekleri çalıştır
+    # Run all examples
     example_1_minimal_agent()
     example_2_with_prompt()
     example_3_with_tools()
@@ -255,24 +255,24 @@ if __name__ == "__main__":
     example_5_streaming()
     example_6_rate_limited()
     
-    # Factory pattern örneği
+    # Factory pattern example
     print("\n" + "=" * 50)
-    print("FACTORY PATTERN ÖRNEĞİ")
+    print("FACTORY PATTERN EXAMPLE")
     print("=" * 50)
     
     factory = AgentFactory()
     
-    # Hazır agent'lar oluştur
-    chatbot = factory.create_chatbot("SohbetBotu")
-    coder = factory.create_coder("KodYazıcı")
-    researcher = factory.create_researcher("Araştırmacı")
+    # Create ready agents
+    chatbot = factory.create_chatbot("ChatBot")
+    coder = factory.create_coder("CodeWriter")
+    researcher = factory.create_researcher("Researcher")
     
-    print(f"✅ {chatbot.config.name} oluşturuldu")
-    print(f"✅ {coder.config.name} oluşturuldu")
-    print(f"✅ {researcher.config.name} oluşturuldu")
+    print(f"✅ {chatbot.config.name} created")
+    print(f"✅ {coder.config.name} created")
+    print(f"✅ {researcher.config.name} created")
     
-    print("\n✨ Tüm örnekler tamamlandı!")
-    print("\n📌 Gerçek kullanım için:")
-    print("   - MockLLM yerine ChatOpenAI kullan")
-    print("   - Gerçek tool'lar ekle")
-    print("   - Production için Redis/PostgreSQL backend kullan")
+    print("\n✨ All examples completed!")
+    print("\n📌 For real usage:")
+    print("   - Use ChatOpenAI instead of MockLLM")
+    print("   - Add real tools")
+    print("   - Use Redis/PostgreSQL backend for production")
