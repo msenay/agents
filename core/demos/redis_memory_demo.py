@@ -81,7 +81,7 @@ def test_memory_combination(memory_types, test_name):
     # Add embedding config if needed
     if "semantic" in memory_types:
         config_params.update({
-            "embedding_model": "openai:text-embedding-3-small",
+            "embedding_model": "openai:text-embedding-ada-002",
             "embedding_dims": 1536
         })
     
@@ -218,6 +218,123 @@ def test_memory_combination(memory_types, test_name):
         return {"error": str(e)}
 
 
+def test_thread_safety():
+    """Test thread safety - ensure different threads have isolated memory"""
+    print("\n" + "="*80)
+    print("🧪 TESTING: Thread Safety")
+    print("   Ensuring different threads have isolated conversations")
+    print("="*80)
+    
+    # Create model
+    model = AzureChatOpenAI(
+        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+        api_key=os.environ["AZURE_OPENAI_API_KEY"],
+        api_version="2023-12-01-preview",
+        azure_deployment="gpt4o",
+        temperature=0
+    )
+    
+    # Create agent with short-term memory
+    config = AgentConfig(
+        name="ThreadSafetyAgent",
+        model=model,
+        enable_memory=True,
+        memory_backend="redis",
+        redis_url=REDIS_URL,
+        memory_types=["short_term"],
+        system_prompt="You are a helpful assistant. Only answer based on our conversation history."
+    )
+    
+    try:
+        agent = CoreAgent(config)
+        print("✅ Agent created successfully")
+        
+        results = {}
+        
+        # Thread 1: Alice
+        print("\n--- Thread 1: Alice ---")
+        response = agent.invoke(
+            "Hi, I'm Alice and my favorite color is red",
+            config={"configurable": {"thread_id": "alice_thread"}}
+        )
+        print("👤 Alice: Hi, I'm Alice and my favorite color is red")
+        print(f"🤖 Agent: {response['messages'][-1].content}")
+        
+        # Thread 2: Bob
+        print("\n--- Thread 2: Bob ---")
+        response = agent.invoke(
+            "Hi, I'm Bob and my favorite color is green",
+            config={"configurable": {"thread_id": "bob_thread"}}
+        )
+        print("👤 Bob: Hi, I'm Bob and my favorite color is green")
+        print(f"🤖 Agent: {response['messages'][-1].content}")
+        
+        # Test Alice's thread - should remember Alice, not Bob
+        print("\n--- Back to Thread 1: Testing Alice's memory ---")
+        response = agent.invoke(
+            "What's my name and favorite color?",
+            config={"configurable": {"thread_id": "alice_thread"}}
+        )
+        print("👤 Alice: What's my name and favorite color?")
+        print(f"🤖 Agent: {response['messages'][-1].content}")
+        
+        content = response['messages'][-1].content.lower()
+        if "alice" in content and "red" in content and "bob" not in content and "green" not in content:
+            results["alice_isolation"] = "✅ Correct - Remembers only Alice"
+        else:
+            results["alice_isolation"] = "❌ Failed - Thread memory mixed"
+        
+        # Test Bob's thread - should remember Bob, not Alice
+        print("\n--- Back to Thread 2: Testing Bob's memory ---")
+        response = agent.invoke(
+            "What's my name and favorite color?",
+            config={"configurable": {"thread_id": "bob_thread"}}
+        )
+        print("👤 Bob: What's my name and favorite color?")
+        print(f"🤖 Agent: {response['messages'][-1].content}")
+        
+        content = response['messages'][-1].content.lower()
+        if "bob" in content and "green" in content and "alice" not in content and "red" not in content:
+            results["bob_isolation"] = "✅ Correct - Remembers only Bob"
+        else:
+            results["bob_isolation"] = "❌ Failed - Thread memory mixed"
+        
+        # Test new thread - should not know anyone
+        print("\n--- New Thread: Testing clean slate ---")
+        response = agent.invoke(
+            "Do you know my name or favorite color?",
+            config={"configurable": {"thread_id": "new_thread"}}
+        )
+        print("👤 New User: Do you know my name or favorite color?")
+        print(f"🤖 Agent: {response['messages'][-1].content}")
+        
+        content = response['messages'][-1].content.lower()
+        if "alice" not in content and "bob" not in content and "red" not in content and "green" not in content:
+            results["new_thread"] = "✅ Correct - No prior knowledge"
+        else:
+            results["new_thread"] = "❌ Failed - Knows other threads"
+        
+        # Summary
+        print("\n" + "-"*80)
+        print("📊 Thread Safety Results:")
+        for key, value in results.items():
+            print(f"   {key}: {value}")
+        
+        # Overall assessment
+        if all("✅" in v for v in results.values()):
+            results["overall"] = "✅ THREAD SAFE - All threads properly isolated"
+        else:
+            results["overall"] = "❌ NOT THREAD SAFE - Memory leaking between threads"
+        
+        return results
+        
+    except Exception as e:
+        print(f"\n❌ Thread safety test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
+
+
 def run_all_tests():
     """Run all memory combination tests"""
     print("\n" + "="*80)
@@ -238,6 +355,14 @@ def run_all_tests():
     
     all_results = {}
     
+    # First run thread safety test
+    clear_redis_data()
+    time.sleep(1)
+    thread_results = test_thread_safety()
+    all_results["Thread Safety"] = thread_results
+    time.sleep(2)
+    
+    # Then run memory combination tests
     for memory_types, test_name in test_configs:
         # Clear Redis between tests for isolation
         clear_redis_data()
