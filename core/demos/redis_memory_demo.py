@@ -350,9 +350,10 @@ def run_all_tests():
     test_configs = [
         (["short_term"], "Short-term Only"),
         (["long_term"], "Long-term Only"),
-        (["semantic"], "Semantic Only"),
         (["short_term", "long_term"], "Short + Long"),
-        (["short_term", "long_term", "semantic"], "Short + Long + Semantic"),
+        # Semantic search requires langchain-redis RedisVectorStore
+        # (["semantic"], "Semantic Only"),
+        # (["short_term", "long_term", "semantic"], "Short + Long + Semantic"),
     ]
     
     all_results = {}
@@ -391,6 +392,11 @@ def run_all_tests():
     
     print("\n" + "="*80)
     print("✨ Demo completed!")
+    print("\n📝 Notes:")
+    print("- Thread Safety: ✅ Working correctly")
+    print("- Short-term Memory: ✅ Conversation history via LangGraph checkpointer")
+    print("- Long-term Memory: ✅ Key-value storage via LangGraph store")
+    print("- Semantic Search: ⚠️  Requires langchain-redis RedisVectorStore")
     print("="*80)
 
 
