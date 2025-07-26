@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict, Any
 
 import logging
+import time
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
@@ -344,36 +345,60 @@ class MemoryManager:
             try:
                 # Create RedisStore wrapper without testing first
                 # The store will create indexes automatically when needed
-                class RedisStoreWrapper:
-                    def __init__(self, conn_string, index=None, ttl=None):
-                        self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
-                        self._store = None
+                # Try to use RedisStore directly first
+                try:
+                    # New versions might return the store directly
+                    store_instance = RedisStore.from_conn_string(
+                        self.config.redis_url,
+                        index=index_config,
+                        ttl=ttl_config
+                    )
+                    
+                    # Check if it's a context manager or direct instance
+                    if hasattr(store_instance, '__enter__'):
+                        # It's a context manager, need to enter it
+                        self.store = store_instance.__enter__()
+                        # Store the context manager for cleanup
+                        self._store_cm = store_instance
+                    else:
+                        # It's a direct instance
+                        self.store = store_instance
+                        
+                except Exception as e:
+                    logger.warning(f"Direct RedisStore initialization failed: {e}")
+                    # Fallback to wrapper approach
+                    class RedisStoreWrapper:
+                        def __init__(self, conn_string, index=None, ttl=None):
+                            self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
+                            self._store = None
+                            # Enter the context manager once
+                            self._store = self._store_cm.__enter__()
 
-                    def __enter__(self):
-                        self._store = self._store_cm.__enter__()
-                        return self._store
+                        def put(self, namespace, key, value):
+                            return self._store.put(namespace, key, value)
 
-                    def __exit__(self, *args):
-                        if self._store_cm:
-                            return self._store_cm.__exit__(*args)
+                        def get(self, namespace, key):
+                            return self._store.get(namespace, key)
 
-                    def put(self, namespace, key, value):
-                        with self._store_cm as store:
-                            return store.put(namespace, key, value)
+                        def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
+                            return self._store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
+                        
+                        def get_next_version(self, namespace, key):
+                            if hasattr(self._store, 'get_next_version'):
+                                return self._store.get_next_version(namespace, key)
+                            # Fallback implementation
+                            return str(int(time.time()))
+                            
+                        def __getattr__(self, name):
+                            # Forward any other method calls to the actual store
+                            return getattr(self._store, name)
 
-                    def get(self, namespace, key):
-                        with self._store_cm as store:
-                            return store.get(namespace, key)
-
-                    def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                        with self._store_cm as store:
-                            return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
-
-                self.store = RedisStoreWrapper(
-                    self.config.redis_url,
-                    index=index_config,
-                    ttl=ttl_config
-                )
+                    self.store = RedisStoreWrapper(
+                        self.config.redis_url,
+                        index=index_config,
+                        ttl=ttl_config
+                    )
+                
                 logger.info("RedisStore initialized - indexes will be created on first use")
 
             except Exception as e:
