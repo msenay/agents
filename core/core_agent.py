@@ -300,8 +300,12 @@ class CoreAgent:
             input_data = {"messages": [HumanMessage(content=input_data)]}
             
         config = kwargs.get("config", {})
-        if "thread_id" not in config:
-            config["configurable"] = {"thread_id": "default"}
+        # Ensure configurable exists
+        if "configurable" not in config:
+            config["configurable"] = {}
+        # Only set default thread_id if not provided
+        if "thread_id" not in config["configurable"]:
+            config["configurable"]["thread_id"] = "default"
             
         return self.compiled_graph.invoke(input_data, config=config)
         
@@ -311,8 +315,12 @@ class CoreAgent:
             input_data = {"messages": [HumanMessage(content=input_data)]}
             
         config = kwargs.get("config", {})
-        if "thread_id" not in config:
-            config["configurable"] = {"thread_id": "default"}
+        # Ensure configurable exists
+        if "configurable" not in config:
+            config["configurable"] = {}
+        # Only set default thread_id if not provided
+        if "thread_id" not in config["configurable"]:
+            config["configurable"]["thread_id"] = "default"
             
         return await self.compiled_graph.ainvoke(input_data, config=config)
         
@@ -326,8 +334,12 @@ class CoreAgent:
             input_data = {"messages": [HumanMessage(content=input_data)]}
             
         config = kwargs.get("config", {})
-        if "thread_id" not in config:
-            config["configurable"] = {"thread_id": "default"}
+        # Ensure configurable exists
+        if "configurable" not in config:
+            config["configurable"] = {}
+        # Only set default thread_id if not provided
+        if "thread_id" not in config["configurable"]:
+            config["configurable"]["thread_id"] = "default"
             
         for chunk in self.compiled_graph.stream(input_data, config=config):
             yield chunk
@@ -338,8 +350,12 @@ class CoreAgent:
             input_data = {"messages": [HumanMessage(content=input_data)]}
             
         config = kwargs.get("config", {})
-        if "thread_id" not in config:
-            config["configurable"] = {"thread_id": "default"}
+        # Ensure configurable exists
+        if "configurable" not in config:
+            config["configurable"] = {}
+        # Only set default thread_id if not provided
+        if "thread_id" not in config["configurable"]:
+            config["configurable"]["thread_id"] = "default"
             
         async for chunk in self.compiled_graph.astream(input_data, config=config):
             yield chunk
