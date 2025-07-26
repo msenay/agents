@@ -339,20 +339,12 @@ class MemoryManager:
             logger.info("Skipping regular store initialization - only semantic memory requested")
             return
         
-        if semantic_enabled:
-            try:
-                embeddings = init_embeddings(self.config.embedding_model)
-                index_config = {
-                    "dims": self.config.embedding_dims,
-                    "embeddings": embeddings,
-                    "distance_type": self.config.distance_type
-                }
-                logger.info(f"Index configuration initialized for semantic search with {self.config.embedding_model}")
-            except Exception as e:
-                logger.error(f"Failed to initialize embeddings for semantic search: {e}")
-                # If semantic search is required but embeddings fail, this is a critical error
-                if semantic_enabled:
-                    raise RuntimeError(f"Semantic search enabled but embeddings initialization failed: {e}")
+        # Don't pass embeddings to regular store when using separate vector store
+        # Regular store (langgraph-store-redis) doesn't handle embeddings well
+        # Semantic search is handled by separate RedisVectorStore
+        if semantic_enabled and "long_term" in self.config.memory_types:
+            # When both long-term and semantic are enabled, keep them separate
+            logger.info("Semantic search will be handled by separate RedisVectorStore")
 
         # Set up TTL configuration for Redis
         ttl_config = None
