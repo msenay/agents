@@ -10,13 +10,7 @@ from core.model import CoreAgentState
 
 from langgraph.checkpoint.redis import RedisSaver
 from langgraph.store.redis import RedisStore
-try:
-    from langchain_redis import RedisVectorStore, RedisConfig
-except ImportError:
-    RedisVectorStore = None
-    RedisConfig = None
-    logger.warning("langchain-redis not available - semantic search disabled")
-
+from langchain_redis import RedisVectorStore, RedisConfig
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
 from langgraph.store.memory import InMemoryStore
