@@ -1,10 +1,10 @@
-# Core Agent Oluşturma Rehberi
+# Core Agent Creation Guide
 
-## 🚀 Hızlı Başlangıç
+## 🚀 Quick Start
 
-Core Agent oluşturmak çok basit! 3 temel yöntem var:
+Creating a Core Agent is very simple! There are 3 basic methods:
 
-## 1. En Basit Yöntem - Minimal Agent
+## 1. Simplest Method - Minimal Agent
 
 ```python
 from core import CoreAgent, AgentConfig
@@ -17,100 +17,100 @@ model = ChatOpenAI(model="gpt-4o-mini")
 config = AgentConfig(
     name="MyAgent",
     model=model,
-    system_prompt="Sen yardımsever bir asistansın."
+    system_prompt="You are a helpful assistant."
 )
 
-# Agent oluştur
+# Create agent
 agent = CoreAgent(config)
 
-# Kullan
-response = agent.invoke("Merhaba!")
+# Use
+response = agent.invoke("Hello!")
 ```
 
-## 2. Tool'lu Agent
+## 2. Agent with Tools
 
 ```python
 from core import CoreAgent, AgentConfig
 from langchain_core.tools import tool
 
-# Custom tool tanımla
+# Define custom tool
 @tool
 def calculator(expression: str) -> str:
-    """Matematik işlemlerini yapar"""
+    """Performs mathematical operations"""
     try:
         return str(eval(expression))
     except:
-        return "Hata: Geçersiz işlem"
+        return "Error: Invalid operation"
 
 # Config
 config = AgentConfig(
     name="MathAgent",
     model=model,
-    system_prompt="Sen bir matematik asistanısın.",
-    tools=[calculator]  # Tool'ları ekle
+    system_prompt="You are a mathematics assistant.",
+    tools=[calculator]  # Add tools
 )
 
 agent = CoreAgent(config)
 ```
 
-## 3. Memory'li Agent
+## 3. Agent with Memory
 
 ```python
 config = AgentConfig(
     name="MemoryAgent",
     model=model,
-    system_prompt="Sen hafızası olan bir asistansın.",
+    system_prompt="You are an assistant with memory.",
     
-    # Memory ayarları
+    # Memory settings
     enable_memory=True,
-    memory_backend="inmemory",  # veya "redis", "postgres"
+    memory_backend="inmemory",  # or "redis", "postgres"
     memory_types=["short_term", "long_term"]
 )
 
 agent = CoreAgent(config)
 
-# Thread memory kullanımı
+# Thread memory usage
 response = agent.invoke(
-    "Benim adım Ali",
+    "My name is Alice",
     config={"configurable": {"thread_id": "user_123"}}
 )
 ```
 
-## 📋 Config Parametreleri (Sadece İhtiyacın Olanları Kullan!)
+## 📋 Config Parameters (Only Use What You Need!)
 
-### Temel Parametreler
+### Basic Parameters
 ```python
 config = AgentConfig(
-    # Zorunlu
-    name="AgentName",           # Agent ismi
+    # Required
+    name="AgentName",           # Agent name
     model=model,                # LLM model
     
-    # Opsiyonel
+    # Optional
     system_prompt="...",        # System prompt
-    tools=[],                   # Tool listesi
-    description="..."           # Agent açıklaması
+    tools=[],                   # Tool list
+    description="..."           # Agent description
 )
 ```
 
-### Memory Parametreleri
+### Memory Parameters
 ```python
 config = AgentConfig(
-    # Memory'yi aç
+    # Enable memory
     enable_memory=True,
     
-    # Backend seç (birini)
+    # Choose backend (one of)
     memory_backend="inmemory",  # "redis", "postgres"
     
-    # Memory türleri (istediğini seç)
+    # Memory types (choose what you need)
     memory_types=["short_term", "long_term", "session", "semantic"],
     
-    # Backend URL'leri (sadece gerekirse)
+    # Backend URLs (only if needed)
     redis_url="redis://localhost:6379",
     postgres_url="postgresql://user:pass@localhost:5432/db"
 )
 ```
 
-### Gelişmiş Özellikler
+### Advanced Features
 ```python
 config = AgentConfig(
     # Rate limiting
@@ -130,7 +130,7 @@ config = AgentConfig(
 )
 ```
 
-## 🎯 Pratik Örnekler
+## 🎯 Practical Examples
 
 ### 1. Chatbot Agent
 ```python
@@ -138,13 +138,13 @@ def create_chatbot():
     return CoreAgent(AgentConfig(
         name="Chatbot",
         model=ChatOpenAI(model="gpt-4o-mini"),
-        system_prompt="Sen samimi ve yardımsever bir chatbotsun.",
+        system_prompt="You are a friendly and helpful chatbot.",
         enable_memory=True,
         memory_backend="inmemory"
     ))
 
 chatbot = create_chatbot()
-response = chatbot.invoke("Nasılsın?")
+response = chatbot.invoke("How are you?")
 ```
 
 ### 2. Coder Agent
@@ -155,14 +155,14 @@ def create_coder():
     return CoreAgent(AgentConfig(
         name="PythonCoder",
         model=ChatOpenAI(model="gpt-4"),
-        system_prompt="Sen uzman bir Python geliştiricisisin.",
+        system_prompt="You are an expert Python developer.",
         tools=create_python_coding_tools(),
         enable_memory=True,
         memory_types=["short_term", "long_term"]
     ))
 
 coder = create_coder()
-response = coder.invoke("Fibonacci fonksiyonu yaz")
+response = coder.invoke("Write a Fibonacci function")
 ```
 
 ### 3. Research Agent
@@ -175,18 +175,18 @@ def create_researcher():
     return CoreAgent(AgentConfig(
         name="Researcher",
         model=ChatOpenAI(model="gpt-4"),
-        system_prompt="Sen detaylı araştırma yapan bir asistansın.",
+        system_prompt="You are an assistant that conducts detailed research.",
         tools=[search_tool],
         enable_memory=True,
         memory_types=["short_term", "semantic"],  # Semantic search
-        memory_backend="postgres",  # pgvector ile
+        memory_backend="postgres",  # with pgvector
         embedding_model="openai:text-embedding-3-small"
     ))
 ```
 
 ### 4. Multi-Agent System
 ```python
-# Agent'ları oluştur
+# Create agents
 coder = create_coder()
 tester = create_tester()
 
@@ -204,11 +204,11 @@ supervisor_config = AgentConfig(
 supervisor = CoreAgent(supervisor_config)
 ```
 
-## 💡 İpuçları
+## 💡 Tips
 
-### 1. Başlangıç için Minimal Config Kullan
+### 1. Use Minimal Config to Start
 ```python
-# ❌ Karmaşık
+# ❌ Complex
 config = AgentConfig(
     name="MyAgent",
     model=model,
@@ -218,18 +218,18 @@ config = AgentConfig(
     enable_rate_limiting=True,
     requests_per_second=5,
     enable_evaluation=True,
-    # ... 20 parametre daha
+    # ... 20 more parameters
 )
 
-# ✅ Basit başla
+# ✅ Start simple
 config = AgentConfig(
     name="MyAgent",
     model=model,
-    system_prompt="Yardımsever bir asistansın."
+    system_prompt="You are a helpful assistant."
 )
 ```
 
-### 2. Factory Pattern Kullan
+### 2. Use Factory Pattern
 ```python
 class AgentFactory:
     @staticmethod
@@ -237,7 +237,7 @@ class AgentFactory:
         return CoreAgent(AgentConfig(
             name=name,
             model=ChatOpenAI(model="gpt-4o-mini"),
-            system_prompt="Samimi bir chatbotsun.",
+            system_prompt="You are a friendly chatbot.",
             enable_memory=True
         ))
     
@@ -246,16 +246,16 @@ class AgentFactory:
         return CoreAgent(AgentConfig(
             name=name,
             model=ChatOpenAI(model="gpt-4"),
-            system_prompt="Python uzmanısın.",
+            system_prompt="You are a Python expert.",
             tools=create_python_coding_tools()
         ))
 
-# Kullanım
+# Usage
 chatbot = AgentFactory.create_chatbot()
 coder = AgentFactory.create_coder()
 ```
 
-### 3. Config'i JSON'dan Yükle
+### 3. Load Config from JSON
 ```python
 import json
 
@@ -263,7 +263,7 @@ def create_agent_from_json(json_path: str):
     with open(json_path) as f:
         config_dict = json.load(f)
     
-    # Model'i ayrı oluştur
+    # Create model separately
     model = ChatOpenAI(model=config_dict.pop("model_name", "gpt-4o-mini"))
     
     config = AgentConfig(
@@ -276,20 +276,20 @@ def create_agent_from_json(json_path: str):
 # config.json
 {
     "name": "MyAgent",
-    "system_prompt": "Sen bir asistansın.",
+    "system_prompt": "You are an assistant.",
     "enable_memory": true,
     "memory_backend": "inmemory"
 }
 ```
 
-## 🎓 Özet
+## 🎓 Summary
 
-1. **Basit başla**: Sadece `name`, `model`, `system_prompt` ile başla
-2. **İhtiyaca göre ekle**: Memory, tools, rate limiting vs. sadece gerekirse
-3. **Config karmaşık değil**: Sadece ihtiyacın olan parametreleri kullan
-4. **Factory pattern**: Tekrar kullanılabilir agent creator'lar yaz
-5. **Test et**: Önce inmemory backend ile test et, sonra production'a geç
+1. **Start simple**: Start with just `name`, `model`, `system_prompt`
+2. **Add as needed**: Memory, tools, rate limiting etc. only if necessary
+3. **Config is not complex**: Use only the parameters you need
+4. **Factory pattern**: Write reusable agent creators
+5. **Test**: Test with inmemory backend first, then move to production
 
-## Daha Fazla Örnek
+## More Examples
 
-`core/test_core/simple_agent_creators.py` dosyasında 20+ hazır agent creator örneği var!
+Check `core/test_core/simple_agent_creators.py` for 20+ ready-to-use agent creator examples!
