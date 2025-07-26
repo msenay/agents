@@ -334,6 +334,11 @@ class MemoryManager:
         index_config = None
         semantic_enabled = self._is_semantic_search_enabled()
         
+        # Skip regular store if only semantic is enabled
+        if semantic_enabled and len(self.config.memory_types) == 1 and self.config.memory_types[0] == "semantic":
+            logger.info("Skipping regular store initialization - only semantic memory requested")
+            return
+        
         if semantic_enabled:
             try:
                 embeddings = init_embeddings(self.config.embedding_model)
@@ -497,7 +502,8 @@ class MemoryManager:
             logger.info(f"Using InMemoryStore as fallback for store type: {store_type}")
             self.store = InMemoryStore(index=index_config) if InMemoryStore else None
 
-        if not self.store:
+        # Only raise error if store is required (not just semantic)
+        if not self.store and "long_term" in self.config.memory_types:
             raise RuntimeError("Failed to initialize any store type. Check your configuration and dependencies.")
 
     def _initialize_vector_store(self):
@@ -510,8 +516,17 @@ class MemoryManager:
         # Currently only Redis supports vector store through langchain-redis
         if store_type == "redis" and self.config.redis_url:
             try:
-                # Initialize embeddings
-                embeddings = init_embeddings(self.config.embedding_model)
+                # Initialize embeddings with Azure OpenAI
+                if "openai" in self.config.embedding_model.lower():
+                    # Use Azure OpenAI embeddings
+                    from langchain_openai import AzureOpenAIEmbeddings
+                    import os
+                    embeddings = AzureOpenAIEmbeddings(
+                        azure_deployment="text-embedding-ada-002",
+                        api_version="2023-12-01-preview"
+                    )
+                else:
+                    embeddings = init_embeddings(self.config.embedding_model)
                 
                 # Create Redis config for vector store
                 redis_config = RedisConfig(

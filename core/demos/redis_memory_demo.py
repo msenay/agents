@@ -16,6 +16,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 os.environ["AZURE_OPENAI_ENDPOINT"] = "https://oai-202-fbeta-dev.openai.azure.com/"
 os.environ["AZURE_OPENAI_API_KEY"] = "BDfLqbP0vVCTuRkXtE4Zy9mK7neLrJlHXlISgqJxVNTg2ca71EI5JQQJ99BDACfhMk5XJ3w3AAABACOGgIx4"
 os.environ["OPENAI_API_KEY"] = os.environ["AZURE_OPENAI_API_KEY"]
+os.environ["AZURE_OPENAI_API_VERSION"] = "2023-12-01-preview"
+os.environ["AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT"] = "text-embedding-ada-002"
 
 from core import CoreAgent, AgentConfig
 from langchain_openai import AzureChatOpenAI
@@ -81,7 +83,7 @@ def test_memory_combination(memory_types, test_name):
     # Add embedding config if needed
     if "semantic" in memory_types:
         config_params.update({
-            "embedding_model": "openai:text-embedding-ada-002",
+            "embedding_model": "azure:text-embedding-ada-002",
             "embedding_dims": 1536
         })
     
