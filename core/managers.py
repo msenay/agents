@@ -1,16 +1,24 @@
 from typing import Optional, List, Dict, Any
 
 import logging
+import time
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 from core.config import AgentConfig
 from core.model import CoreAgentState
-from langgraph.checkpoint.redis import RedisSaver
-from langgraph.store.redis import RedisStore
+try:
+    from langgraph.checkpoint.redis import RedisSaver
+except ImportError:
+    RedisSaver = None
+    logger.warning("RedisSaver not available - langgraph-checkpoint-redis not installed")
+try:
+    from langgraph.store.redis import RedisStore
+except ImportError:
+    RedisStore = None
+    logger.warning("RedisStore not available - langgraph-store-redis not installed")
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
-from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.store.memory import InMemoryStore
 from langchain_core.messages.utils import trim_messages, count_tokens_approximately
 from langchain_core.messages import RemoveMessage
@@ -193,12 +201,42 @@ class MemoryManager:
                         "refresh_on_read": self.config.refresh_on_read
                     }
 
-                self.checkpointer = RedisSaver.from_conn_string(
-                    self.config.redis_url,
-                    ttl=ttl_config
-                )
-                self.checkpointer.setup()  # Initialize Redis indices
-                logger.info("RedisSaver checkpointer initialized")
+                # Create a wrapper for Redis checkpointer to handle context manager
+                class RedisCheckpointerWrapper:
+                    def __init__(self, conn_string, ttl=None):
+                        self._cm = RedisSaver.from_conn_string(conn_string, ttl=ttl)
+                        self._saver = None
+                        # Enter context manager immediately
+                        self._saver = self._cm.__enter__()
+                    
+                    def __getattr__(self, name):
+                        # Forward all attribute access to the actual saver
+                        return getattr(self._saver, name)
+                    
+                    def __del__(self):
+                        # Cleanup on deletion
+                        if self._cm:
+                            try:
+                                self._cm.__exit__(None, None, None)
+                            except:
+                                pass
+                
+                try:
+                    self.checkpointer = RedisCheckpointerWrapper(
+                        self.config.redis_url,
+                        ttl=ttl_config
+                    )
+                    # Setup indexes on first use
+                    if hasattr(self.checkpointer, 'setup'):
+                        try:
+                            self.checkpointer.setup()
+                            logger.info("Redis checkpointer indexes created")
+                        except Exception as setup_error:
+                            logger.warning(f"Checkpointer setup attempted: {setup_error}")
+                    logger.info("RedisSaver checkpointer initialized")
+                except Exception as e:
+                    logger.error(f"Failed to initialize RedisSaver: {e}")
+                    raise RuntimeError(f"Redis checkpointer initialization failed: {e}")
 
             elif checkpointer_type == "postgres" and PostgresSaver and self.config.postgres_url:
                 try:
@@ -254,36 +292,9 @@ class MemoryManager:
                     logger.error(error_msg)
                     raise RuntimeError(error_msg)
 
-            elif checkpointer_type == "mongodb":
-                if MongoDBSaver and self.config.mongodb_url:
-                    try:
-                        # MongoDB checkpointer with TTL support
-                        ttl_config = None
-                        if self.config.enable_ttl:
-                            ttl_config = {
-                                "default_ttl": self.config.default_ttl_minutes,
-                                "refresh_on_read": self.config.refresh_on_read
-                            }
-
-                        self.checkpointer = MongoDBSaver.from_conn_string(
-                            self.config.mongodb_url,
-                            ttl=ttl_config
-                        )
-                        logger.info("MongoDBSaver checkpointer initialized")
-                    except Exception as e:
-                        # MongoDB connection failed - this is a critical error for production
-                        error_msg = f"MongoDB checkpointer connection failed: {e}. Please check MongoDB server and connection string."
-                        logger.error(error_msg)
-                        raise RuntimeError(error_msg)
-                else:
-                    # MongoDB not available
-                    error_msg = "MongoDB checkpointer enabled but MongoDBSaver not available or mongodb_url not configured."
-                    logger.error(error_msg)
-                    raise RuntimeError(error_msg)
-
             else:
                 # Check if it's a completely invalid type (for strict validation in tests)
-                valid_types = ["inmemory", "redis", "postgres", "mongodb"]
+                valid_types = ["inmemory", "redis", "postgres"]
                 if checkpointer_type not in valid_types:
                     raise ValueError(f"Invalid short-term memory type: {checkpointer_type}. Must be one of: {valid_types}")
 
@@ -338,7 +349,7 @@ class MemoryManager:
                 if semantic_enabled:
                     raise RuntimeError(f"Semantic search enabled but embeddings initialization failed: {e}")
 
-        # Set up TTL configuration for Redis/MongoDB
+        # Set up TTL configuration for Redis
         ttl_config = None
         if self.config.enable_ttl:
             ttl_config = {
@@ -352,49 +363,81 @@ class MemoryManager:
 
         elif store_type == "redis" and RedisStore and self.config.redis_url:
             try:
-                # Test Redis connection and modules first
-                test_store_cm = RedisStore.from_conn_string(self.config.redis_url, index=index_config, ttl=ttl_config)
-                with test_store_cm as test_store:
-                    # Test basic operations to ensure Redis Stack modules are available
-                    test_store.put(("test",), "init_test", {"test": True})
-                    test_store.get(("test",), "init_test")
+                # Create RedisStore wrapper without testing first
+                # The store will create indexes automatically when needed
+                # Try to use RedisStore directly first
+                try:
+                    # New versions might return the store directly
+                    store_instance = RedisStore.from_conn_string(
+                        self.config.redis_url,
+                        index=index_config,
+                        ttl=ttl_config
+                    )
+                    
+                    # Check if it's a context manager or direct instance
+                    if hasattr(store_instance, '__enter__'):
+                        # It's a context manager, need to enter it
+                        self.store = store_instance.__enter__()
+                        # Store the context manager for cleanup
+                        self._store_cm = store_instance
+                    else:
+                        # It's a direct instance
+                        self.store = store_instance
+                    
+                    # Setup indexes on first use
+                    if hasattr(self.store, 'setup'):
+                        try:
+                            self.store.setup()
+                            logger.info("Redis store indexes created")
+                        except Exception as setup_error:
+                            logger.warning(f"Store setup attempted: {setup_error}")
+                        
+                except Exception as e:
+                    logger.warning(f"Direct RedisStore initialization failed: {e}")
+                    # Fallback to wrapper approach
+                    class RedisStoreWrapper:
+                        def __init__(self, conn_string, index=None, ttl=None):
+                            self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
+                            self._store = None
+                            # Enter the context manager once
+                            self._store = self._store_cm.__enter__()
+                            # Setup indexes
+                            if hasattr(self._store, 'setup'):
+                                try:
+                                    self._store.setup()
+                                except Exception:
+                                    pass  # Indexes might already exist
 
-                # If we get here, Redis is fully functional
-                class RedisStoreWrapper:
-                    def __init__(self, conn_string, index=None, ttl=None):
-                        self._store_cm = RedisStore.from_conn_string(conn_string, index=index, ttl=ttl)
-                        self._store = None
+                        def put(self, namespace, key, value):
+                            return self._store.put(namespace, key, value)
 
-                    def __enter__(self):
-                        self._store = self._store_cm.__enter__()
-                        return self._store
+                        def get(self, namespace, key):
+                            return self._store.get(namespace, key)
 
-                    def __exit__(self, *args):
-                        if self._store_cm:
-                            return self._store_cm.__exit__(*args)
+                        def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
+                            return self._store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
+                        
+                        def get_next_version(self, namespace, key):
+                            if hasattr(self._store, 'get_next_version'):
+                                return self._store.get_next_version(namespace, key)
+                            # Fallback implementation
+                            return str(int(time.time()))
+                            
+                        def __getattr__(self, name):
+                            # Forward any other method calls to the actual store
+                            return getattr(self._store, name)
 
-                    def put(self, namespace, key, value):
-                        with self._store_cm as store:
-                            return store.put(namespace, key, value)
-
-                    def get(self, namespace, key):
-                        with self._store_cm as store:
-                            return store.get(namespace, key)
-
-                    def search(self, namespace, *, query=None, filter=None, limit=10, offset=0):
-                        with self._store_cm as store:
-                            return store.search(namespace, query=query, filter=filter, limit=limit, offset=offset)
-
-                self.store = RedisStoreWrapper(
-                    self.config.redis_url,
-                    index=index_config,
-                    ttl=ttl_config
-                )
-                logger.info("RedisStore initialized with full functionality")
+                    self.store = RedisStoreWrapper(
+                        self.config.redis_url,
+                        index=index_config,
+                        ttl=ttl_config
+                    )
+                
+                logger.info("RedisStore initialized - indexes will be created on first use")
 
             except Exception as e:
                 # Redis connection failed - this is a critical error for production
-                error_msg = f"Redis connection failed: {e}. Please check Redis server and connection string."
+                error_msg = f"Redis store initialization failed: {e}. Please check Redis server and connection string."
                 logger.error(error_msg)
                 raise RuntimeError(error_msg)
 
@@ -434,11 +477,6 @@ class MemoryManager:
                 error_msg = f"PostgreSQL connection failed: {e}. Please check PostgreSQL server and connection string."
                 logger.error(error_msg)
                 raise RuntimeError(error_msg)
-
-        elif store_type == "mongodb":
-            # MongoDB Store is not yet available in langgraph, use InMemoryStore as fallback
-            logger.warning("MongoDB Store is not yet available in langgraph, using InMemoryStore as fallback")
-            self.store = InMemoryStore(index=index_config) if InMemoryStore else None
 
         else:
             # Fallback to InMemoryStore

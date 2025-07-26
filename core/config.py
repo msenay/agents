@@ -46,12 +46,11 @@ class AgentConfig:
     memory_types: List[str] = field(default_factory=lambda: ["short_term"])  # Choose: ["short_term", "long_term", "session", "semantic"]
 
     # BACKEND SELECTION (only when enable_memory=True)
-    memory_backend: str = "inmemory"  # Choose: "inmemory", "redis", "postgres", "mongodb"
+    memory_backend: str = "inmemory"  # Choose: "inmemory", "redis", "postgres"
 
     # DATABASE CONNECTIONS (only for respective backends)
     redis_url: Optional[str] = None  # Required when memory_backend="redis"
     postgres_url: Optional[str] = None  # Required when memory_backend="postgres"
-    mongodb_url: Optional[str] = None  # Required when memory_backend="mongodb"
 
     # MEMORY FEATURES (only when specific types enabled)
     # Session Memory (only when "session" in memory_types)
@@ -62,8 +61,8 @@ class AgentConfig:
     embedding_model: str = "openai:text-embedding-3-small"  # Embedding model
     embedding_dims: int = 1536  # Vector dimensions
 
-    # TTL Support (only for redis/mongodb backends)
-    enable_ttl: bool = False  # Auto-expiration (Redis/MongoDB only)
+    # TTL Support (only for redis backend)
+    enable_ttl: bool = False  # Auto-expiration (Redis only)
     default_ttl_minutes: int = 1440  # TTL in minutes
     refresh_on_read: bool = True  # Refresh TTL on access
 
@@ -192,7 +191,7 @@ class AgentConfig:
                     )
 
             # Validate backend selection
-            valid_backends = ["inmemory", "redis", "postgres", "mongodb"]
+            valid_backends = ["inmemory", "redis", "postgres"]
             if self.memory_backend not in valid_backends:
                 raise ValueError(
                     f"❌ INVALID BACKEND: '{self.memory_backend}' not in {valid_backends}"
@@ -209,15 +208,10 @@ class AgentConfig:
                     "❌ POSTGRES BACKEND: postgres_url is required when memory_backend='postgres'"
                 )
 
-            if self.memory_backend == "mongodb" and not self.mongodb_url:
-                raise ValueError(
-                    "❌ MONGODB BACKEND: mongodb_url is required when memory_backend='mongodb'"
-                )
-
             # TTL validation - only for compatible backends
-            if self.enable_ttl and self.memory_backend not in ["redis", "mongodb"]:
+            if self.enable_ttl and self.memory_backend not in ["redis"]:
                 raise ValueError(
-                    f"❌ TTL NOT SUPPORTED: TTL only works with Redis/MongoDB backends, "
+                    f"❌ TTL NOT SUPPORTED: TTL only works with Redis backend, "
                     f"not '{self.memory_backend}'"
                 )
 

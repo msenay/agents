@@ -37,8 +37,8 @@ The **Core Agent Framework** is a production-ready foundation for building AI ag
 ### Core Capabilities
 - **State Management** - Robust conversation state handling
 - **Tool Integration** - Seamless integration with LangChain tools
-- **Memory Systems** - Multiple backends (Redis, PostgreSQL, MongoDB)
-- **Multi-Agent Patterns** - Supervisor, Swarm, and Handoff patterns
+- **Memory Systems** - Multiple backends (Redis, PostgreSQL)
+- **Multi-Agent Patterns** - Supervisor, Swarm, Handoff patterns
 - **Evaluation Framework** - Built-in performance evaluation
 - **MCP Support** - Model Context Protocol integration
 - **Rate Limiting** - Protect against API limits

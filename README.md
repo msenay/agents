@@ -163,7 +163,7 @@ docker-compose up redis postgres
 - **Core Agent API** - REST API for agent interactions
 - **Redis** - For memory and caching
 - **PostgreSQL** - For persistent storage
-- **MongoDB** - Alternative storage option
+- **Prometheus + Grafana** - Monitoring and metrics
 
 ## 🛠️ Configuration
 
