@@ -405,10 +405,6 @@ def run_all_tests():
     print("\n" + "="*80)
     print("✨ Demo completed!")
     print("\n📝 Notes:")
-    print("- Thread Safety: ✅ Working correctly")
-    print("- Short-term Memory: ✅ Conversation history via LangGraph checkpointer")
-    print("- Long-term Memory: ✅ Key-value storage via LangGraph store")
-    print("- Semantic Search: ⚠️  Requires langchain-redis RedisVectorStore")
     print("="*80)
 
 
