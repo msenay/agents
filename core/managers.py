@@ -10,6 +10,12 @@ from core.model import CoreAgentState
 
 from langgraph.checkpoint.redis import RedisSaver
 from langgraph.store.redis import RedisStore
+try:
+    from langchain_redis import RedisVectorStore, RedisConfig
+except ImportError:
+    RedisVectorStore = None
+    RedisConfig = None
+    logger.warning("langchain-redis not available - semantic search disabled")
 
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
@@ -146,6 +152,9 @@ class MemoryManager:
         # Long-term memory (stores)
         self.store = None
 
+        # Vector store for semantic search
+        self.vector_store = None
+
         # Session-based memory
         self.session_memory = None
 
@@ -165,6 +174,9 @@ class MemoryManager:
 
         if self.config.enable_long_term_memory:
             self._initialize_store()
+
+        if self.config.enable_semantic_search:
+            self._initialize_vector_store()
 
         if self.config.enable_shared_memory and self.config.session_id:
             self._initialize_session_memory()
@@ -493,6 +505,48 @@ class MemoryManager:
 
         if not self.store:
             raise RuntimeError("Failed to initialize any store type. Check your configuration and dependencies.")
+
+    def _initialize_vector_store(self):
+        """Initialize vector store for semantic search"""
+        if not RedisVectorStore or not self.config.enable_semantic_search:
+            return
+            
+        store_type = self._get_store_type()
+        
+        # Currently only Redis supports vector store through langchain-redis
+        if store_type == "redis" and self.config.redis_url:
+            try:
+                # Initialize embeddings
+                embeddings = init_embeddings(self.config.embedding_model)
+                
+                # Create Redis config for vector store
+                redis_config = RedisConfig(
+                    index_name=f"{self.config.memory_namespace}_vectors",
+                    redis_url=self.config.redis_url,
+                    embedding_dims=self.config.embedding_dims,
+                    distance_metric=self.config.distance_type.upper(),
+                    index_type="FLAT",  # Can be FLAT or HNSW
+                    metadata_schema=[
+                        {"name": "namespace", "type": "tag"},
+                        {"name": "type", "type": "tag"},
+                        {"name": "timestamp", "type": "numeric"},
+                    ]
+                )
+                
+                # Initialize vector store
+                self.vector_store = RedisVectorStore(
+                    embeddings=embeddings,
+                    config=redis_config
+                )
+                
+                logger.info(f"RedisVectorStore initialized with {self.config.embedding_model}")
+                
+            except Exception as e:
+                logger.error(f"Failed to initialize RedisVectorStore: {e}")
+                if self.config.enable_semantic_search:
+                    logger.warning("Semantic search was requested but initialization failed")
+        else:
+            logger.info(f"Vector store not available for backend: {store_type}")
 
     def _initialize_session_memory(self):
         """Initialize session-based memory for agent collaboration"""

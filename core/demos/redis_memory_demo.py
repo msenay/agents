@@ -152,33 +152,41 @@ def test_memory_combination(memory_types, test_name):
         if "semantic" in memory_types:
             print("\n--- Testing SEMANTIC Memory ---")
             
-            # Store some documents
-            if hasattr(agent.memory_manager, 'store') and agent.memory_manager.store:
+            # Check if vector store is available
+            if hasattr(agent.memory_manager, 'vector_store') and agent.memory_manager.vector_store:
                 try:
-                    # Store related documents
+                    from langchain.docstore.document import Document
+                    
+                    # Create documents
                     docs = [
-                        ("doc1", "Python is a great programming language for data science and machine learning."),
-                        ("doc2", "JavaScript is popular for web development and frontend frameworks."),
-                        ("doc3", "Machine learning models can be trained using Python libraries like TensorFlow.")
+                        Document(
+                            page_content="Python is a great programming language for data science and machine learning.",
+                            metadata={"namespace": "knowledge_base", "type": "programming", "timestamp": time.time()}
+                        ),
+                        Document(
+                            page_content="JavaScript is popular for web development and frontend frameworks.",
+                            metadata={"namespace": "knowledge_base", "type": "programming", "timestamp": time.time()}
+                        ),
+                        Document(
+                            page_content="Machine learning models can be trained using Python libraries like TensorFlow and PyTorch.",
+                            metadata={"namespace": "knowledge_base", "type": "ml", "timestamp": time.time()}
+                        )
                     ]
                     
-                    for doc_id, content in docs:
-                        agent.memory_manager.store.put(
-                            namespace="knowledge_base",
-                            key=doc_id,
-                            value={"content": content}
-                        )
-                    print("📚 Stored 3 documents for semantic search")
+                    # Add documents to vector store
+                    ids = agent.memory_manager.vector_store.add_documents(docs)
+                    print(f"📚 Stored {len(ids)} documents in vector store")
                     
                     # Search semantically
-                    search_results = agent.memory_manager.store.search(
-                        namespace="knowledge_base",
-                        query="What programming language is good for AI?",
-                        limit=2
+                    search_results = agent.memory_manager.vector_store.similarity_search(
+                        query="What programming language is good for AI and machine learning?",
+                        k=2
                     )
                     
                     if search_results:
-                        print(f"🔍 Found {len(search_results)} relevant documents")
+                        print(f"🔍 Found {len(search_results)} relevant documents:")
+                        for i, doc in enumerate(search_results, 1):
+                            print(f"   {i}. {doc.page_content[:80]}...")
                         results["semantic"] = "✅ Working - Semantic search successful"
                     else:
                         results["semantic"] = "❌ Failed - No search results"
@@ -186,7 +194,7 @@ def test_memory_combination(memory_types, test_name):
                 except Exception as e:
                     results["semantic"] = f"❌ Error - {str(e)[:50]}"
             else:
-                results["semantic"] = "⚠️  No store available"
+                results["semantic"] = "⚠️  No vector store available"
         
         # Test 4: Combined functionality (if multiple types)
         if len(memory_types) > 1:
@@ -350,10 +358,9 @@ def run_all_tests():
     test_configs = [
         (["short_term"], "Short-term Only"),
         (["long_term"], "Long-term Only"),
+        (["semantic"], "Semantic Only"),
         (["short_term", "long_term"], "Short + Long"),
-        # Semantic search requires langchain-redis RedisVectorStore
-        # (["semantic"], "Semantic Only"),
-        # (["short_term", "long_term", "semantic"], "Short + Long + Semantic"),
+        (["short_term", "long_term", "semantic"], "Short + Long + Semantic"),
     ]
     
     all_results = {}
