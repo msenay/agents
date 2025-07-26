@@ -7,16 +7,10 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 from core.config import AgentConfig
 from core.model import CoreAgentState
-try:
-    from langgraph.checkpoint.redis import RedisSaver
-except ImportError:
-    RedisSaver = None
-    logger.warning("RedisSaver not available - langgraph-checkpoint-redis not installed")
-try:
-    from langgraph.store.redis import RedisStore
-except ImportError:
-    RedisStore = None
-    logger.warning("RedisStore not available - langgraph-store-redis not installed")
+
+from langgraph.checkpoint.redis import RedisSaver
+from langgraph.store.redis import RedisStore
+
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
 from langgraph.store.memory import InMemoryStore
