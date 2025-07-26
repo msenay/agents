@@ -226,6 +226,13 @@ class MemoryManager:
                         self.config.redis_url,
                         ttl=ttl_config
                     )
+                    # Setup indexes on first use
+                    if hasattr(self.checkpointer, 'setup'):
+                        try:
+                            self.checkpointer.setup()
+                            logger.info("Redis checkpointer indexes created")
+                        except Exception as setup_error:
+                            logger.warning(f"Checkpointer setup attempted: {setup_error}")
                     logger.info("RedisSaver checkpointer initialized")
                 except Exception as e:
                     logger.error(f"Failed to initialize RedisSaver: {e}")
@@ -376,6 +383,14 @@ class MemoryManager:
                     else:
                         # It's a direct instance
                         self.store = store_instance
+                    
+                    # Setup indexes on first use
+                    if hasattr(self.store, 'setup'):
+                        try:
+                            self.store.setup()
+                            logger.info("Redis store indexes created")
+                        except Exception as setup_error:
+                            logger.warning(f"Store setup attempted: {setup_error}")
                         
                 except Exception as e:
                     logger.warning(f"Direct RedisStore initialization failed: {e}")
@@ -386,6 +401,12 @@ class MemoryManager:
                             self._store = None
                             # Enter the context manager once
                             self._store = self._store_cm.__enter__()
+                            # Setup indexes
+                            if hasattr(self._store, 'setup'):
+                                try:
+                                    self._store.setup()
+                                except Exception:
+                                    pass  # Indexes might already exist
 
                         def put(self, namespace, key, value):
                             return self._store.put(namespace, key, value)
