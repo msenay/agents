@@ -38,6 +38,12 @@ try:
     from dotenv import load_dotenv
 except Exception:
     load_dotenv = None
+import threading
+import json
+try:
+    import redis as redis_lib
+except Exception:
+    redis_lib = None
 
 
 # Configure logging
@@ -1092,6 +1098,112 @@ class LangSmithManager:
             run_cfg["metadata"] = merged
         config["configurable"] = run_cfg
         return config
+
+
+class PubSubManager:
+    """Redis-based Pub/Sub integration for CoreAgent.
+
+    - Subscribes to configured input channels; each message is treated as user input.
+    - Publishes agent outputs to a configured output channel.
+    - Runs subscriber in a background thread (daemon by default).
+    """
+
+    def __init__(self, config: AgentConfig, agent_invoke_callable):
+        self.config = config
+        self.agent_invoke_callable = agent_invoke_callable
+        self.enabled = bool(getattr(config, "enable_pubsub", False))
+        self._thread: threading.Thread | None = None
+        self._stop = threading.Event()
+        self._client = None
+        self._pub = None
+
+    def _ensure_client(self):
+        if not redis_lib:
+            raise RuntimeError("redis package not installed. Add 'redis' to requirements.txt")
+        url = self.config.redis_url or os.environ.get("REDIS_URL")
+        if not url:
+            raise RuntimeError("PubSub enabled but no redis_url configured and REDIS_URL env missing")
+        self._client = redis_lib.from_url(url)
+        self._pub = self._client
+
+    def _publish(self, payload: dict):
+        if not self.config.pubsub_pub_channel:
+            return
+        try:
+            channel = self.config.pubsub_pub_channel
+            self._pub.publish(channel, json.dumps(payload))
+            logger.info(f"PubSub published to '{channel}': {payload}")
+        except Exception as e:
+            logger.warning(f"PubSub publish failed: {e}")
+
+    def _handle_message(self, raw: bytes | str, channel: str | None = None) -> None:
+        try:
+            data = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+            # Accept plain text or JSON with {"input": "...", "config": {...}}
+            try:
+                obj = json.loads(data)
+                text = obj.get("input") or obj.get("message") or ""
+                cfg = obj.get("config") or {}
+            except Exception:
+                text = data
+                cfg = {}
+            if channel:
+                logger.info(f"PubSub received on '{channel}': {text if text else obj}")
+            result = self.agent_invoke_callable(text, config=cfg)
+            # Minimal output payload
+            out = {
+                "input": text,
+                "output": None,
+                "timestamp": time.time(),
+            }
+            try:
+                msgs = result.get("messages", []) if isinstance(result, dict) else []
+                out["output"] = msgs[-1].content if msgs else None
+            except Exception:
+                out["output"] = str(result)
+            self._publish(out)
+        except Exception as e:
+            logger.warning(f"PubSub message handling failed: {e}")
+
+    def _subscriber_loop(self):
+        try:
+            self._ensure_client()
+            psub = self._client.pubsub()
+            channels = self.config.pubsub_sub_channels or []
+            if not channels:
+                logger.warning("PubSub enabled but no sub channels configured")
+                return
+            psub.subscribe(*channels)
+            logger.info(f"PubSub subscribed to channels: {channels}")
+            for item in psub.listen():
+                if self._stop.is_set():
+                    break
+                if item and item.get("type") == "message":
+                    ch = item.get("channel")
+                    if isinstance(ch, (bytes, bytearray)):
+                        ch = ch.decode()
+                    self._handle_message(item.get("data"), channel=ch)
+        except Exception as e:
+            logger.warning(f"PubSub loop error: {e}")
+
+    def start(self):
+        if not self.enabled:
+            return
+        if self._thread and self._thread.is_alive():
+            return
+        self._thread = threading.Thread(target=self._subscriber_loop, daemon=self.config.pubsub_daemon_thread)
+        self._thread.start()
+        logger.info("PubSub background subscriber started")
+
+    def stop(self):
+        if not self._thread:
+            return
+        self._stop.set()
+        try:
+            self._thread.join(timeout=2.0)
+        except Exception:
+            pass
+        logger.info("PubSub background subscriber stopped")
 
     def _initialize_mcp_client(self):
         """Initialize MCP client with configured servers"""

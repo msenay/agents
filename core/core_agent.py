@@ -25,7 +25,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from core.config import AgentConfig
 from core.managers import (
     SubgraphManager, MemoryManager, SupervisorManager,
-    MCPManager, EvaluationManager, RateLimiterManager, LangSmithManager
+    MCPManager, EvaluationManager, RateLimiterManager, LangSmithManager, PubSubManager
 )
 from core.model import CoreAgentState
 
@@ -61,6 +61,7 @@ class CoreAgent:
         self.evaluation_manager = EvaluationManager(config)
         self.rate_limiter_manager = RateLimiterManager(config)
         self.langsmith_manager = LangSmithManager(config)
+        self.pubsub_manager = PubSubManager(config, self.invoke)
         
         # Core graph
         self.graph = None
@@ -71,6 +72,11 @@ class CoreAgent:
         # Initialize LangSmith after graph built to ensure env is ready before any calls
         try:
             self.langsmith_manager.initialize()
+        except Exception:
+            pass
+        # Start pubsub subscriber if enabled
+        try:
+            self.pubsub_manager.start()
         except Exception:
             pass
         

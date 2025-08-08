@@ -107,6 +107,14 @@ class AgentConfig:
     default_run_metadata: Dict[str, Any] = field(default_factory=dict)
     default_run_name: Optional[str] = None
 
+    # ==========================================================================
+    # PUB/SUB INTEGRATION (Redis)
+    # ==========================================================================
+    enable_pubsub: bool = False  # Enable Redis-based pub/sub for agent I/O
+    pubsub_sub_channels: List[str] = field(default_factory=list)  # Channels to subscribe (inputs)
+    pubsub_pub_channel: Optional[str] = None  # Channel to publish outputs
+    pubsub_daemon_thread: bool = True  # Run subscriber in daemon thread
+
     # ============================================================================
     # MULTI-AGENT PATTERNS
     # ============================================================================
