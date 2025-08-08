@@ -95,6 +95,18 @@ class AgentConfig:
     enable_mcp: bool = False
     mcp_servers: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
+    # LangSmith / LangChain tracing
+    enable_langsmith: bool = False  # Enable LangSmith observability/tracing
+    langsmith_project: Optional[str] = None  # Project name
+    langsmith_api_key: Optional[str] = None  # Optional override; default from env
+    langsmith_endpoint: Optional[str] = None  # Optional custom endpoint
+    langsmith_sampling_rate: Optional[float] = None  # 0.0-1.0 sampling for prod
+
+    # Default run metadata/tags for tracing (applies to every .invoke unless overridden)
+    default_run_tags: List[str] = field(default_factory=list)
+    default_run_metadata: Dict[str, Any] = field(default_factory=dict)
+    default_run_name: Optional[str] = None
+
     # ============================================================================
     # MULTI-AGENT PATTERNS
     # ============================================================================

@@ -399,7 +399,7 @@ This guide defines a **self‑contained agent platform** that lives inside a wid
 ```text
 parent‑repo
 │
-├─ agents_functions/
+├─ ai/
 │   │
 │   ├─ core/                    # Common infrastructure code
 │   │   └─ core_agent.py        # Abstract BaseAgent + helpers

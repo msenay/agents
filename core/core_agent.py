@@ -24,8 +24,8 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from core.config import AgentConfig
 from core.managers import (
-    SubgraphManager, MemoryManager, SupervisorManager, 
-    MCPManager, EvaluationManager, RateLimiterManager
+    SubgraphManager, MemoryManager, SupervisorManager,
+    MCPManager, EvaluationManager, RateLimiterManager, LangSmithManager
 )
 from core.model import CoreAgentState
 
@@ -60,6 +60,7 @@ class CoreAgent:
         self.mcp_manager = MCPManager(config)
         self.evaluation_manager = EvaluationManager(config)
         self.rate_limiter_manager = RateLimiterManager(config)
+        self.langsmith_manager = LangSmithManager(config)
         
         # Core graph
         self.graph = None
@@ -67,6 +68,11 @@ class CoreAgent:
         
         # Initialize the agent
         self._build_agent(strict_mode=False)
+        # Initialize LangSmith after graph built to ensure env is ready before any calls
+        try:
+            self.langsmith_manager.initialize()
+        except Exception:
+            pass
         
     def _build_agent(self, strict_mode: bool = False):
         """Build the core agent graph"""
@@ -306,6 +312,11 @@ class CoreAgent:
         # Only set default thread_id if not provided
         if "thread_id" not in config["configurable"]:
             config["configurable"]["thread_id"] = "default"
+        # Apply LangSmith run defaults (name/tags/metadata)
+        try:
+            config = self.langsmith_manager.apply_run_defaults(config)
+        except Exception:
+            pass
             
         return self.compiled_graph.invoke(input_data, config=config)
         
@@ -321,6 +332,10 @@ class CoreAgent:
         # Only set default thread_id if not provided
         if "thread_id" not in config["configurable"]:
             config["configurable"]["thread_id"] = "default"
+        try:
+            config = self.langsmith_manager.apply_run_defaults(config)
+        except Exception:
+            pass
             
         return await self.compiled_graph.ainvoke(input_data, config=config)
         
@@ -340,6 +355,10 @@ class CoreAgent:
         # Only set default thread_id if not provided
         if "thread_id" not in config["configurable"]:
             config["configurable"]["thread_id"] = "default"
+        try:
+            config = self.langsmith_manager.apply_run_defaults(config)
+        except Exception:
+            pass
             
         for chunk in self.compiled_graph.stream(input_data, config=config):
             yield chunk
@@ -356,6 +375,10 @@ class CoreAgent:
         # Only set default thread_id if not provided
         if "thread_id" not in config["configurable"]:
             config["configurable"]["thread_id"] = "default"
+        try:
+            config = self.langsmith_manager.apply_run_defaults(config)
+        except Exception:
+            pass
             
         async for chunk in self.compiled_graph.astream(input_data, config=config):
             yield chunk

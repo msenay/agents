@@ -32,6 +32,12 @@ from langchain_core.language_models import BaseChatModel
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from typing import Annotated
+import os
+from pathlib import Path
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
 
 
 # Configure logging
@@ -1024,6 +1030,68 @@ class MCPManager:
 
         if config.enable_mcp:
             self._initialize_mcp_client()
+
+
+class LangSmithManager:
+    """Configures LangSmith tracing/observability via environment variables."""
+
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.enabled = bool(getattr(config, "enable_langsmith", False))
+
+    def initialize(self):
+        if not self.enabled:
+            return
+        try:
+            # Load .env from project root if available
+            if load_dotenv is not None:
+                project_root = Path(__file__).resolve().parents[1]
+                env_path = project_root / ".env"
+                if env_path.exists():
+                    load_dotenv(dotenv_path=str(env_path), override=False)
+                else:
+                    # Fallback: try current working directory
+                    load_dotenv(override=False)
+
+            # Respect explicit config first, then fallback to existing env
+            if self.config.langsmith_api_key:
+                os.environ.setdefault("LANGSMITH_API_KEY", self.config.langsmith_api_key)
+            if self.config.langsmith_project:
+                os.environ.setdefault("LANGSMITH_PROJECT", self.config.langsmith_project)
+            if self.config.langsmith_endpoint:
+                os.environ.setdefault("LANGSMITH_ENDPOINT", self.config.langsmith_endpoint)
+
+            # The main on/off switch used by langsmith client
+            os.environ["LANGCHAIN_TRACING_V2"] = "true"
+
+            # Optional sampling rate
+            if self.config.langsmith_sampling_rate is not None:
+                os.environ.setdefault("LANGSMITH_SAMPLING_RATE", str(self.config.langsmith_sampling_rate))
+
+            # Optional: Ensure dataset/evals later can pick project name
+            logging.getLogger(__name__).info(
+                f"LangSmith enabled (project={os.environ.get('LANGSMITH_PROJECT','default')})"
+            )
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Failed to initialize LangSmith: {e}")
+
+    def apply_run_defaults(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Inject default run tags/metadata/name into langgraph config."""
+        if not self.enabled:
+            return config
+        run_cfg = config.get("configurable", {})
+        # LangChain/LangGraph accept run_name, tags, metadata in config dict
+        if self.config.default_run_name and "run_name" not in run_cfg:
+            run_cfg["run_name"] = self.config.default_run_name
+        if self.config.default_run_tags:
+            tags = run_cfg.get("tags", [])
+            run_cfg["tags"] = list({*tags, *self.config.default_run_tags})
+        if self.config.default_run_metadata:
+            meta = run_cfg.get("metadata", {})
+            merged = {**self.config.default_run_metadata, **meta}
+            run_cfg["metadata"] = merged
+        config["configurable"] = run_cfg
+        return config
 
     def _initialize_mcp_client(self):
         """Initialize MCP client with configured servers"""
