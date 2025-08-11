@@ -115,6 +115,14 @@ class AgentConfig:
     pubsub_pub_channel: Optional[str] = None  # Channel to publish outputs
     pubsub_daemon_thread: bool = True  # Run subscriber in daemon thread
 
+    # ==========================================================================
+    # LANGFUSE INTEGRATION (optional alternative to LangSmith)
+    # ==========================================================================
+    enable_langfuse: bool = False  # Enable Langfuse observability via callbacks
+    langfuse_public_key: Optional[str] = None
+    langfuse_secret_key: Optional[str] = None
+    langfuse_host: Optional[str] = None  # e.g., https://cloud.langfuse.com or self-hosted URL
+
     # ============================================================================
     # MULTI-AGENT PATTERNS
     # ============================================================================

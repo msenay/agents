@@ -207,7 +207,7 @@ aff-orchestrator:
     - "7072:80"
   depends_on:
     - broker   # e.g., a local RabbitMQ or none if using Azurite SB emulator
-```
+``09luo9e5rut65yr8ıuı
 
 * **Why only the orchestrator?** Multi‑Function pipeline requires Azure Service Bus triggers which are not available locally without heavy setup. For e2e tests you can still run `func start` via `run_local.sh`.
 * Compose override files (`docker-compose.override.yml`) can tailor dev‑container envs.

@@ -1100,6 +1100,47 @@ class LangSmithManager:
         return config
 
 
+class LangfuseManager:
+    """Configures Langfuse tracing via environment variables and callbacks.
+
+    Integration strategy:
+      - Set LANGFUSE_* env vars when enabled
+      - Optionally add Langfuse callback handlers to model/tool runs (future)
+    """
+
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.enabled = bool(getattr(config, "enable_langfuse", False))
+        self.callback_handler = None
+
+    def initialize(self):
+        if not self.enabled:
+            return
+        try:
+            if self.config.langfuse_public_key:
+                os.environ.setdefault("LANGFUSE_PUBLIC_KEY", self.config.langfuse_public_key)
+            if self.config.langfuse_secret_key:
+                os.environ.setdefault("LANGFUSE_SECRET_KEY", self.config.langfuse_secret_key)
+            if self.config.langfuse_host:
+                os.environ.setdefault("LANGFUSE_HOST", self.config.langfuse_host)
+            # Initialize callback handler if package is available (v3 path first per cookbook)
+            try:
+                from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
+                self.callback_handler = LangfuseCallbackHandler()
+                logger.info("Langfuse enabled (callback attached)")
+            except Exception:
+                try:
+                    from langfuse.callback import CallbackHandler as LangfuseCallbackHandler  # legacy path
+                    self.callback_handler = LangfuseCallbackHandler()
+                    logger.info("Langfuse enabled (legacy callback attached)")
+                except Exception as e2:
+                    logger.warning(f"Langfuse callback not available: {e2}. Install/upgrade 'langfuse'.")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Langfuse: {e}")
+
+    def get_callback(self):
+        return self.callback_handler if self.enabled else None
+
 class PubSubManager:
     """Redis-based Pub/Sub integration for CoreAgent.
 

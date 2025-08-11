@@ -25,7 +25,8 @@ from langchain_core.messages import HumanMessage, AIMessage
 from core.config import AgentConfig
 from core.managers import (
     SubgraphManager, MemoryManager, SupervisorManager,
-    MCPManager, EvaluationManager, RateLimiterManager, LangSmithManager, PubSubManager
+    MCPManager, EvaluationManager, RateLimiterManager,
+    LangSmithManager, LangfuseManager, PubSubManager
 )
 from core.model import CoreAgentState
 
@@ -61,6 +62,7 @@ class CoreAgent:
         self.evaluation_manager = EvaluationManager(config)
         self.rate_limiter_manager = RateLimiterManager(config)
         self.langsmith_manager = LangSmithManager(config)
+        self.langfuse_manager = LangfuseManager(config)
         self.pubsub_manager = PubSubManager(config, self.invoke)
         
         # Core graph
@@ -69,9 +71,17 @@ class CoreAgent:
         
         # Initialize the agent
         self._build_agent(strict_mode=False)
-        # Initialize LangSmith after graph built to ensure env is ready before any calls
+        # Initialize
+        self._initializer()
+
+
+    def _initializer(self):
         try:
             self.langsmith_manager.initialize()
+        except Exception:
+            pass
+        try:
+            self.langfuse_manager.initialize()
         except Exception:
             pass
         # Start pubsub subscriber if enabled
@@ -323,7 +333,16 @@ class CoreAgent:
             config = self.langsmith_manager.apply_run_defaults(config)
         except Exception:
             pass
-            
+        # Attach Langfuse callback if available
+        try:
+            lf_cb = self.langfuse_manager.get_callback()
+            if lf_cb:
+                callbacks = config.get("callbacks") or []
+                callbacks.append(lf_cb)
+                config["callbacks"] = callbacks
+        except Exception:
+            pass
+
         return self.compiled_graph.invoke(input_data, config=config)
         
     async def ainvoke(self, input_data: Union[str, Dict[str, Any]], **kwargs) -> Dict[str, Any]:
@@ -342,7 +361,14 @@ class CoreAgent:
             config = self.langsmith_manager.apply_run_defaults(config)
         except Exception:
             pass
-            
+        try:
+            lf_cb = self.langfuse_manager.get_callback()
+            if lf_cb:
+                callbacks = config.get("callbacks") or []
+                callbacks.append(lf_cb)
+                config["callbacks"] = callbacks
+        except Exception:
+            pass
         return await self.compiled_graph.ainvoke(input_data, config=config)
         
     def stream(self, input_data: Union[str, Dict[str, Any]], **kwargs):
@@ -365,7 +391,14 @@ class CoreAgent:
             config = self.langsmith_manager.apply_run_defaults(config)
         except Exception:
             pass
-            
+        try:
+            lf_cb = self.langfuse_manager.get_callback()
+            if lf_cb:
+                callbacks = config.get("callbacks") or []
+                callbacks.append(lf_cb)
+                config["callbacks"] = callbacks
+        except Exception:
+            pass
         for chunk in self.compiled_graph.stream(input_data, config=config):
             yield chunk
             
@@ -385,7 +418,14 @@ class CoreAgent:
             config = self.langsmith_manager.apply_run_defaults(config)
         except Exception:
             pass
-            
+        try:
+            lf_cb = self.langfuse_manager.get_callback()
+            if lf_cb:
+                callbacks = config.get("callbacks") or []
+                callbacks.append(lf_cb)
+                config["callbacks"] = callbacks
+        except Exception:
+            pass
         async for chunk in self.compiled_graph.astream(input_data, config=config):
             yield chunk
             
