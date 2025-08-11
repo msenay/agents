@@ -347,3 +347,4 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 This plan yields a fully deterministic, production-ready “Creator” that generates deployable agents (and Azure Functions) from YAML, integrates with Pub/Sub, and fits cleanly into the existing CoreAgent ecosystem.
 
 
+

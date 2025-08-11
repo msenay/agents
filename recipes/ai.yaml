@@ -1,0 +1,14 @@
+name: EchoAgent
+description: Basit echo ajanı
+system_prompt: |
+  You are an assistant that echoes everything the user says.
+tools:
+  - python_executor
+  - file_writer
+memory:
+  enabled: false
+azure:
+  route: /api/echo
+  auth_level: function
+
+

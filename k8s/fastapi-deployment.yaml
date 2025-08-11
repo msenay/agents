@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-fastapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agents-fastapi
+  template:
+    metadata:
+      labels:
+        app: agents-fastapi
+    spec:
+      containers:
+        - name: app
+          image: your-registry/agents-fastapi:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agents-secrets
+                  key: REDIS_URL
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agents-secrets
+                  key: OPENAI_API_KEY
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agents-fastapi-svc
+spec:
+  type: ClusterIP
+  selector:
+    app: agents-fastapi
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+
+

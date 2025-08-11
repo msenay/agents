@@ -1,0 +1,24 @@
+from core.core_agent import CoreAgent
+from core.config import AgentConfig
+{% for imp in tool_imports %}from {{ imp.module }} import {{ imp.class_name }}
+{% endfor %}
+
+SYSTEM_PROMPT = """{{ system_prompt }}"""
+
+class {{ class_name }}(CoreAgent):
+    def __init__(self):
+        tools = [
+{% for t in tools %}            {{ t }}(),
+{% endfor %}        ]
+        cfg = AgentConfig(
+            name="{{ class_name }}",
+            system_prompt=SYSTEM_PROMPT,
+            tools=tools,
+            enable_memory={{ 'True' if memory_enabled else 'False' }}{% if pubsub_enabled %},
+            enable_pubsub=True,
+            pubsub_sub_channels={{ pubsub_sub_channels }},
+            pubsub_pub_channel={{ pubsub_pub_channel | tojson }}{% endif %}
+        )
+        super().__init__(cfg)
+
+
