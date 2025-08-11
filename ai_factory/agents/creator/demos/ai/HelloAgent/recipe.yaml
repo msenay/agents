@@ -1,0 +1,11 @@
+
+name: HelloAgent
+description: Prints hello
+system_prompt: |
+  You are an assistant that says hello.
+tools: []
+memory:
+  enabled: false
+azure:
+  route: /api/hello
+  auth_level: function

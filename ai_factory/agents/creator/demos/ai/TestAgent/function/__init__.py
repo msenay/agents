@@ -1,0 +1,16 @@
+import azure.functions as func
+from TestAgent.agent import TestAgent
+
+agent = TestAgent()
+
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    q = req.params.get('q')
+    if not q:
+        body = req.get_json(silent=True) or {}
+        q = body.get('q') or body.get('input')
+    if not q:
+        return func.HttpResponse("Missing q or input", status_code=400)
+    result = agent.invoke(q)
+    content = result["messages"][-1].content if result and "messages" in result else ""
+    return func.HttpResponse(content, status_code=200)
+

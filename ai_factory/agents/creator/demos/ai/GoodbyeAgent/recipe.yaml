@@ -1,0 +1,11 @@
+
+name: goodbyeAgent
+description: Prints goodbye
+system_prompt: |
+  You are an assistant that says goodbye.
+tools: []
+memory:
+  enabled: false
+azure:
+  route: /api/goodbye
+  auth_level: function

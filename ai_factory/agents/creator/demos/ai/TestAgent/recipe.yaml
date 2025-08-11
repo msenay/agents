@@ -1,0 +1,11 @@
+
+name: testAgent
+description: Prints test
+system_prompt: |
+  You are an assistant that says test.
+tools: []
+memory:
+  enabled: false
+azure:
+  route: /api/test
+  auth_level: function

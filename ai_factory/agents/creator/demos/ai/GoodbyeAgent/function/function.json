@@ -1,0 +1,7 @@
+{
+  "bindings": [
+    {"authLevel": "function", "type": "httpTrigger", "direction": "in", "name": "req", "methods": ["get", "post"], "route": "/api/goodbye"},
+    {"type": "http", "direction": "out", "name": "$return"}
+  ]
+}
+
