@@ -15,18 +15,17 @@ Key Features:
 The agent uses Core Agent infrastructure for memory and tool management.
 """
 
-import os
 import sys
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 
 # Add workspace to path for imports
 sys.path.insert(0, '/workspace')
 
 # Core Agent Infrastructure
-from core.core_agent import CoreAgent
-from core.config import AgentConfig
-from core.llm_factory import get_executor_llm
+from ai_factory.agents.core import CoreAgent
+from ai_factory.agents.core import AgentConfig
+from ai_factory.agents.core import get_executor_llm
 
 # Import prompts and tools
 from agent.executor.prompts import SYSTEM_PROMPT

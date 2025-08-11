@@ -14,15 +14,13 @@ Key Features:
 The agent uses its LLM to intelligently convert specifications into working code.
 """
 
-import os
-import sys
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 # Core Agent Infrastructure
-from core.core_agent import CoreAgent
-from core.config import AgentConfig
-from core.llm_factory import get_coder_llm
+from ai_factory.agents.core import CoreAgent
+from ai_factory.agents.core import AgentConfig
+from ai_factory.agents.core import get_coder_llm
 from langchain_core.messages import HumanMessage
 
 # Import prompts

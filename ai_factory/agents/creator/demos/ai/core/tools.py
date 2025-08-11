@@ -1,0 +1,1 @@
+"""example of factory tools"""

@@ -5,7 +5,6 @@ This agent coordinates multiple specialized agents (Coder, Tester, Executor) to 
 in harmony for complete development workflows.
 """
 
-import os
 import uuid
 from typing import Dict, Any
 from datetime import datetime
@@ -13,11 +12,11 @@ from datetime import datetime
 from agent.coder.coder import CoderAgent
 from agent.executor.executor import ExecutorAgent
 from agent.tester.tester import TesterAgent
-from core import CoreAgent, AgentConfig
+from ai_factory.agents.core import CoreAgent, AgentConfig
 
 from agent.orchestrator.prompts import SYSTEM_PROMPT
 from agent.orchestrator.tools import get_orchestrator_tools
-from core.llm_factory import get_orchestrator_llm
+from ai_factory.agents.core import get_orchestrator_llm
 
 
 # OrchestratorConfig removed - now using LLM Factory

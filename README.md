@@ -76,15 +76,15 @@ response = executor.chat("Run pytest on my test suite")
 #### Option 2: Build Custom Agents
 
 ```python
-from core import CoreAgent, AgentConfig
+from ai_factory.agents.core import CoreAgent, AgentConfig
 from langchain_openai import ChatOpenAI
 
 config = AgentConfig(
-    name="MyCustomAgent",
-    model=ChatOpenAI(model="gpt-4"),
-    system_prompt="You are a specialized assistant for data analysis.",
-    tools=[...],  # Add your tools
-    enable_memory=True
+   name="MyCustomAgent",
+   model=ChatOpenAI(model="gpt-4"),
+   system_prompt="You are a specialized assistant for data analysis.",
+   tools=[...],  # Add your tools
+   enable_memory=True
 )
 
 agent = CoreAgent(config)
@@ -187,24 +187,24 @@ MONGODB_URL=mongodb://localhost:27017/agents
 ### Agent Configuration
 
 ```python
-from core import AgentConfig
+from ai_factory.agents.core import AgentConfig
 
 config = AgentConfig(
-    # Basic settings
-    name="MyAgent",
-    description="Agent purpose",
-    
-    # Model configuration
-    model=ChatOpenAI(model="gpt-4", temperature=0.7),
-    
-    # Features
-    enable_memory=True,
-    memory_backend="redis",
-    enable_rate_limiting=True,
-    enable_streaming=True,
-    
-    # Tools
-    tools=[...],
+   # Basic settings
+   name="MyAgent",
+   description="Agent purpose",
+
+   # Model configuration
+   model=ChatOpenAI(model="gpt-4", temperature=0.7),
+
+   # Features
+   enable_memory=True,
+   memory_backend="redis",
+   enable_rate_limiting=True,
+   enable_streaming=True,
+
+   # Tools
+   tools=[...],
 )
 ```
 
@@ -226,13 +226,13 @@ python core/test_core/test_core_agent_comprehensive.py
 
 ## 📚 Documentation
 
-- [Core Agent Framework Documentation](core/README.md)
+- [Core Agent Framework Documentation](ai_factory/agents/core/README.md)
 - [CoderAgent Documentation](agent/coder/README_coder.md)
 - [TesterAgent Documentation](agent/tester/README_tester.md)
 - [ExecutorAgent Documentation](agent/executor/README_executor.md)
 - [OrchestratorAgent Documentation](agent/orchestrator/README_orchestrator.md)
-- [Configuration Guide](core/README.md#configuration-examples)
-- [Multi-Agent Patterns](core/README.md#multi-agent-system-configuration)
+- [Configuration Guide](ai_factory/agents/core/README.md#configuration-examples)
+- [Multi-Agent Patterns](ai_factory/agents/core/README.md#multi-agent-system-configuration)
 
 ## 🚀 Example: Complete Development Workflow
 
