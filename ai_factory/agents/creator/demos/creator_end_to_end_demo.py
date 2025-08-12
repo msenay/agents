@@ -15,19 +15,12 @@ Environment (for Redis Pub/Sub demo):
 """
 
 from __future__ import annotations
-
 import json
 import os
 import time
-
 from dotenv import load_dotenv, find_dotenv
-
 from ai_factory.agents.creator.agent import CreatorAgent
-
-try:
-    import redis  # type: ignore
-except Exception:
-    redis = None
+import redis
 
 
 RECIPE_YAML = """
@@ -110,5 +103,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
